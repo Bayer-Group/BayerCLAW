@@ -1,0 +1,9 @@
+backoff
+boto3
+cryptography < 3.4
+docopt
+jmespath
+moto
+pytest
+requests
+requests_mock

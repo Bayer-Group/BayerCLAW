@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  WorkflowName:
+    Type: String
+
+  HandlerLambdaArn:
+    Type: String
+
+  StateMachineArn:
+    Type: String
+
+Resources:
+  wfOutputSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${WorkflowName}-notifications"
+
+  wfSFNtoLambdaRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - aws.states
+        detail-type:
+          - Step Functions Execution Status Change
+        detail:
+          stateMachineArn:
+            - !Ref StateMachineArn
+      State: ENABLED
+      Targets:
+        -
+          Arn: !Ref HandlerLambdaArn
+          Id: HandlerLambdaTargetId
+          InputTransformer:
+            InputPathsMap:
+              detail: "$.detail"
+            InputTemplate:
+              !Sub |-
+                {
+                  "workflow_name": "${WorkflowName}",
+                  "sns_topic_arn": "${wfOutputSNSTopic}",
+                  "event": <aws.events.event>,
+                  "detail": <detail>
+                }
+
+  wfPermissionToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref HandlerLambdaArn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt wfSFNtoLambdaRule.Arn
+
+Outputs:
+  wfOutputTopicArn:
+    Value: !Ref wfOutputSNSTopic

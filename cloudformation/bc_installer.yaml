@@ -1,0 +1,556 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: Identifiers
+        Parameters:
+          - InstallationName
+          - CompilerMacroName
+      -
+        Label:
+          default: Source
+        Parameters:
+          - CodeStarConnectionArn
+      -
+        Label:
+          default: Environment
+        Parameters:
+          - VpcId
+          - Subnets
+          - SecurityGroups
+      -
+        Label:
+          default: Batch
+        Parameters:
+          - RootVolumeSize
+          - ScratchVolumeSize
+          - MinvCpus
+          - MaxvCpus
+          - EFSVolumeId
+      -
+        Label:
+          default: Advanced
+        Parameters:
+          - LauncherBucketName
+          - LogRetentionDays
+          - UseExistingCloudTrail
+          - CoreRepo
+          - CoreBranch
+
+Parameters:
+  CodeStarConnectionArn:
+    Type: String
+    Description: ARN of a CodeStar Connection object that connects this AWS account to GitHub Enterprise
+
+  CompilerMacroName:
+    Type: String
+    Description: Compiler macro name, change this only for testing and development instances
+    Default: "BC_Compiler"
+
+  CoreBranch:
+    Type: String
+    Description: Git branch name in the BayerCLAW core code repo
+    Default: master
+
+  CoreRepo:
+    Type: String
+    Description: GitHub repo containing the BayerCLAW core code
+    Default: biotech/bclaw_public
+
+  EFSVolumeId:
+    Type: String
+    Description: EFS volume to mount, enter "None" for no volume.
+    Default: "None"
+
+  InstallationName:
+    Type: String
+    Description: Name of this BayerCLAW installation
+    Default: "bayerclaw"
+
+  LauncherBucketName:
+    Type: String
+    Description: >
+      Use this to specify a custom name for the job launcher S3 bucket. You must make sure that
+      this bucket name is globally unique. Enter "Default" to automatically generate a launcher
+      bucket name.
+    Default: "Default"
+
+  LogRetentionDays:
+    Type: Number
+    Description: How long to keep CloudWatch log entries, in days.
+    AllowedValues: [ 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653 ]
+    Default: 30
+
+  MaxvCpus:
+    Type: Number
+    Description: >
+      Maximum number of CPUs that Batch will spin up simultaneously.
+      Actual maximum may be less depending on EC2 limits in the AWS account.
+      Once the maximum is reached, additional jobs will be queued until some jobs finish.
+    Default: 256
+
+  MinvCpus:
+    Type: Number
+    Description: >
+      Minimum number of CPUs that Batch will maintain at all times, even when there are no jobs to process.
+      Setting this to something greater than zero (e.g. 2) will decrease the Batch cold-start time during testing,
+      at the expense of some always-on EC2 instances.
+    Default: 0
+
+  RootVolumeSize:
+    Type: Number
+    Description: Size (in GB) of the EBS root volume used by Batch jobs
+    Default: 100
+
+  ScratchVolumeSize:
+    Type: Number
+    Description: Size (in GB) of the EBS scratch volume used by Batch jobs
+    Default: 1000
+
+  SecurityGroups:
+    Type: String
+    Description: >
+      Comma-separated list of security group IDs for Batch jobs to run under. Must allow outbound HTTP
+      and HTTPS traffic. Enter "Auto" to automatically create a suitable security group.
+    Default: Auto
+
+  Subnets:
+    Type: String
+    Description: >
+      Comma-separated list of subnet IDs for Batch jobs to run in. Subnets must have internet access
+      either through a direct Internet Gateway connection or through a NAT Gateway.
+
+  UseExistingCloudTrail:
+    Type: String
+    Description: >
+      Select "Yes" if your account has a CloudTrail trail monitoring all S3 buckets. This would be
+      useful if you intend to use multiple main stacks. Otherwise, choose "No".
+    AllowedValues:
+      - "Yes"
+      - "No"
+    Default: "No"
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: ID of the VPC where BayerCLAW will live
+
+Resources:
+  ResourceBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${InstallationName}-resources-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          -
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          -
+            Prefix: !Ref InstallationName
+            ExpirationInDays: 2
+            NoncurrentVersionExpirationInDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+            Status: Enabled
+          -
+            Prefix: "cloudformation"
+            NoncurrentVersionExpirationInDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+            Status: Enabled
+          -
+            Prefix: "cloudtrail"
+            ExpirationInDays: 2
+            NoncurrentVersionExpirationInDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+            Status: Enabled
+          -
+            Prefix: "codebuild"
+            ExpirationInDays: 2
+            NoncurrentVersionExpirationInDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+            Status: Enabled
+          -
+            Prefix: "lambda"
+            ExpirationInDays: 2
+            NoncurrentVersionExpirationInDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+            Status: Enabled
+          -
+            Prefix: "runner"
+            NoncurrentVersionExpirationInDays: 7
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+            Status: Enabled
+          -
+            Prefix: "stepfunctions"
+            ExpirationInDays: 2
+            NoncurrentVersionExpirationInDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+            Status: Enabled
+      VersioningConfiguration:
+        Status: Enabled
+
+  ResourceBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ResourceBucket
+      PolicyDocument:
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service: "cloudtrail.amazonaws.com"
+            Action: s3:GetBucketAcl
+            Resource:
+              !GetAtt ResourceBucket.Arn
+          -
+            Effect: Allow
+            Principal:
+              Service: "cloudtrail.amazonaws.com"
+            Action: s3:PutObject
+            Resource:
+              !Sub "arn:aws:s3:::${ResourceBucket}/cloudtrail/*"
+            Condition:
+              StringEquals:
+                "s3:x-amz-acl": "bucket-owner-full-control"
+
+  AdminSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${InstallationName}-admin-notifs"
+
+  AdminSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Id: __default_policy_ID
+        Statement:
+          -
+            Effect: Allow
+            Sid: __default_statement_ID
+            Principal:
+              AWS: "*"
+            Action:
+              - SNS:AddPermission
+              - SNS:DeleteTopic
+              - SNS:GetTopicAttributes
+              - SNS:ListSubscriptionsByTopic
+              - SNS:Publish
+              - SNS:Receive
+              - SNS:RemovePermission
+              - SNS:SetTopicAttributes
+              - SNS:Subscribe
+            Resource:
+              !Ref AdminSNSTopic
+            Condition:
+              StringEquals:
+                AWS:SourceOwner:
+                  Ref: AWS::AccountId
+          -
+            Effect: Allow
+            Sid: yada_yada
+            Principal:
+              Service:
+                - codestar-notifications.amazonaws.com
+            Action: "SNS:Publish"
+            Resource: !Ref AdminSNSTopic
+      Topics:
+        - !Ref AdminSNSTopic
+
+  CoreStackCodebuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Environment:
+        Type: LINUX_CONTAINER
+        Image: "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
+        ComputeType: BUILD_GENERAL1_SMALL
+        PrivilegedMode: false
+        EnvironmentVariables:
+          - Name: COMPILER_MACRO_NAME
+            Type: PLAINTEXT
+            Value: !Ref CompilerMacroName
+          - Name: EFS_VOLUME_ID
+            Type: PLAINTEXT
+            Value: !Ref EFSVolumeId
+          - Name: INSTALLATION_NAME
+            Type: PLAINTEXT
+            Value: !Ref InstallationName
+          - Name: LAUNCHER_BUCKET_NAME
+            Type: PLAINTEXT
+            Value: !Ref LauncherBucketName
+          - Name: LOG_RETENTION_DAYS
+            Type: PLAINTEXT
+            Value: !Ref LogRetentionDays
+          - Name: MAX_VCPUS
+            Type: PLAINTEXT
+            Value: !Ref MaxvCpus
+          - Name: MIN_VCPUS
+            Type: PLAINTEXT
+            Value: !Ref MinvCpus
+          - Name: RESOURCE_BUCKET_NAME
+            Type: PLAINTEXT
+            Value: !Ref ResourceBucket
+          - Name: ROOT_VOLUME_SIZE
+            Type: PLAINTEXT
+            Value: !Ref RootVolumeSize
+          - Name: SCRATCH_VOLUME_SIZE
+            Type: PLAINTEXT
+            Value: !Ref ScratchVolumeSize
+          - Name: SECURITY_GROUPS
+            Type: PLAINTEXT
+            Value: !Ref SecurityGroups
+          - Name: SUBNETS
+            Type: PLAINTEXT
+            Value: !Ref Subnets
+          - Name: USE_EXISTING_CLOUDTRAIL
+            Type: PLAINTEXT
+            Value: !Ref UseExistingCloudTrail
+          - Name: VPC_ID
+            Type: PLAINTEXT
+            Value: !Ref VpcId
+      ServiceRole: !GetAtt CoreStackCodebuildRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yml
+      Artifacts:
+        Type: CODEPIPELINE
+
+  RunnerCodebuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Environment:
+        Type: LINUX_CONTAINER
+        Image: "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
+        ComputeType: BUILD_GENERAL1_SMALL
+        PrivilegedMode: false
+      ServiceRole: !GetAtt RunnerCodebuildRole.Arn
+      BuildBatchConfig:
+        CombineArtifacts: false
+        Restrictions:
+          ComputeTypesAllowed:
+            - BUILD_GENERAL1_SMALL
+          MaximumBuildsAllowed: 5
+        ServiceRole: !GetAtt RunnerCodebuildRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: bclaw_runner/buildspec.yml
+      Artifacts:
+        Type: CODEPIPELINE
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub "${InstallationName}-codepipeline"
+      ArtifactStore:
+        Location: !Ref ResourceBucket
+        Type: S3
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      DisableInboundStageTransitions: []
+      Stages:
+        -
+          Name: Source
+          Actions:
+            - Name: Core
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: "1"
+              Configuration:
+                ConnectionArn: !Ref CodeStarConnectionArn
+                FullRepositoryId: !Ref CoreRepo
+                BranchName: !Ref CoreBranch
+                OutputArtifactFormat: CODE_ZIP
+                DetectChanges: false
+              OutputArtifacts:
+                - Name: coreSrc
+              RunOrder: 1
+        -
+          Name: BuildCore
+          Actions:
+            -
+              Name: BuildCoreStack
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              Configuration:
+                ProjectName: !Ref CoreStackCodebuildProject
+                PrimarySource: coreSrc
+                EnvironmentVariables: '[{"name":"AMI_ID_SSM","value":"/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"}]'
+              InputArtifacts:
+                - Name: coreSrc
+              OutputArtifacts:
+                - Name: coreStackArtifacts
+              Namespace: BuildMainStackNS
+              RunOrder: 1
+            -
+              Name: BuildRunners
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              Configuration:
+                ProjectName: !Ref RunnerCodebuildProject
+                PrimarySource: coreSrc
+                BatchEnabled: true
+                CombineArtifacts: false
+              InputArtifacts:
+                - Name: coreSrc
+              OutputArtifacts:
+                - Name: debian
+                - Name: centos
+              Namespace: BuildRunnersNS
+              RunOrder: 1
+        -
+          Name: Deploy
+          Actions:
+            -
+              Name: DeployTemplates
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: S3
+                Version: "1"
+              Configuration:
+                BucketName: !Ref ResourceBucket
+                ObjectKey: cloudformation
+                Extract: true
+              InputArtifacts:
+                - Name: coreStackArtifacts
+              RunOrder: 1
+            -
+              Name: DeployCentosRunner
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: S3
+                Version: "1"
+              Configuration:
+                 BucketName: !Ref ResourceBucket
+                 Extract: true
+                 ObjectKey: runner
+              InputArtifacts:
+                - Name: centos
+              RunOrder: 1
+            -
+              Name: DeployDebianRunner
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: S3
+                Version: "1"
+              Configuration:
+                 BucketName: !Ref ResourceBucket
+                 Extract: true
+                 ObjectKey: runner
+              InputArtifacts:
+                - Name: debian
+              RunOrder: 1
+
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: "sts:AssumeRole"
+          Effect: Allow
+          Principal:
+            Service: codepipeline.amazonaws.com
+        Version: "2012-10-17"
+      Policies:
+        - PolicyName: CodePipelineAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Action:
+                - s3:*
+                - codebuild:*
+                - cloudformation:CreateStack
+                - cloudformation:DescribeStacks
+                - cloudformation:DeleteStack
+                - cloudformation:UpdateStack
+                - cloudformation:CreateChangeSet
+                - cloudformation:ExecuteChangeSet
+                - cloudformation:DeleteChangeSet
+                - cloudformation:DescribeChangeSet
+                - cloudformation:SetStackPolicy
+                - iam:PassRole
+                - codestar-connections:UseConnection
+                - sns:Publish
+                Effect: Allow
+                Resource: '*'
+
+  CoreStackCodebuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+        - "arn:aws:iam::aws:policy/AWSCodeDeployFullAccess"
+        - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+        - "arn:aws:iam::aws:policy/AWSBatchFullAccess"
+        - "arn:aws:iam::aws:policy/IAMFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonSSMFullAccess"
+        - "arn:aws:iam::aws:policy/AWSCloudTrail_FullAccess"
+        - "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
+
+  RunnerCodebuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+        - "arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess"
+
+  CodePipelineNotificationRule:
+    Type: AWS::CodeStarNotifications::NotificationRule
+    Properties:
+      DetailType: BASIC
+      EventTypeIds:
+        - codepipeline-pipeline-pipeline-execution-started
+        - codepipeline-pipeline-pipeline-execution-succeeded
+        - codepipeline-pipeline-pipeline-execution-failed
+        - codepipeline-pipeline-pipeline-execution-canceled
+      Name: !Sub "${InstallationName}-admin-notif-rule"
+      Resource: !Sub "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}"
+      Status: ENABLED
+      Targets:
+        -
+          TargetType: SNS
+          TargetAddress: !Ref AdminSNSTopic
+
+Outputs:
+  AdminSNSTopicName:
+    Value: !GetAtt AdminSNSTopic.TopicName

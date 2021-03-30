@@ -1,0 +1,127 @@
+import json
+import textwrap
+
+import pytest
+import yaml
+
+from ...src.compiler.pkg.subpipe_resources import file_submit_step, run_subpipe_step, file_retrieve_step, handle_subpipe
+from ...src.compiler.pkg.util import CoreStack, Step, SENTRY
+
+
+@pytest.fixture(scope="module")
+def sample_subpipe_spec() -> dict:
+    step_yaml = textwrap.dedent("""
+      submit:
+        - file1.txt -> fileA.txt
+        - file2.txt
+      subpipe: arn:aws:states:us-east-1:123456789012:StateMachine:test-machine
+      retrieve:
+        - fileX.txt -> file3.txt
+        - fileY.txt
+      """
+    )
+    ret = yaml.safe_load(step_yaml)
+    return ret
+
+
+def test_file_submit_step(sample_subpipe_spec, monkeypatch, mock_core_stack):
+    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
+    core_stack = CoreStack()
+
+    result = file_submit_step(core_stack, "step_name", sample_subpipe_spec, "next_step_name")
+    expect = {
+        "Type": "Task",
+        "Resource": "subpipes_lambda_arn",
+        "Parameters": {
+            "repo.$": "$.repo",
+            "submit": json.dumps(sample_subpipe_spec["submit"]),
+            "logging": {
+                "branch.$": "$.index",
+                "job_file_bucket.$": "$.job_file.bucket",
+                "job_file_key.$": "$.job_file.key",
+                "job_file_version.$": "$.job_file.version",
+                "job_file_s3_request_id.$": "$.job_file.s3_request_id",
+                "sfn_execution_id.$": "$$.Execution.Name",
+                "step_name": "step_name",
+                "workflow_name": "${WorkflowName}",
+            },
+        },
+        "ResultPath": "$.subpipe",
+        "OutputPath": "$",
+        "Next": "next_step_name",
+    }
+    assert result == expect
+
+
+# todo: add case with stack name instead of state machine arn
+def test_run_subpipe_step(sample_subpipe_spec):
+    result = run_subpipe_step(sample_subpipe_spec, "next_step_name")
+    expect = {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::states:startExecution.sync",
+        "Parameters": {
+            "Input": {
+                "index": "main",
+                "id_prefix.$": "$.id_prefix",
+                "job_file.$": "$.job_file",
+                "repo.$": "$.subpipe.sub_repo",
+                "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id",
+            },
+            "StateMachineArn": sample_subpipe_spec["subpipe"],
+        },
+        "ResultPath": None,
+        "OutputPath": "$",
+        "Next": "next_step_name"
+    }
+    assert result == expect
+
+
+@pytest.mark.parametrize("next_step, next_or_end", [(Step("next_step", {}), {"Next": "next_step"}),
+                                                    (SENTRY, {"End": True})])
+def test_file_retrieve_step(next_step, next_or_end, sample_subpipe_spec, monkeypatch, mock_core_stack):
+    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
+    core_stack = CoreStack()
+
+    result = file_retrieve_step(core_stack, "test_step_name", sample_subpipe_spec, next_step)
+    expect = {
+        "Type": "Task",
+        "Resource": "subpipes_lambda_arn",
+        "Parameters": {
+            "repo.$": "$.repo",
+            "retrieve": json.dumps(sample_subpipe_spec["retrieve"]),
+            "subpipe": {
+                "sub_repo.$": "$.subpipe.sub_repo",
+            },
+            "logging": {
+                "branch.$": "$.index",
+                "job_file_bucket.$": "$.job_file.bucket",
+                "job_file_key.$": "$.job_file.key",
+                "job_file_version.$": "$.job_file.version",
+                "job_file_s3_request_id.$": "$.job_file.s3_request_id",
+                "sfn_execution_id.$": "$$.Execution.Name",
+                "step_name": "test_step_name",
+                "workflow_name": "${WorkflowName}",
+            },
+        },
+        "ResultPath": None,
+        "OutputPath": "$",
+        **next_or_end
+    }
+    assert result == expect
+
+
+def test_handle_subpipe(sample_subpipe_spec, monkeypatch, mock_core_stack):
+    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
+    core_stack = CoreStack()
+
+    states = handle_subpipe(core_stack, "step_name", sample_subpipe_spec, Step("next_step_name", {}))
+    assert len(states) == 3
+
+    assert states[0].name == "step_name"
+    assert states[0].spec["Next"] == "step_name.subpipe"
+
+    assert states[1].name == "step_name.subpipe"
+    assert states[1].spec["Next"] == "step_name.retrieve"
+
+    assert states[2].name == "step_name.retrieve"
+    assert states[2].spec["Next"] == "next_step_name"

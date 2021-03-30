@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  WorkflowName:
+    Type: String
+
+  StateMachineArn:
+    Type: String
+
+  LauncherBucketName:
+    Type: String
+
+
+Resources:
+  wfDeadLetterQueue:
+    Type: AWS::SQS::Queue
+
+  wfEventRuleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
+
+  wfEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventBusName: default
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - s3.amazonaws.com
+          eventName:
+            - PutObject
+            - CopyObject
+          requestParameters:
+            bucketName:
+              - !Ref LauncherBucketName
+            key:
+              -
+                prefix: !Ref WorkflowName
+      State: ENABLED
+      RoleArn: !GetAtt wfEventRuleRole.Arn
+      Targets:
+        -
+          Arn: !Ref StateMachineArn
+          DeadLetterConfig:
+            Arn: !GetAtt wfDeadLetterQueue.Arn
+          Id: state-machine-target
+          RoleArn: !GetAtt wfEventRuleRole.Arn
+          InputTransformer:
+            InputPathsMap:
+              bucket: "$.detail.requestParameters.bucketName"
+              key: "$.detail.requestParameters.key"
+              requestID: "$.detail.requestID"
+              version: "$.detail.responseElements.x-amz-version-id"
+            InputTemplate: >-
+              {
+                "job_file": {
+                  "bucket": <bucket>,
+                  "key": <key>,
+                  "version": <version>,
+                  "s3_request_id": <requestID>
+                },
+                "index": "main"
+              }
+
+  wfEventArchive:
+    Type: AWS::Events::Archive
+    Properties:
+      ArchiveName: !Sub "${WorkflowName}-events"
+      SourceArn: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - "AWS API Call via CloudTrail"
+        detail:
+          eventSource:
+            - s3.amazonaws.com
+          eventName:
+            - PutObject
+            - CopyObject
+          requestParameters:
+            bucketName:
+              - !Ref LauncherBucketName
+            key:
+              -
+                prefix: !Sub "${WorkflowName}/"
+
+  wfDLQPolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !GetAtt wfDeadLetterQueue.QueueName
+      PolicyDocument:
+        Version: 2012-10-17
+        Id: wfDLQPolicyID
+        Statement:
+          Sid: wfEventRuleToDLQ
+          Effect: Allow
+          Principal:
+            AWS: "*"
+          Action: "SQS:SendMessage"
+          Resource: !GetAtt wfDeadLetterQueue.Arn
+          Condition:
+            ArnEquals:
+              "aws:SourceArn": !GetAtt wfEventRule.Arn

@@ -1,0 +1,57 @@
+version: 0.2
+
+env:
+  exported-variables:
+    - CORE_STACK_NAME
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.8
+    commands:
+      - pip install aws-sam-cli
+      - pip install -r lambda/tests/requirements.txt
+
+  pre_build:
+    commands:
+      - pytest -s -vvv lambda/tests/
+      - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
+
+  build:
+    commands:
+      - sam build -b ./build -s . -t cloudformation/bc_core.yaml
+      - >
+        sam package
+        --template-file build/template.yaml
+        --s3-bucket ${RESOURCE_BUCKET_NAME}
+        --s3-prefix lambda
+        --output-template-file build/packaged.yaml
+      - >
+        sam deploy
+        --template-file build/packaged.yaml
+        --stack-name ${CORE_STACK_NAME}
+        --capabilities CAPABILITY_NAMED_IAM
+        --s3-prefix lambda
+        --no-fail-on-empty-changeset
+        --parameter-overrides
+        AmiId=${AMI_ID_SSM}
+        CompilerMacroName=${COMPILER_MACRO_NAME}
+        EFSVolumeId=${EFS_VOLUME_ID}
+        InstallationName=${INSTALLATION_NAME}
+        LauncherBucketName=${LAUNCHER_BUCKET_NAME}
+        LogRetentionDays=${LOG_RETENTION_DAYS}
+        MaxvCpus=${MAX_VCPUS}
+        MinvCpus=${MIN_VCPUS}
+        ResourceBucketName=${RESOURCE_BUCKET_NAME}
+        RootVolumeSize=${ROOT_VOLUME_SIZE}
+        ScratchVolumeSize=${SCRATCH_VOLUME_SIZE}
+        SecurityGroups=${SECURITY_GROUPS}
+        Subnets=${SUBNETS}
+        UseExistingCloudTrail=${USE_EXISTING_CLOUDTRAIL}
+        VpcId=${VPC_ID}
+
+artifacts:
+  discard-paths: yes
+  files:
+    - cloudformation/wf_launcher.yaml
+    - cloudformation/wf_notifications.yaml

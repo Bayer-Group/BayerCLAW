@@ -1,0 +1,8 @@
+boto3
+humanfriendly
+jmespath
+jsonpath
+moto
+pytest
+pyyaml
+voluptuous

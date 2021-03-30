@@ -1,0 +1,52 @@
+version: 0.2
+
+batch:
+  fast-fail: true
+  build-list:
+    - identifier: debian
+      env:
+        image: aws/codebuild/standard:4.0
+        variables:
+          SHELL_NAME: bash
+          COPY_SELECT_SCRIPT: n
+    - identifier: centos
+      env:
+        image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+        variables:
+          SHELL_NAME: bash
+          COPY_SELECT_SCRIPT: y
+    - identifier: alpine
+      env:
+        image: 775344547271.dkr.ecr.us-east-1.amazonaws.com/pyinstaller-alpine:latest
+        variables:
+          SHELL_NAME: sh
+          COPY_SELECT_SCRIPT: n
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.8
+    commands:
+      - pip install -r bclaw_runner/requirements.txt pyinstaller
+
+  pre_build:
+    commands:
+      - pytest -s -vvv bclaw_runner/tests/
+
+  build:
+    commands:
+      - mkdir -p staging/$CODEBUILD_BATCH_BUILD_IDENTIFIER
+      - cd $CODEBUILD_SRC_DIR/bclaw_runner/src/
+      - pyinstaller --onefile --add-data "runner/cfg/${SHELL_NAME}/cfg.json:." --name bclaw_runner runner_cli.py
+      - cp dist/bclaw_runner $CODEBUILD_SRC_DIR/staging/$CODEBUILD_BATCH_BUILD_IDENTIFIER/
+      - cd $CODEBUILD_SRC_DIR
+      - if [ $COPY_SELECT_SCRIPT == "y" ]; then cp bclaw_runner/scripts/select_runner.sh staging/; fi
+
+  post_build:
+    commands:
+      - $CODEBUILD_SRC_DIR/bclaw_runner/src/dist/bclaw_runner -h
+
+artifacts:
+  base-directory: staging
+  files:
+    - "**/*"

@@ -1,0 +1,641 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Description: >
+      Location of an Amazon Machine Image (AMI) ID in Systems Manager Parameter Store.
+      This AMI will be used by AWS Batch to create EC2 instances. Default is the
+      location of the latest Amazon Linux 2 ECS image ID.
+    Default: "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
+
+  CloudTrailS3KeyPrefix:
+    Type: String
+    Description: Location of CloudTrail logs in the resources bucket.
+    Default: "cloudtrail"
+    AllowedValues:
+      - "cloudtrail"
+
+  CompilerMacroName:
+    Type: String
+    Description: Compiler macro name, change this only for testing and development instances
+    Default: "BC_Compiler"
+
+  EFSVolumeId:
+    Type: String
+    Description: EFS volume to mount, enter "None" for no volume.
+    Default: "None"
+
+  InstallationName:
+    Type: String
+    Default: bayerclaw
+
+  LauncherBucketName:
+    Type: String
+    Description: >
+      Use this to specify a custom name for the job launcher S3 bucket. You must make sure that
+      this bucket name is globally unique. Enter "Default" to automatically generate a launcher
+      bucket name.
+    Default: "Default"
+
+  LogRetentionDays:
+    Type: Number
+    Description: How long to keep CloudWatch log entries, in days.
+    AllowedValues: [ 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653 ]
+    Default: 30
+
+  MaxvCpus:
+    Type: Number
+    Description: >
+      Maximum number of CPUs that Batch will spin up simultaneously.
+      Actual maximum may be less depending on EC2 limits in the AWS account.
+      Once the maximum is reached, additional jobs will be queued until some jobs finish.
+    Default: 256
+
+  MinvCpus:
+    Type: Number
+    Description: >
+      Minimum number of CPUs that Batch will maintain at all times, even when there are no jobs to process.
+      Setting this to something greater than zero (e.g. 2) will decrease the Batch cold-start time during testing,
+      at the expense of some always-on EC2 instances.
+    Default: 0
+
+  ResourceBucketName:
+    Type: String
+    Description: S3 bucket containing resources for the main stack
+
+  RootVolumeSize:
+    Type: Number
+    Description: Size (in GB) of the EBS root volume used by Batch jobs
+    Default: 100
+
+  ScratchVolumeSize:
+    Type: Number
+    Description: Size (in GB) of the EBS scratch volume used by Batch jobs
+    Default: 1000
+
+  SecurityGroups:
+    Type: String
+    Description: >
+      Comma-separated list of security group IDs for Batch jobs to run under. Must allow outbound HTTP
+      and HTTPS traffic. Enter "Auto" to automatically create a suitable security group.
+    Default: Auto
+
+  Subnets:
+    Type: CommaDelimitedList
+    Description: >
+      Comma-separated list of subnet IDs for Batch jobs to run in. Subnets must have internet access
+       either through a direct Internet Gateway connection or through a NAT Gateway.
+
+  UseExistingCloudTrail:
+    Type: String
+    Description: >
+      Select "Yes" if your account has a CloudTrail trail monitoring all S3 buckets. This would be
+      useful if you intend to use multiple main stacks. Otherwise, choose "No".
+    AllowedValues:
+      - "Yes"
+      - "No"
+    Default: "No"
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: ID of the VPC where BayerCLAW will live
+
+
+Conditions:
+  MakeNewTrail: !Equals [!Ref UseExistingCloudTrail, "No"]
+
+  MakeLauncherBucketName: !Or [ !Equals [!Ref LauncherBucketName, "Default"],
+                                !Equals [!Ref LauncherBucketName, "default"] ]
+
+  MakeSecurityGroup: !Or [ !Equals [!Ref SecurityGroups, "Auto"],
+                           !Equals [!Ref SecurityGroups, "auto"] ]
+
+
+Resources:
+  # network
+  SecurityGroup:
+    Condition: MakeSecurityGroup
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: security group for BayerCLAW EC2 instances
+      SecurityGroupEgress:
+        -
+          IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref VpcId
+
+  # launcher bucket
+  LauncherBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName:
+        !If [MakeLauncherBucketName, !Sub "${InstallationName}-launcher-${AWS::AccountId}", !Ref LauncherBucketName]
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          -
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+
+  CloudTrail:
+    Type: AWS::CloudTrail::Trail
+    Condition: MakeNewTrail
+    Properties:
+      EventSelectors:
+        -
+          DataResources:
+            -
+              Type: AWS::S3::Object
+              Values:
+                - !Sub arn:aws:s3:::${LauncherBucket}/
+          IncludeManagementEvents: false
+          ReadWriteType: WriteOnly
+      IsLogging: true
+      S3BucketName: !Ref ResourceBucketName
+      S3KeyPrefix: !Ref CloudTrailS3KeyPrefix
+
+  # lambdas
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ${AWS::StackName}-bclaw-common
+      ContentUri: ../lambda/src/common
+      CompatibleRuntimes:
+        - python3.7
+        - python3.8
+
+  CompilerLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handler.lambda_handler
+      Runtime: python3.8
+      CodeUri: lambda/src/compiler
+      Environment:
+        Variables:
+          CORE_STACK_NAME: !Ref "AWS::StackName"
+      MemorySize: 128
+      Timeout: 900
+      Layers:
+        - !Ref CommonLayer
+      Policies:
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
+      DeploymentPreference:
+        Enabled: false
+
+  CompilerLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${CompilerLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  LauncherLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: launcher.lambda_handler
+      Runtime: python3.8
+      CodeUri: lambda/src/launcher
+      MemorySize: 128
+      Timeout: 900
+      Layers:
+        - !Ref CommonLayer
+      Policies:
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+      DeploymentPreference:
+        Enabled: false
+
+  LauncherLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${LauncherLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  ScatterLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: scatter.lambda_handler
+      Runtime: python3.8
+      CodeUri: lambda/src/scatter
+      MemorySize: 128
+      Timeout: 900
+      Layers:
+        - !Ref CommonLayer
+      Policies:
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+      DeploymentPreference:
+        Enabled: false
+
+  ScatterLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ScatterLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  GatherLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: gather.lambda_handler
+      Runtime: python3.8
+      CodeUri: lambda/src/gather
+      MemorySize: 128
+      Timeout: 900
+      Layers:
+        - !Ref CommonLayer
+      Policies:
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+      DeploymentPreference:
+        Enabled: false
+
+  GatherLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${GatherLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  QCCheckerLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: qc_checker.lambda_handler
+      Runtime: python3.8
+      CodeUri: lambda/src/qc_checker
+      MemorySize: 128
+      Timeout: 60
+      Layers:
+        - !Ref CommonLayer
+      Policies:
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess"
+      DeploymentPreference:
+        Enabled: false
+
+  QCCheckerLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${QCCheckerLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  SubpipesLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: subpipes.lambda_handler
+      Runtime: python3.8
+      CodeUri: lambda/src/subpipes
+      MemorySize: 128
+      Timeout: 900
+      Layers:
+        - !Ref CommonLayer
+      Policies:
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+      DeploymentPreference:
+        Enabled: false
+
+  SubpipesLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${SubpipesLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  EventHandlerLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: notifications.lambda_handler
+      Runtime: python3.8
+      CodeUri: lambda/src/notifications
+      MemorySize: 128
+      Timeout: 60
+      Layers:
+        - !Ref CommonLayer
+      Policies:
+        - arn:aws:iam::aws:policy/AmazonSNSFullAccess
+      DeploymentPreference:
+        Enabled: False
+
+  EventHandlerLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${EventHandlerLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  CompilerMacro:
+    Type: AWS::CloudFormation::Macro
+    Properties:
+      Name: !Ref CompilerMacroName
+      Description: "bclaw compiler"
+      FunctionName: !Ref CompilerLambda
+
+  # step functions
+  StatesExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - !Join [".", [ "states", !Ref "AWS::Region", "amazonaws.com"] ]
+            Action:
+              - "sts:AssumeRole"
+
+  StatesExecutionPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: StatesExecutionPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: "lambda:InvokeFunction"
+            Resource: "*"
+          - Effect: Allow
+            Action: "SNS:Publish"
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - "batch:SubmitJob"
+              - "batch:DescribeJobs"
+              - "batch:TerminateJob"
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - "events:PutTargets"
+              - "events:PutRule"
+              - "events:DescribeRule"
+            Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForBatchJobsRule
+          - Effect: Allow
+            Action:
+              - "events:PutTargets"
+              - "events:PutRule"
+              - "events:DescribeRule"
+            Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/StepFunctionsGetEventsForStepFunctionsExecutionRule
+          - Effect: Allow
+            Action:
+              - "states:StartExecution"
+              - "states:DescribeExecution"
+              - "states:StopExecution"
+            Resource: "*"
+      Roles:
+        - !Ref StatesExecutionRole
+
+  # batch
+  EcsInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+
+  EcsInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EcsInstanceRole
+
+  BatchServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "batch.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
+
+  EcsTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "ecs-tasks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: !Ref RootVolumeSize
+          - DeviceName: /dev/sdh
+            Ebs:
+              DeleteOnTermination: true
+              Encrypted: true
+              VolumeSize: !Ref ScratchVolumeSize
+              VolumeType: gp2
+        ImageId: !Ref AmiId
+        InstanceInitiatedShutdownBehavior: terminate
+        UserData:
+          "Fn::Base64":
+            "Fn::Sub": |
+              Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+              MIME-Version:1.0
+
+              --==BOUNDARY==
+              Content-Type: text/x-shellscript; charset="us-ascii"
+
+              #! /bin/bash
+
+              function terminate {
+                sudo shutdown -h now
+                exit 1
+              }
+
+              trap terminate ERR
+
+              # Format and mount the EBS volume
+              if file -sL /dev/sdh | grep -q ": data$"; then
+                # this device is unformatted
+                mkfs -t ext4 /dev/sdh
+              fi
+              mkdir -p /scratch
+              mount /dev/sdh /scratch
+
+              # Mount EFS volume, if any
+              if [[ "${EFSVolumeId}" =~ ^fs- ]]; then
+                mkdir -p /mnt/efs
+                mount -t efs -o tls,ro ${EFSVolumeId}:/ /mnt/efs
+              fi
+
+              sudo yum install -y awscli.noarch
+
+              cd /scratch
+              cat > runner_installer.sh << EOF
+              aws s3 sync s3://${ResourceBucketName}/runner/ .
+
+              chmod +x select_runner.sh
+              chmod +x centos/bclaw_runner
+              chmod +x debian/bclaw_runner
+
+              EOF
+
+              source runner_installer.sh
+
+              # sanity checks
+              if [ ! -x select_runner.sh ]; then
+                terminate
+              fi
+
+              for d in centos debian
+              do
+                if [ ! -x $d/bclaw_runner ]; then
+                  terminate
+                fi
+              done
+
+              --==BOUNDARY==--
+
+  OnDemandComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      ServiceRole: !GetAtt BatchServiceRole.Arn
+      Type: MANAGED
+      State: ENABLED
+      ComputeResources:
+        AllocationStrategy: BEST_FIT_PROGRESSIVE
+        LaunchTemplate:
+          LaunchTemplateId: !Ref LaunchTemplate
+          Version: !GetAtt LaunchTemplate.LatestVersionNumber
+        InstanceRole: !Ref EcsInstanceProfile
+        InstanceTypes:
+          - optimal
+        MinvCpus: !Ref MinvCpus
+        DesiredvCpus: 2
+        MaxvCpus: !Ref MaxvCpus
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Split [",", !Ref SecurityGroups]]
+        Subnets: !Ref Subnets
+        Type: EC2
+
+  SpotComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      ServiceRole: !GetAtt BatchServiceRole.Arn
+      Type: MANAGED
+      State: ENABLED
+      ComputeResources:
+        AllocationStrategy: SPOT_CAPACITY_OPTIMIZED
+        # Setting the bid too low may mean jobs sometimes get stuck in the queue
+        # and never run until the price drops.  At 100%, they should never get stuck.
+        # This does not affect how much we pay, just whether we run or not given the market price.
+        BidPercentage: 100
+        LaunchTemplate:
+          LaunchTemplateId: !Ref LaunchTemplate
+          Version: !GetAtt LaunchTemplate.LatestVersionNumber
+        InstanceRole: !Ref EcsInstanceProfile
+        InstanceTypes:
+          - optimal
+        MinvCpus: !Ref MinvCpus
+        DesiredvCpus: 2
+        MaxvCpus: !Ref MaxvCpus
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Split [",", !Ref SecurityGroups]]
+        Subnets: !Ref Subnets
+        Type: SPOT
+
+  OnDemandQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      Priority: 10
+      State: ENABLED
+      ComputeEnvironmentOrder:
+        - Order: 1
+          ComputeEnvironment: !Ref OnDemandComputeEnvironment
+      JobQueueName: !Sub ${AWS::StackName}-bclaw-on-demand-queue
+
+  SpotQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      Priority: 10
+      State: ENABLED
+      ComputeEnvironmentOrder:
+        - Order: 1
+          ComputeEnvironment: !Ref SpotComputeEnvironment
+      JobQueueName: !Sub ${AWS::StackName}-bclaw-spot-queue
+
+
+Outputs:
+  ECSTaskRoleArn:
+    Value: !GetAtt EcsTaskRole.Arn
+
+  EFSVolumeId:
+    Value: !Ref EFSVolumeId
+
+  EventHandlerLambdaArn:
+    Value: !GetAtt EventHandlerLambda.Arn
+
+  GatherLambdaArn:
+    Value: !GetAtt GatherLambda.Arn
+
+  GatherLambdaLogGroupName:
+    Value: !Ref GatherLambdaLogGroup
+
+  LauncherBucketName:
+    Value: !Ref LauncherBucket
+
+  LauncherLambdaArn:
+    Value: !GetAtt LauncherLambda.Arn
+
+  LauncherLambdaLogGroupName:
+    Value: !Ref LauncherLambdaLogGroup
+
+  LogRetentionDays:
+    Value: !Ref LogRetentionDays
+
+  OnDemandQueueArn:
+    Value: !Ref OnDemandQueue
+
+  QCCheckerLambdaArn:
+    Value: !GetAtt QCCheckerLambda.Arn
+
+  QCCheckerLambdaLogGroupName:
+    Value: !Ref QCCheckerLambdaLogGroup
+
+  ResourceBucketName:
+    Value: !Ref ResourceBucketName
+
+  ScatterLambdaArn:
+    Value: !GetAtt ScatterLambda.Arn
+
+  ScatterLambdaLogGroupName:
+    Value: !Ref ScatterLambdaLogGroup
+
+  SpotQueueArn:
+    Value: !Ref SpotQueue
+
+  StatesExecutionRoleArn:
+    Value: !GetAtt StatesExecutionRole.Arn
+
+  SubpipesLambdaArn:
+    Value: !GetAtt SubpipesLambda.Arn
+
+  SubpipesLambdaLogGroupName:
+    Value: !Ref SubpipesLambdaLogGroup

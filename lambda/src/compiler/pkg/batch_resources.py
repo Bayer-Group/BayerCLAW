@@ -1,0 +1,294 @@
+from functools import lru_cache
+import json
+import logging
+import math
+import re
+from typing import Generator, List, Tuple, Union
+
+import boto3
+import humanfriendly
+
+from .qc_resources import handle_qc_check
+from .util import CoreStack, Step, Resource, State, make_logical_name, next_or_end, do_param_substitution,\
+    time_string_to_seconds
+
+SCRATCH_PATH = "/_bclaw_scratch"
+EFS_PATH = "/mnt/efs"
+
+# "registry/path/image_name:version" -> ("registry/path", "image_name:version", "image_name", "version")
+# "registry/path/image_name"         -> ("registry/path", "image_name", "image_name", None)
+# "image_name:version"               -> (None, "image_name:version", "image_name", "version")
+# "image_name"                       -> (None, "image_name", "image_name", None)
+URI_PARSER = re.compile(r"^(?:(.+)/)?(([^:]+)(?::(.+))?)$")
+
+def parse_uri(uri: str) -> Tuple[str, str, str, str]:
+    registry, image_version, image, version = URI_PARSER.fullmatch(uri).groups()
+    return registry, image_version, image, version
+
+
+def get_ecr_uri(registry: Union[str, None], image_version: str) -> Union[str, dict]:
+    if registry is None:
+        ret = {
+            "Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{image_version}",
+        }
+    else:
+        ret = "/".join([registry, image_version])
+
+    return ret
+
+
+@lru_cache(maxsize=None)
+def get_custom_job_queue_arn(queue_name: str) -> str:
+    batch = boto3.client("batch")
+    desc = batch.describe_job_queues(jobQueues=[queue_name])
+    ret = desc["jobQueues"][0]["jobQueueArn"]
+    return ret
+
+
+def get_job_queue(core_stack: CoreStack, compute_spec: dict) -> str:
+    if compute_spec.get("queue_name") is not None:
+        ret = get_custom_job_queue_arn(compute_spec["queue_name"])
+    elif compute_spec["spot"]:
+        ret = core_stack.output("SpotQueueArn")
+    else:
+        ret = core_stack.output("OnDemandQueueArn")
+    return ret
+
+
+def get_memory_in_mibs(request: Union[str, float, int]) -> int:
+    if isinstance(request, (float, int)):
+        mibs_requested = math.ceil(request)
+
+    else:
+        # only str, float, and int will pass validation, so this must be a str
+        n_bytes = humanfriendly.parse_size(request, binary=True)
+        mibs_requested = math.ceil(n_bytes / 1048576)  # 1048576 = 1 MiB
+
+    ret = max(4, mibs_requested)  # AWS Batch requires at least 4 MiB
+    return ret
+
+
+def job_definition_rc(core_stack: CoreStack, name: str, spec: dict, task_role: Union[str, dict]) -> Generator[Resource, None, str]:
+    job_def_name = make_logical_name(f"{name}.job.def")
+
+    registry, image_version, image, version = parse_uri(spec["image"])
+
+    job_def = {
+        "Type": "AWS::Batch::JobDefinition",
+        "Properties": {
+            "Type": "container",
+            "Parameters": {
+                "workflow_name": {
+                    "Ref": "AWS::StackName",
+                },
+                "repo": "rrr",
+                "inputs": "iii",
+                "references": "fff",
+                "command": json.dumps(spec["commands"]),
+                "outputs": "ooo",
+                "skip": "sss",
+            },
+            "ContainerProperties": {
+                "Command": [
+                    f"{SCRATCH_PATH}/select_runner.sh",
+                    "--repo", "Ref::repo",
+                    "--in", "Ref::inputs",
+                    "--ref", "Ref::references",
+                    "--cmd", "Ref::command",
+                    "--out", "Ref::outputs",
+                    "--skip", "Ref::skip",
+                ],
+                "Image": get_ecr_uri(registry, image_version),
+                "Environment": [
+                    {
+                        "Name": "BC_WORKFLOW_NAME",
+                        "Value": {
+                            "Ref": "AWS::StackName"
+                        },
+                    },
+                    {
+                        "Name": "BC_SCRATCH_PATH",
+                        "Value": SCRATCH_PATH,
+                    },
+                    {
+                        "Name": "BC_STEP_NAME",
+                        "Value": name,
+                    },
+                    {
+                        "Name": "AWS_DEFAULT_REGION",
+                        "Value": {
+                            "Ref": "AWS::Region"
+                        },
+                    },
+                ],
+                "Vcpus": spec["compute"]["cpus"],
+                "Memory": get_memory_in_mibs(spec["compute"]["memory"]),
+                "JobRoleArn": task_role,
+                "MountPoints": [
+                    {
+                        "ContainerPath": "/scratch",
+                        "ReadOnly": False,
+                        "SourceVolume": "docker_scratch",
+                    },
+                    {
+                        "ContainerPath": SCRATCH_PATH,
+                        "ReadOnly": False,
+                        "SourceVolume": "scratch"
+                    },
+                ],
+                "Volumes": [
+                    {
+                        "Name": "docker_scratch",
+                        "Host": {
+                            "SourcePath": "/docker_scratch",
+                        },
+                    },
+                    {
+                        "Name": "scratch",
+                        "Host": {
+                            "SourcePath": "/scratch",
+                        },
+                    },
+                ],
+            },
+        },
+    }
+
+    if core_stack.output("EFSVolumeId").startswith("fs-"):
+        job_def["Properties"]["ContainerProperties"]["Environment"].append({
+            "Name": "BC_EFS_PATH",
+            "Value": EFS_PATH,
+        })
+        job_def["Properties"]["ContainerProperties"]["MountPoints"].append({
+            "ContainerPath": EFS_PATH,
+            "SourceVolume": "efs",
+            "ReadOnly": True,
+        })
+        job_def["Properties"]["ContainerProperties"]["Volumes"].append({
+            "Name": "efs",
+            "Host": {
+                "SourcePath": EFS_PATH,
+            },
+        })
+
+    if spec.get("timeout") is not None:
+        job_def["Properties"]["Timeout"] = {
+            "AttemptDurationSeconds": max(time_string_to_seconds(spec["timeout"]), 60)
+        }
+
+    yield Resource(job_def_name, job_def)
+    return job_def_name
+
+
+def get_skip_behavior(spec: dict) -> str:
+    if "skip_if_output_exists" in spec and spec["skip_if_output_exists"]:
+        ret = "output"
+    elif "skip_on_rerun" in spec and spec["skip_on_rerun"]:
+        ret = "rerun"
+    else:
+        ret = "none"
+
+    return ret
+
+
+def batch_step(core_stack: CoreStack, spec: dict, job_definition_name: str, next_step: Union[Step, str],
+               attempts: int = 3, interval: str = "3s", backoff_rate: float = 1.5) -> dict:
+    skip_behavior = get_skip_behavior(spec)
+
+    ret = {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::batch:submitJob.sync",
+        "Retry": [
+            {
+                "ErrorEquals": ["States.ALL"],
+                "IntervalSeconds": time_string_to_seconds(interval),
+                "MaxAttempts": attempts,
+                "BackoffRate": backoff_rate
+            }
+        ],
+        "Parameters": {
+            "JobName.$": "States.Format('{}__{}__{}__{}', $$.StateMachine.Name, $$.State.Name, $.id_prefix, $.index)",
+            "JobDefinition": f"${{{job_definition_name}}}",
+            "JobQueue": get_job_queue(core_stack, spec["compute"]),
+            "Parameters": {
+                "repo.$": "$.repo",
+                # "parameters": json.dumps(spec["params"]),
+                "inputs": json.dumps(spec["inputs"]),
+                "references": json.dumps(spec["references"]),
+                "outputs": json.dumps(spec["outputs"]),
+                "skip": skip_behavior,
+            },
+            "ContainerOverrides": {
+                "Environment": [
+                    {
+                        "Name": "BC_BRANCH_IDX",
+                        "Value.$": "$.index",
+                    },
+                    {
+                        "Name": "BC_EXECUTION_ID",
+                        "Value.$": "$$.Execution.Name",
+                    },
+                    {
+                        "Name": "BC_LAUNCH_BUCKET",
+                        "Value.$": "$.job_file.bucket",
+                    },
+                    {
+                        "Name": "BC_LAUNCH_KEY",
+                        "Value.$": "$.job_file.key",
+                    },
+                    {
+                        "Name": "BC_LAUNCH_VERSION",
+                        "Value.$": "$.job_file.version",
+                    },
+                    {
+                        "Name": "BC_LAUNCH_S3_REQUEST_ID",
+                        "Value.$": "$.job_file.s3_request_id",
+                    },
+                ],
+            },
+        },
+        "ResultPath": None,
+        "OutputPath": "$",
+    }
+
+    if isinstance(next_step, str):
+        ret.update({"Next": next_step})
+    else:
+        ret.update(next_or_end(next_step))
+
+    return ret
+
+
+def handle_batch(core_stack: CoreStack,
+                 step_name: str,
+                 spec: dict,
+                 wf_params: dict,
+                 prev_outputs: dict,
+                 next_step: Step
+                 ) -> Generator[Resource, None, Tuple[dict, List[State]]]:
+    logger = logging.getLogger(__name__)
+    logger.info(f"making batch step {step_name}")
+
+    if spec.get("task_role") is not None:
+        task_role = spec["task_role"]
+    elif wf_params.get("task_role") is not None:
+        task_role = wf_params["task_role"]
+    else:
+        task_role = core_stack.output("ECSTaskRoleArn")
+
+    subbed_spec = do_param_substitution(spec)
+
+    if subbed_spec["inputs"] is None:
+        subbed_spec["inputs"] = prev_outputs
+
+    job_def_name = yield from job_definition_rc(core_stack, step_name, subbed_spec, task_role)
+
+    if subbed_spec["qc_check"] is not None:
+        first_qc_step_name, qc_steps = handle_qc_check(core_stack, step_name, subbed_spec["qc_check"], next_step)
+        ret0 = batch_step(core_stack, subbed_spec, job_def_name, first_qc_step_name, **spec["retry"])
+        ret = [State(step_name, ret0)] + qc_steps
+
+    else:
+        ret = [State(step_name, batch_step(core_stack, subbed_spec, job_def_name, next_step, **spec["retry"]))]
+
+    return subbed_spec["outputs"], ret
