@@ -1,4 +1,5 @@
 boto3
+dotted
 humanfriendly
 jmespath
 jsonpath

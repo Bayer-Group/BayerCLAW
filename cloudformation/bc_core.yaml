@@ -168,6 +168,27 @@ Resources:
         - python3.7
         - python3.8
 
+  ChooserLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: multichooser.lambda_handler
+      Runtime: python3.8
+      CodeUri: lambda/src/chooser
+      MemorySize: 128
+      Timeout: 60
+      Layers:
+        - !Ref CommonLayer
+      Policies:
+        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+      DeploymentPreference:
+        Enabled: false
+
+  ChooserLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ChooserLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
   CompilerLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -583,6 +604,12 @@ Resources:
 
 
 Outputs:
+  ChooserLambdaArn:
+    Value: !GetAtt ChooserLambda.Arn
+
+  ChooserLambdaLogGroupName:
+    Value: !Ref ChooserLambdaLogGroup
+
   ECSTaskRoleArn:
     Value: !GetAtt EcsTaskRole.Arn
 
