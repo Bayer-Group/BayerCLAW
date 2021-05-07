@@ -225,18 +225,20 @@ def test_handle_parallel_native_step_with_conditions(monkeypatch, mock_core_stac
 
         # branch "1"
         branch_1 = result.spec["Branches"][0]
-        assert branch_1["StartAt"] == "check_1"
-        assert set(branch_1["States"].keys()) == {"check_1", "skip_branch_1", "do_this", "do_that"}
+        condition_1 = step["Branches"][0]["if"]
+        check_step_name_1 = f"{condition_1}?"
+        assert branch_1["StartAt"] == check_step_name_1
+        assert set(branch_1["States"].keys()) == {check_step_name_1, "skip_branch_1", "do_this", "do_that"}
 
         # -- step check_1
-        check_1 = branch_1["States"]["check_1"]
+        check_1 = branch_1["States"][check_step_name_1]
         expect_1 = {
             "Type": "Task",
             "Resource": "chooser_lambda_arn",
             "Parameters": {
                 "repo.$": "$.repo",
                 "inputs": step["inputs"],
-                "expression": step["Branches"][0]["if"],
+                "expression": condition_1,
                 **lambda_logging_block("step_name")
             },
             "Catch": [
@@ -257,18 +259,20 @@ def test_handle_parallel_native_step_with_conditions(monkeypatch, mock_core_stac
 
         # branch "2"
         branch_2 = result.spec["Branches"][1]
-        assert branch_2["StartAt"] == "check_2"
-        assert set(branch_2["States"].keys()) == {"check_2", "skip_branch_2", "do_the_other"}
+        condition_2 = step["Branches"][1]["if"]
+        check_step_name_2 = f"{condition_2}?"
+        assert branch_2["StartAt"] == check_step_name_2
+        assert set(branch_2["States"].keys()) == {check_step_name_2, "skip_branch_2", "do_the_other"}
 
         # -- step check_2
-        check_2 = branch_2["States"]["check_2"]
+        check_2 = branch_2["States"][check_step_name_2]
         expect_2 = {
             "Type": "Task",
             "Resource": "chooser_lambda_arn",
             "Parameters": {
                 "repo.$": "$.repo",
                 "inputs": step["inputs"],
-                "expression": step["Branches"][1]["if"],
+                "expression": condition_2,
                 **lambda_logging_block("step_name")
             },
             "Catch": [
