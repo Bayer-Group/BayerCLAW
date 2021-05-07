@@ -2,7 +2,7 @@ import logging
 from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import CoreStack, Step, Resource, State, next_or_end
+from .util import CoreStack, Step, Resource, State, next_or_end, lambda_logging_block
 
 
 def handle_native_step(core_stack: CoreStack,
@@ -18,8 +18,51 @@ def handle_native_step(core_stack: CoreStack,
 
     if spec["Type"] == "Parallel":
         sub_branches = []
-        for branch in spec["Branches"]:
-            sub_branch = yield from sm.make_branch(core_stack, branch["steps"], wf_params, depth=map_depth)
+        inputs = ret.pop("inputs")
+
+        for idx, branch in enumerate(spec["Branches"], start=1):
+            steps = branch["steps"]
+            condition = branch.get("if", None)
+
+            if condition is not None:
+                next_step_name = next(iter(steps[0]))
+                stop_step_name = f"skip_branch_{idx}"
+
+                # note: this creates two "native"-type steps in the BayerCLAW spec language.
+                # They will be processed into Amazon States Language in the sm.make_branch()
+                # call below.
+                preamble = [
+                    {
+                        f"check_{idx}": {
+                            "Type": "Task",
+                            "Resource": core_stack.output("ChooserLambdaArn"),
+                            "Parameters": {
+                                "repo.$": "$.repo",
+                                "inputs": inputs,
+                                "expression": condition,
+                                **lambda_logging_block(step_name)
+                            },
+                            "Catch": [
+                                {
+                                    "ErrorEquals": ["ConditionFailed"],
+                                    "Next": stop_step_name,
+                                },
+                            ],
+                            # don't have to do the next_or_end thing, per validation there
+                            # has to be a next step
+                            "Next": next_step_name,
+                        },
+                    },
+                    {
+                        stop_step_name: {
+                            "Type": "Succeed",
+                        },
+                    },
+                ]
+
+                steps = preamble + steps
+
+            sub_branch = yield from sm.make_branch(core_stack, steps, wf_params, depth=map_depth)
             sub_branches.append(sub_branch)
 
         ret.update({"Branches": sub_branches})
@@ -32,7 +75,9 @@ def handle_native_step(core_stack: CoreStack,
 
     ret.pop("End", None)
 
-    if spec["Type"] not in {"Succeed", "Fail"}:
+    # if spec["Type"] not in {"Succeed", "Fail"}:
+    # todo: need to work with "next" or "Next" (handle in next_or_end?)
+    if spec["Type"] not in {"Succeed", "Fail"} and "Next" not in spec:  # ???
         ret.update(next_or_end(next_step))
 
     return [State(step_name, ret)]
