@@ -26,7 +26,7 @@ def handle_native_step(core_stack: CoreStack,
 
             if condition is not None:
                 next_step_name = next(iter(steps[0]))
-                stop_step_name = f"{step_name}: skip_{idx}"
+                skip_step_name = f"{step_name}: skip_{idx}"
 
                 # note: this creates two "native"-type steps in the BayerCLAW spec language.
                 # They will be processed into Amazon States Language in the sm.make_branch()
@@ -45,7 +45,7 @@ def handle_native_step(core_stack: CoreStack,
                             "Catch": [
                                 {
                                     "ErrorEquals": ["ConditionFailed"],
-                                    "Next": stop_step_name,
+                                    "Next": skip_step_name,
                                 },
                             ],
                             # don't have to do the next_or_end thing, per validation there
@@ -54,7 +54,7 @@ def handle_native_step(core_stack: CoreStack,
                         },
                     },
                     {
-                        stop_step_name: {
+                        skip_step_name: {
                             "Type": "Succeed",
                         },
                     },
