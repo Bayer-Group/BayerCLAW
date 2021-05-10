@@ -114,6 +114,21 @@ parallel_step_schema = Schema(
 )
 
 
+chooser_step_schema = Schema(
+    {
+        Optional("inputs", default={}): {str: str},
+        Required("choices", msg="choices list not found"):
+            All(Length(min=1, msg="at least one choice is required"),
+                [
+                    {
+                        Required("if", msg="no 'if' condition found"): str,
+                        Required("next", msg="no 'next' name found"): str,
+                    },
+                ])
+    }
+)
+
+
 scatter_step_schema = Schema(All(
     {
         Required("scatter"): {str: str},
@@ -167,6 +182,9 @@ def validate_scatter_step(step: Step):
 
 def validate_subpipe_step(step: Step):
     return _validator(step.spec, subpipe_step_schema, f"subpipe step '{step.name}'")
+
+def validate_chooser_step(step: Step):
+    return _validator(step.spec, chooser_step_schema, f"chooser step '{step.name}'")
 
 def validate_native_step(step: Step):
     typ = step.spec["Type"]

@@ -7,11 +7,12 @@ import boto3
 from more_itertools import peekable
 
 from . import batch_resources as b
+from . import chooser_resources as c
 from . import native_step_resources as ns
 from . import scatter_gather_resources as sg
 from . import subpipe_resources as sp
 from .util import CoreStack, Resource, Step, State, SENTRY, make_logical_name, lambda_logging_block
-from .validation import validate_batch_step, validate_native_step, validate_scatter_step, validate_subpipe_step
+from .validation import validate_batch_step, validate_native_step, validate_scatter_step, validate_subpipe_step, validate_chooser_step
 
 
 def make_launcher_step(core_stack: CoreStack, wf_params: dict, next_step: str) -> Tuple[str, dict]:
@@ -97,6 +98,14 @@ def make_branch(core_stack: CoreStack,
                                                             wf_params,
                                                             next_step,
                                                             depth)
+
+        elif "choices" in step.spec:
+            normalized_spec = validate_chooser_step(step)
+            steps_to_add = c.handle_chooser_step(core_stack,
+                                                 step.name,
+                                                 normalized_spec,
+                                                 next_step)
+
         else:
             raise RuntimeError(f"step '{step.name}' is not a recognized step type")
 
