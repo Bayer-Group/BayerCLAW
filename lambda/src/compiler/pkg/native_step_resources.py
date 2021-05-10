@@ -75,7 +75,6 @@ def handle_native_step(core_stack: CoreStack,
 
     ret.pop("End", None)
 
-    # if spec["Type"] not in {"Succeed", "Fail"}:
     # todo: need to work with "next" or "Next" (handle in next_or_end?)
     if spec["Type"] not in {"Succeed", "Fail"} and "Next" not in spec:  # ???
         ret.update(next_or_end(next_step))
