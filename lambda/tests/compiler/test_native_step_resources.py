@@ -226,7 +226,7 @@ def test_handle_parallel_native_step_with_conditions(monkeypatch, mock_core_stac
         # branch "1"
         branch_1 = result.spec["Branches"][0]
         condition_1 = step["Branches"][0]["if"]
-        check_step_name_1 = f"step_name:\n{condition_1}?"
+        check_step_name_1 = f"step_name: {condition_1}?"
         skip_step_name_1 = "step_name: skip_1"
         assert branch_1["StartAt"] == check_step_name_1
         assert set(branch_1["States"].keys()) == {check_step_name_1, skip_step_name_1, "do_this", "do_that"}
@@ -261,7 +261,7 @@ def test_handle_parallel_native_step_with_conditions(monkeypatch, mock_core_stac
         # branch "2"
         branch_2 = result.spec["Branches"][1]
         condition_2 = step["Branches"][1]["if"]
-        check_step_name_2 = f"step_name:\n{condition_2}?"
+        check_step_name_2 = f"step_name: {condition_2}?"
         skip_step_name_2 = "step_name: skip_2"
         assert branch_2["StartAt"] == check_step_name_2
         assert set(branch_2["States"].keys()) == {check_step_name_2, skip_step_name_2, "do_the_other"}

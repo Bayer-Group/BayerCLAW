@@ -33,7 +33,7 @@ def handle_native_step(core_stack: CoreStack,
                 # call below.
                 preamble = [
                     {
-                        f"{step_name}:\n{condition}?": {
+                        f"{step_name}: {condition}?": {
                             "Type": "Task",
                             "Resource": core_stack.output("ChooserLambdaArn"),
                             "Parameters": {
