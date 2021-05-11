@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 @contextmanager
 def workspace() -> str:
     orig_path = os.getcwd()
-    work_path = mkdtemp(dir=os.environ.get("BC_SCRATCH_PATH", os.environ.get("TMPDIR", "/tmp")))
+    work_path = mkdtemp(dir=os.environ.get("BC_SCRATCH_PATH", os.environ["TMPDIR"]))
 
     logger.debug(f"workspace: {work_path}")
 

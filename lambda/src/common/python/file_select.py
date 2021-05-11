@@ -70,7 +70,9 @@ def select_file_contents(s3_path: str) -> list:
 
             ret0 = jsonpath(contents, selector)
 
-    assert isinstance(ret0, list)
+    if not isinstance(ret0, list):
+        raise AssertionError("selector did not create a list")
+
     ret = [stringify(i) for i in ret0]
 
     return ret
