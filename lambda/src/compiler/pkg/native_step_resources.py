@@ -28,7 +28,7 @@ def handle_native_step(core_stack: CoreStack,
                 next_step_name = next(iter(steps[0]))
                 skip_step_name = f"{step_name}: skip_{idx}"
 
-                # note: this creates two "native"-type steps in the BayerCLAW spec language.
+                # note: this creates two native-type steps in the BayerCLAW spec language.
                 # They will be processed into Amazon States Language in the sm.make_branch()
                 # call below.
                 preamble = [
