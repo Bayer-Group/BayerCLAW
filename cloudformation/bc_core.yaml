@@ -298,7 +298,7 @@ Resources:
               Effect: Allow
               Action:
                 - states:StopExecution
-              Resource: *
+              Resource: "*"
       DeploymentPreference:
         Enabled: false
 
