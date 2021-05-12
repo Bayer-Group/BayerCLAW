@@ -1,7 +1,7 @@
-from hashlib import md5
 import json
 import logging
 from typing import Generator, Tuple
+from uuid import uuid4
 
 import boto3
 from more_itertools import peekable
@@ -127,7 +127,7 @@ def write_state_machine_to_s3(sfn_def: dict, core_stack: CoreStack) -> dict:
 
     bucket = core_stack.output("ResourceBucketName")
 
-    base_filename = md5(def_json.encode("utf-8")).hexdigest()
+    base_filename = uuid4().hex
     key = f"stepfunctions/{base_filename}.json"
 
     s3 = boto3.client("s3")
