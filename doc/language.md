@@ -49,7 +49,7 @@ contain alphanumeric characters, underscores, dashes, and periods.
     to be used by all the steps in this workflow, such as `arn:aws:iam::123456789012:role/hello-world-ecs-task-role`.
     This allows advanced users to provide custom AWS permissions to the workflow, if needed.
     If this field is not specified, the steps will use a generic role created by BayerCLAW, which is fine for most uses.
-    See <../cloudformation/main.yaml> for the definition of the generic role.
+    See [bc_core.yaml](../cloudformation/bc_core.yaml) for the definition of the generic role.
 
 ## The steps block
 The workflow section consists of a single JSON or YAML list containing processing step specifications.
@@ -58,7 +58,7 @@ The steps will be run in the order listed in the workflow template file.
 The fields of the step specification objects are:
 * `image` (required): The path to the Docker container to use.
   A plain name, like `ubuntu` or `my-repo/BayerCLAW-demo`, will first be checked against ECR in the current account.
-  If the named image exists in ECR, that one will be used.  # todo: really?
+  If the named image exists in ECR, that one will be used.
   Otherwise, the plain name will refer to the public Docker Hub.
   Using public images is a potential security risk as other people control the code inside!
   Alternately, `image` can be a full Docker-style path to an image in any private Docker repo, including ECR, for
