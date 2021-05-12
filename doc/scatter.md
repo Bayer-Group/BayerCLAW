@@ -74,7 +74,7 @@ The fields are similar to those of the main (parent) workflow, but with some imp
 
 ## Sample scatter/gather template
 ```YAML
-Transform: CompileAWFL
+Transform: BC_Compiler
 
 params:
   repository: s3://sample-bucket/two-step-scatter/repo/${job.SAMPLE_ID}
