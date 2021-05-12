@@ -288,8 +288,6 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-#        - "arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess"
         - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
         -
           Version: "2012-10-17"
