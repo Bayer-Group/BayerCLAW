@@ -26,7 +26,6 @@ def run_subpipe_step(spec: dict, next_step_name: str) -> dict:
     if spec["subpipe"].startswith("arn:"):
         state_machine_arn = spec["subpipe"]
     else:
-        # todo: test
         state_machine_arn = "arn:aws:states:${AWSRegion}:${AWSAccountId}:stateMachine:" + spec['subpipe']
 
     ret = {

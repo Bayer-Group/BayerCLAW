@@ -53,7 +53,6 @@ def test_file_submit_step(sample_subpipe_spec, monkeypatch, mock_core_stack):
     assert result == expect
 
 
-# todo: add case with stack name instead of state machine arn
 def test_run_subpipe_step(sample_subpipe_spec):
     result = run_subpipe_step(sample_subpipe_spec, "next_step_name")
     expect = {

@@ -170,7 +170,7 @@ def test_handle_scatter_gather(monkeypatch, mock_core_stack, sample_scatter_step
         assert states[1].name == "step_name.map"
         assert states[2].name == "step_name.gather"
 
-        assert "parameters" not in states[0].spec["Parameters"]  # todo
+        assert "parameters" not in states[0].spec["Parameters"]
         inputs0 = json.loads(states[0].spec["Parameters"]["inputs"])
         assert inputs0["input1"] =="infile1.txt"
         assert inputs0["input2"] =="infile2.txt"
@@ -182,7 +182,7 @@ def test_handle_scatter_gather(monkeypatch, mock_core_stack, sample_scatter_step
         outputs1 = json.loads(states[1].spec["Iterator"]["States"]["Step1"]["Parameters"]["Parameters"]["outputs"])
         assert outputs1["output3"] == "2_outfile3.txt"
 
-        assert "parameters" not in states[2].spec["Parameters"]  # todo
+        assert "parameters" not in states[2].spec["Parameters"]
         outputs2 = json.loads(states[2].spec["Parameters"]["outputs"])
         assert outputs2["output1"] == "outfile1.txt"
         assert outputs2["output2"] == "outfile2.txt"

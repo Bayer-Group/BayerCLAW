@@ -64,7 +64,6 @@ def expand_scatter_data(scatter_spec: dict, repo: str, job_data: dict) -> Dict[A
             is_job_data = re.match(r"^\${((?:job|parent|scatter)\..+?)}$", vals)
             if is_job_data is not None:
                 ret[key] = jmespath.search(is_job_data.group(1), job_data)
-                # todo: make sure it's a list
 
             elif vals.startswith("@"):
                 path = prepend_repo(vals[1:], repo)

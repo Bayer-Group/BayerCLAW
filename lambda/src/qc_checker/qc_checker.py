@@ -37,7 +37,6 @@ def lambda_handler(event: dict, context: object):
             sfn = boto3.client("stepfunctions")
             sfn.stop_execution(
                 executionArn=event["execution_id"],
-                # todo: need to look in the logging block?
                 error=f"Job {event['logging']['job_file_key']} failed QC check at step {event['logging']['step_name']}",
                 cause=f"failed condition: {event['qc_expression']}"
             )
