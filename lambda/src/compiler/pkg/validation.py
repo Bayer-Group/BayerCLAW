@@ -85,8 +85,11 @@ batch_step_schema = Schema(All(
 native_step_schema = Schema(
     {
         Required("Type"):
-            Any("Pass", "Task", "Wait", "Succeed", "Fail",
-                msg="Type must be Pass, Task, Wait, Succeed, Fail, or Parallel"),
+            All(
+                NotIn(["Choice", "Map"], msg="Choice and Map Types not supported"),
+                Any("Pass", "Task", "Wait", "Succeed", "Fail", "Parallel",
+                    msg="Type must be Pass, Task, Wait, Succeed, Fail, or Parallel")
+            ),
         Extra: object,
     }
 )
@@ -94,9 +97,8 @@ native_step_schema = Schema(
 
 parallel_step_schema = Schema(
     {
-        Required("Type"): "Parallel",
         Optional("inputs", default={}): {str: str},
-        Required("Branches", msg="branches not found"):
+        Required("branches", msg="branches not found"):
             All(
                 Length(min=1, msg="at least one branch is required"),
                 [
@@ -177,6 +179,12 @@ def _validator(spec: dict, schema: Schema, where: str):
 def validate_batch_step(step: Step):
     return _validator(step.spec, batch_step_schema, f"batch job step '{step.name}'")
 
+def validate_native_step(step: Step):
+    return _validator(step.spec, native_step_schema, f"native step '{step.name}")
+
+def validate_parallel_step(step: Step):
+    return _validator(step.spec, parallel_step_schema, f"parallel step '{step.name}")
+
 def validate_scatter_step(step: Step):
     return _validator(step.spec, scatter_step_schema, f"scatter/gather step '{step.name}'")
 
@@ -186,13 +194,13 @@ def validate_subpipe_step(step: Step):
 def validate_chooser_step(step: Step):
     return _validator(step.spec, chooser_step_schema, f"chooser step '{step.name}'")
 
-def validate_native_step(step: Step):
-    typ = step.spec["Type"]
-    if typ in {"Choice", "Map"}:
-        raise CompilerError(Invalid(f"{typ} native steps are not supported"),
-                            where=f"native step '{step.name}'")
-    elif typ == "Parallel":
-        ret = _validator(step.spec, parallel_step_schema, f"parallel step '{step.name}'")
-    else:
-        ret = _validator(step.spec, native_step_schema, f"native step '{step.name}'")
-    return ret
+# def validate_native_step(step: Step):
+#     typ = step.spec["Type"]
+#     if typ in {"Choice", "Map"}:
+#         raise CompilerError(Invalid(f"{typ} native steps are not supported"),
+#                             where=f"native step '{step.name}'")
+#     elif typ == "Parallel":
+#         ret = _validator(step.spec, parallel_step_schema, f"parallel step '{step.name}'")
+#     else:
+#         ret = _validator(step.spec, native_step_schema, f"native step '{step.name}'")
+#     return ret

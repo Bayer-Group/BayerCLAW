@@ -8,11 +8,13 @@ from more_itertools import peekable
 
 from . import batch_resources as b
 from . import chooser_resources as c
+from . import enhanced_parallel_resources as ep
 from . import native_step_resources as ns
 from . import scatter_gather_resources as sg
 from . import subpipe_resources as sp
 from .util import CoreStack, Resource, Step, State, SENTRY, make_logical_name, lambda_logging_block
-from .validation import validate_batch_step, validate_native_step, validate_scatter_step, validate_subpipe_step, validate_chooser_step
+from .validation import validate_batch_step, validate_native_step, validate_parallel_step, validate_scatter_step, \
+    validate_subpipe_step, validate_chooser_step
 
 
 def make_launcher_step(core_stack: CoreStack, wf_params: dict, next_step: str) -> Tuple[str, dict]:
@@ -106,6 +108,15 @@ def make_branch(core_stack: CoreStack,
                                                  normalized_spec,
                                                  next_step)
 
+        elif "branches" in step.spec:
+            normalized_spec = validate_parallel_step(step)
+            steps_to_add = ep.handle_parallel_step(core_stack,
+                                                   step.name,
+                                                   normalized_spec,
+                                                   wf_params,
+                                                   next_step,
+                                                   depth)
+
         else:
             raise RuntimeError(f"step '{step.name}' is not a recognized step type")
 
@@ -157,7 +168,7 @@ def write_state_machine_to_s3(sfn_def: dict, core_stack: CoreStack) -> dict:
     return ret
 
 
-def handle_state_machine(core_stack: CoreStack, steps: list, wf_params: dict, dst_fh = None) -> Generator[Resource, None, str]:
+def handle_state_machine(core_stack: CoreStack, steps: list, wf_params: dict, dst_fh=None) -> Generator[Resource, None, str]:
     state_machine_def = yield from make_branch(core_stack, steps, wf_params, include_launcher=True)
 
     if dst_fh is None:
