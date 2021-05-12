@@ -1,6 +1,6 @@
 # BayerCLAW notifications
 
-BayerCLAW is able to send notifications of about job status to users through Amazon'S Simple
+BayerCLAW is able to send notifications of about job status to users through Amazon's Simple
 Notification Service (SNS). Through SNS, users may receive email or SMS text messages when
 a job is received for processing or when processing starts, finishes successfully, or
 fails. 

@@ -43,7 +43,7 @@ aws cloudformation wait stack-delete-complete --stack-name $MYSTACK
 
 ## 5. Launch a job
 
-Assuming BayerCLAW was installed undef default parameters, you should find an S3 bucket named something
+Assuming BayerCLAW was installed under default parameters, you should find an S3 bucket named something
 like `bclaw-main-launcher-<account id>` in your account. BayerCLAW watches this bucket for new input files.
 
 To launch an BayerCLAW job, just copy a job file into the launcher bucket. The file must be placed into a
@@ -58,4 +58,4 @@ Best practice would be to give each job file a unique name -- preferably somethi
 contents -- rather than `job.json`.
 
 To monitor the job in the AWS web console, check the pages for Batch and StepFunctions.
-If a task fails, you will be able to see it either place, and there will be links to CloudWatch Logs.
+If a task fails, you will be able to see it in either place, and there will be links to CloudWatch Logs.

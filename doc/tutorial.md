@@ -101,7 +101,7 @@ If you have Python 3 and the BayerCLAW source code installed locally, you can ru
 
 The curious can look at `cloudformation_output.tmp` to see just what CloudFormation will actually execute on your behalf.
 
-If you don't have BayerCLAW installed locally, you'll need to retrieve the logs for the "CompileAWFL" lambda function.
+If you don't have BayerCLAW installed locally, you'll need to retrieve the logs for the "BC_Compiler" lambda function.
 You can find it by running
 
 ```bash
@@ -384,7 +384,7 @@ Notice how `final_config` is declared at both the outer and inner scope:
 Also notice that we can retrieve the value we scattered on using `${scatter.sample_index}`.
 In a real pipeline, we would use `${scatter.sample_index}` to look up a particular sample entry
 within our `${final_config}` file, and download the read files that it references.
-In a perfect world, BayerCLAW could do that for us, but this is a place where we're reached its limits of expressiveness.
+In a perfect world, BayerCLAW could do that for us, but this is a place where we've reached its limits of expressiveness.
 We'll have to download our own inputs in this case.
 
 The scatter is its own mini-pipeline, so it could include multiple steps if we wanted.
@@ -399,7 +399,7 @@ If our child jobs produced many outputs, we might choose to collect only a subse
 Putting all of this together, the whole workflow now looks like this:
 
 ```yaml
-Transform: CompileAWFL
+Transform: BC_Compiler
 
 params:
   repository: s3://bayerclaw-tutorial/runs/${job.job_id}
@@ -467,7 +467,7 @@ This brings us to the finished example of a three-step pipeline.
 The same steps used with our "hello world" example above can be used to deploy and run this one:
 
 ```yaml
-Transform: CompileAWFL
+Transform: BC_Compiler
 
 params:
   repository: s3://bayerclaw-tutorial/runs/${job.job_id}
