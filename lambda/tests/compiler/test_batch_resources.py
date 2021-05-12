@@ -123,7 +123,6 @@ def sample_batch_step():
     yield ret
 
 
-# todo: test with/without efs
 @pytest.mark.parametrize("task_role", [
     "arn:task:role",
     {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.EcsTaskRoleArn"]},

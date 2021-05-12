@@ -1,7 +1,6 @@
 """
 This CLI depends on having valid AWS credentials active, to query the account environment,
 and on the environment variable CORE_STACK_NAME, which defaults to 'bclaw-core' if not set.
-...or does it?  #todo
 """
 
 import argparse
