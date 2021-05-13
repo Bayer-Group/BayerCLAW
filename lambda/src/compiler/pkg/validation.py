@@ -40,6 +40,12 @@ def no_shared_keys(*field_names):
 
 
 skip_msg = "only one of 'skip_on_rerun' or 'skip_if_output_exists' is allowed"
+next_or_end_msg = "cannot specify both 'next' and 'end' in a step"
+
+next_or_end = {
+    Exclusive("next", "next_or_end", msg=next_or_end_msg): str,
+    Exclusive("end", "next_or_end", msg=next_or_end_msg): All(Boolean(), Msg(True, "'end' value must be truthy")),
+}
 
 batch_step_schema = Schema(All(
     {
@@ -77,8 +83,9 @@ batch_step_schema = Schema(All(
         },
         Optional("timeout", default=None): Any(None, Match(r"^\d+\s?[smhdw]$",
                                                            msg="incorrect timeout time string")),
+        **next_or_end,
     },
-    no_shared_keys("params", "inputs", "outputs", "references")
+    no_shared_keys("params", "inputs", "outputs", "references"),
 ))
 
 
