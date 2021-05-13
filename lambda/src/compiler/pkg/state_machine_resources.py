@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Generator, Tuple
+from typing import Generator, Tuple, Iterable, List
 from uuid import uuid4
 
 import boto3
@@ -37,14 +37,84 @@ def make_launcher_step(core_stack: CoreStack, wf_params: dict, next_step: str) -
     return launch_step_name, ret
 
 
-def _stepperator(steps: list):
+def _stepperator(steps: Iterable) -> Generator[Step, None, None]:
     for record in steps:
         name, spec = next(iter(record.items()))
         step = Step(name, spec)
         yield step
 
 
+def fill_in_nexts_and_ends(steps: list) -> None:
+    next_step = None
+
+    for step in _stepperator(reversed(steps)):
+        # todo: lc/uc next, end key
+        if "next" not in step.spec and "end" not in step.spec:
+            if next_step is None:
+                step.spec.update({"end": True})
+            else:
+                step.spec.update({"next": next_step.name})
+
+        next_step = step
+
+
+# todo: creating a global prev_outputs so I don't have to figure out how to pass it back
+#       when it's probably going away anyway
+prev_outputs = {}
+
+
+def process_step(core_stack: CoreStack,
+                 step: Step,
+                 wf_params: dict,
+                 depth: int) -> Generator[Resource, None, List[State]]:
+    # todo: temp
+    global prev_outputs
+
+    # todo: temp
+    if "end" in step.spec:
+        next_step = SENTRY
+    else:
+        next_step = step.spec["next"]
+
+    if "image" in step.spec:
+        normalized_spec = validate_batch_step(step)
+        prev_outputs, steps_to_add = yield from b.handle_batch(core_stack,
+                                                               step.name,
+                                                               normalized_spec,
+                                                               wf_params,
+                                                               prev_outputs,
+                                                               next_step)
+        return steps_to_add
+
+
 def make_branch(core_stack: CoreStack,
+                steps: list,
+                wf_params: dict,
+                include_launcher: bool = False,
+                depth: int = 0) -> Generator[Resource, None, dict]:
+    logger = logging.getLogger(__name__)
+
+    if include_launcher:
+        launcher_step = make_launcher_step(core_stack, wf_params, "fake")
+        steps.insert(0, launcher_step)
+
+    fill_in_nexts_and_ends(steps)
+
+    states = {}
+
+    for step in _stepperator(steps):
+        steps_to_add = yield from process_step(core_stack, step, wf_params, depth)
+        states.update(steps_to_add)
+
+    ret = {
+        "StartAt": next(iter(steps[0])),
+        "States": states,
+    }
+
+    return ret
+
+
+def make_branch0(core_stack: CoreStack,
                 steps: list,
                 wf_params: dict,
                 include_launcher: bool = False,
