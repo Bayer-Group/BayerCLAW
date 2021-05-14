@@ -31,7 +31,7 @@ def make_launcher_step(core_stack: CoreStack, wf_params: dict, next_step: str) -
             },
             "ResultPath": "$",
             "OutputPath": "$",
-            "Next": next_step,
+            "_stet": True,
         },
     }
     return launch_step_name, ret
@@ -44,16 +44,25 @@ def _stepperator(steps: Iterable) -> Generator[Step, None, None]:
         yield step
 
 
+def capitalize_key_inplace(d: dict, k: str) -> None:
+    try:
+        d[k.capitalize()] = d.pop(k)
+    except KeyError:
+        pass
+
+
 def fill_in_nexts_and_ends(steps: list) -> None:
     next_step = None
 
     for step in _stepperator(reversed(steps)):
-        # todo: lc/uc next, end key
-        if "next" not in step.spec and "end" not in step.spec:
+        capitalize_key_inplace(step.spec, "next")
+        capitalize_key_inplace(step.spec, "end")
+
+        if "Next" not in step.spec and "End" not in step.spec:
             if next_step is None:
-                step.spec.update({"end": True})
+                step.spec.update({"End": True})
             else:
-                step.spec.update({"next": next_step.name})
+                step.spec.update({"Next": next_step.name})
 
         next_step = step
 
@@ -71,10 +80,10 @@ def process_step(core_stack: CoreStack,
     global prev_outputs
 
     # todo: temp
-    if "end" in step.spec:
+    if "End" in step.spec:
         next_step = SENTRY
     else:
-        next_step = step.spec["next"]
+        next_step = Step(step.spec["Next"], {})
 
     if "image" in step.spec:
         normalized_spec = validate_batch_step(step)
@@ -86,6 +95,16 @@ def process_step(core_stack: CoreStack,
                                                                next_step)
         return steps_to_add
 
+    elif "Type" in step.spec:
+        normalized_spec = validate_native_step(step)
+        steps_to_add = yield from ns.handle_native_step(core_stack,
+                                                        step.name,
+                                                        normalized_spec,
+                                                        wf_params,
+                                                        next_step,
+                                                        depth)
+        return steps_to_add
+
 
 def make_branch(core_stack: CoreStack,
                 steps: list,
@@ -95,7 +114,8 @@ def make_branch(core_stack: CoreStack,
     logger = logging.getLogger(__name__)
 
     if include_launcher:
-        launcher_step = make_launcher_step(core_stack, wf_params, "fake")
+        # todo: only return dict
+        _, launcher_step = make_launcher_step(core_stack, wf_params, "fake")
         steps.insert(0, launcher_step)
 
     fill_in_nexts_and_ends(steps)

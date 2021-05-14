@@ -92,6 +92,34 @@ def test_handle_native_step(test_input):
     assert len(resources) == 0
 
 
+def test_handle_native_step_stet():
+    test_input = {
+        "Type": "AnyType",
+        "ResultPath": "keep_this_result_path",
+        "OutputPath": "keep_this_output_path",
+        "_stet": True,
+        "Other": "stuff",
+    }
+    wf_params = {"wf": "params"}
+
+    def helper():
+        result, *more = yield from handle_native_step("core_stack_placeholder", "step_name", test_input, wf_params, Step("next_step", {}), 0)
+        expect = {
+            "Type": "AnyType",
+            "ResultPath": "keep_this_result_path",
+            "OutputPath": "keep_this_output_path",
+            "Other": "stuff",
+        }
+
+        assert len(more) == 0
+        assert isinstance(result, State)
+        assert result.name == "step_name"
+        assert result.spec == expect
+
+    resources = list(helper())
+    assert len(resources) == 0
+
+
 def test_handle_parallel_native_step(monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
@@ -158,6 +186,7 @@ def test_handle_parallel_native_step(monkeypatch, mock_core_stack):
                   memory: 4
                   spot: true
                 skip_if_output_exists: true
+      Next: next_step
     """)
     step = yaml.safe_load(step_yaml)
     wf_params = {"wf": "params"}

@@ -40,6 +40,10 @@ def handle_parallel_step(core_stack: CoreStack,
                                 "Next": skip_step_name
                             },
                         ],
+                        "ResultPath": None,
+                        "OutputPath": "$",
+                        "_stet": True,
+
                         # don't have to do the next_or_end thing, per validation there
                         # has to be a next step
                         "Next": next_step_name,
@@ -48,6 +52,7 @@ def handle_parallel_step(core_stack: CoreStack,
                 {
                     skip_step_name: {
                         "Type": "Succeed",
+                        "_stet": True,
                     },
                 },
             ]
