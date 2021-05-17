@@ -93,6 +93,7 @@ def handle_s3_launch(event: dict) -> dict:
             "version": src_version,
             "s3_request_id": event["input_obj"]["job_file"]["s3_request_id"],
         },
+        "prev_outputs": {},
         "repo": repo,
     }
 
