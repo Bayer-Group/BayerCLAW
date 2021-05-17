@@ -65,7 +65,8 @@ def test_handle_native_step(test_input):
     wf_params = {"wf": "params"}
 
     def helper():
-        result, *more = yield from handle_native_step("core_stack_placeholder", "step_name", test_input, wf_params, 0)
+        test_step = Step("step_name", test_input)
+        result, *more = yield from handle_native_step("core_stack_placeholder", test_step, wf_params, 0)
         assert len(more) == 0
         assert isinstance(result, State)
         assert result.name == "step_name"
@@ -106,7 +107,8 @@ def test_handle_native_step_stet():
     wf_params = {"wf": "params"}
 
     def helper():
-        result, *more = yield from handle_native_step("core_stack_placeholder", "step_name", test_input, wf_params, 0)
+        test_step = Step("step_name", test_input)
+        result, *more = yield from handle_native_step("core_stack_placeholder", test_step, wf_params, 0)
         expect = {
             "Type": "AnyType",
             "ResultPath": "keep_this_result_path",
@@ -191,11 +193,12 @@ def test_handle_parallel_native_step(monkeypatch, mock_core_stack):
                 skip_if_output_exists: true
       Next: next_step
     """)
-    step = yaml.safe_load(step_yaml)
+    spec = yaml.safe_load(step_yaml)
     wf_params = {"wf": "params"}
 
     def helper():
-        result, *more = yield from handle_native_step(core_stack, "step_name", step, wf_params, 0)
+        test_step = Step("step_name", spec)
+        result, *more = yield from handle_native_step(core_stack, test_step, wf_params, 0)
         # print(str(result))
         assert len(more) == 0
         assert isinstance(result, State)
