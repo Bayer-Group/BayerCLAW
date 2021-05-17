@@ -1,15 +1,31 @@
-from collections import namedtuple
 from datetime import timedelta
 import os
 import re
-from typing import Dict, Union, Any
+from typing import Dict, Union, Any, NamedTuple
 
 import boto3
 import jmespath
 
-Step = namedtuple("Step", "name spec")
-Resource = namedtuple("Resource", "name spec")
-State = namedtuple("State", "name spec")
+
+class Step(NamedTuple):
+    name: str
+    spec: dict
+
+    @property
+    def next_or_end(self) -> dict:
+        ret = {k: self.spec[k] for k in {"Next", "End"} & set(self.spec)}
+        return ret
+
+
+class Resource(NamedTuple):
+    name: str
+    spec: dict
+
+
+class State(NamedTuple):
+    name: str
+    spec: dict
+
 
 SENTRY = Step("SENTRY", {})
 
@@ -34,6 +50,11 @@ def make_logical_name(s: str) -> str:
     words = (w.capitalize() for w in re.split(r"[\W_]+", s))
     ret = "".join(words)
     return ret
+
+
+# def next_or_end2(step: Step) -> dict:
+#     ret = {k: step.spec[k] for k in {"Next", "End"} & set(step.spec)}
+#     return ret
 
 
 def next_or_end(next_step: Step) -> Dict[str, Union[bool, str]]:

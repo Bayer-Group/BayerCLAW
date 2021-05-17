@@ -183,31 +183,31 @@ def _validator(spec: dict, schema: Schema, where: str):
         raise CompilerError(inv, where=where)
 
 
-def validate_batch_step(step: Step):
-    return _validator(step.spec, batch_step_schema, f"batch job step '{step.name}'")
+def validate_batch_step(step: Step) -> Step:
+    normalized_spec = _validator(step.spec, batch_step_schema, f"batch job step '{step.name}'")
+    return Step(step.name, normalized_spec)
 
-def validate_native_step(step: Step):
-    return _validator(step.spec, native_step_schema, f"native step '{step.name}")
 
-def validate_parallel_step(step: Step):
-    return _validator(step.spec, parallel_step_schema, f"parallel step '{step.name}")
+def validate_native_step(step: Step) -> Step:
+    normalized_spec = _validator(step.spec, native_step_schema, f"native step '{step.name}")
+    return Step(step.name, normalized_spec)
 
-def validate_scatter_step(step: Step):
-    return _validator(step.spec, scatter_step_schema, f"scatter/gather step '{step.name}'")
 
-def validate_subpipe_step(step: Step):
-    return _validator(step.spec, subpipe_step_schema, f"subpipe step '{step.name}'")
+def validate_parallel_step(step: Step) -> Step:
+    normalized_spec = _validator(step.spec, parallel_step_schema, f"parallel step '{step.name}")
+    return Step(step.name, normalized_spec)
 
-def validate_chooser_step(step: Step):
-    return _validator(step.spec, chooser_step_schema, f"chooser step '{step.name}'")
 
-# def validate_native_step(step: Step):
-#     typ = step.spec["Type"]
-#     if typ in {"Choice", "Map"}:
-#         raise CompilerError(Invalid(f"{typ} native steps are not supported"),
-#                             where=f"native step '{step.name}'")
-#     elif typ == "Parallel":
-#         ret = _validator(step.spec, parallel_step_schema, f"parallel step '{step.name}'")
-#     else:
-#         ret = _validator(step.spec, native_step_schema, f"native step '{step.name}'")
-#     return ret
+def validate_scatter_step(step: Step) -> Step:
+    normalized_spec = _validator(step.spec, scatter_step_schema, f"scatter/gather step '{step.name}'")
+    return Step(step.name, normalized_spec)
+
+
+def validate_subpipe_step(step: Step) -> Step:
+    normalized_spec = _validator(step.spec, subpipe_step_schema, f"subpipe step '{step.name}'")
+    return Step(step.name, normalized_spec)
+
+
+def validate_chooser_step(step: Step) -> Step:
+    normalized_spec = _validator(step.spec, chooser_step_schema, f"chooser step '{step.name}'")
+    return Step(step.name, normalized_spec)

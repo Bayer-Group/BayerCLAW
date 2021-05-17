@@ -4,6 +4,16 @@ from ...src.compiler.pkg.util import CoreStack, make_logical_name, next_or_end, 
     do_param_substitution, time_string_to_seconds, Step, SENTRY
 
 
+@pytest.mark.parametrize("step, expect",[
+    (Step("name1", {"Other": "stuff", "Next": "next_step"}), {"Next": "next_step"}),
+    (Step("name2", {"Other": "stuff", "End": True}), {"End": True}),
+    (Step("name3", {"Other": "stuff"}), {}),
+])
+def test_step_next_or_end(step, expect):
+    result = step.next_or_end
+    assert result == expect
+
+
 def test_core_stack_output(monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()

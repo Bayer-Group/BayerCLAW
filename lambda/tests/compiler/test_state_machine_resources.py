@@ -11,8 +11,7 @@ def test_make_launcher_step(monkeypatch, mock_core_stack):
 
     wf_params = {"repository": "s3://bucket/repo/path/${template}"}
 
-    # todo: only return dict
-    _, result = make_launcher_step(core_stack, wf_params, "need_next_step_now_but_probably_not_later")
+    result = make_launcher_step(core_stack, wf_params)
     expect = {
         "Launch": {
             "Type": "Task",

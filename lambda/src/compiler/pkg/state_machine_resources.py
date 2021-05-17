@@ -17,7 +17,7 @@ from .validation import validate_batch_step, validate_native_step, validate_para
     validate_subpipe_step, validate_chooser_step
 
 
-def make_launcher_step(core_stack: CoreStack, wf_params: dict, next_step: str) -> Tuple[str, dict]:
+def make_launcher_step(core_stack: CoreStack, wf_params: dict) -> dict:
     launch_step_name = "Launch"
 
     ret = {
@@ -34,7 +34,8 @@ def make_launcher_step(core_stack: CoreStack, wf_params: dict, next_step: str) -
             "_stet": True,
         },
     }
-    return launch_step_name, ret
+
+    return ret
 
 
 def _stepperator(steps: Iterable) -> Generator[Step, None, None]:
@@ -49,6 +50,20 @@ def capitalize_key_inplace(d: dict, k: str) -> None:
         d[k.capitalize()] = d.pop(k)
     except KeyError:
         pass
+
+
+# def fill_in_nexts_and_ends(states: list) -> None:
+#     next_state = None
+#
+#     for state in reversed(states):
+#         if state.spec["Type"] not in {"Choice", "Succeed", "Fail"}:
+#             if "Next" not in state.spec and "End" not in state.spec:
+#                 if next_state is None:
+#                     state.spec.update({"End": True})
+#                 else:
+#                     state.spec.update({"Next": next_state.name})
+#
+#         next_state = state
 
 
 def fill_in_nexts_and_ends(steps: list) -> None:
@@ -79,29 +94,19 @@ def process_step(core_stack: CoreStack,
     # todo: temp
     global prev_outputs
 
-    # todo: temp
-    if "End" in step.spec:
-        next_step = SENTRY
-    else:
-        next_step = Step(step.spec["Next"], {})
-
     if "image" in step.spec:
-        normalized_spec = validate_batch_step(step)
+        normalized_step = validate_batch_step(step)
         prev_outputs, steps_to_add = yield from b.handle_batch(core_stack,
-                                                               step.name,
-                                                               normalized_spec,
+                                                               normalized_step,
                                                                wf_params,
-                                                               prev_outputs,
-                                                               next_step)
+                                                               prev_outputs)
         return steps_to_add
 
     elif "Type" in step.spec:
-        normalized_spec = validate_native_step(step)
+        normalized_step = validate_native_step(step)
         steps_to_add = yield from ns.handle_native_step(core_stack,
-                                                        step.name,
-                                                        normalized_spec,
+                                                        normalized_step,
                                                         wf_params,
-                                                        next_step,
                                                         depth)
         return steps_to_add
 
@@ -114,8 +119,7 @@ def make_branch(core_stack: CoreStack,
     logger = logging.getLogger(__name__)
 
     if include_launcher:
-        # todo: only return dict
-        _, launcher_step = make_launcher_step(core_stack, wf_params, "fake")
+        launcher_step = make_launcher_step(core_stack, wf_params)
         steps.insert(0, launcher_step)
 
     fill_in_nexts_and_ends(steps)
@@ -123,8 +127,8 @@ def make_branch(core_stack: CoreStack,
     states = {}
 
     for step in _stepperator(steps):
-        steps_to_add = yield from process_step(core_stack, step, wf_params, depth)
-        states.update(steps_to_add)
+        states_to_add = yield from process_step(core_stack, step, wf_params, depth)
+        states.update(states_to_add)
 
     ret = {
         "StartAt": next(iter(steps[0])),
@@ -134,90 +138,90 @@ def make_branch(core_stack: CoreStack,
     return ret
 
 
-def make_branch0(core_stack: CoreStack,
-                steps: list,
-                wf_params: dict,
-                include_launcher: bool = False,
-                depth: int = 0) -> Generator[Resource, None, dict]:
-
-    logger = logging.getLogger(__name__)
-
-    step_iter = peekable(_stepperator(steps))
-
-    first_step_name = step_iter.peek(SENTRY).name
-
-    if include_launcher:
-        first_step_name, states = make_launcher_step(core_stack, wf_params, first_step_name)
-    else:
-        states = {}
-
-    prev_outputs = {}
-
-    for step in step_iter:
-        next_step = step_iter.peek(SENTRY)
-
-        if "scatter" in step.spec:
-            normalized_spec = validate_scatter_step(step)
-            prev_outputs, steps_to_add = yield from sg.handle_scatter_gather(core_stack,
-                                                                             step.name,
-                                                                             normalized_spec,
-                                                                             wf_params,
-                                                                             prev_outputs,
-                                                                             next_step,
-                                                                             depth)
-
-        elif "image" in step.spec:
-            normalized_spec = validate_batch_step(step)
-            prev_outputs, steps_to_add = yield from b.handle_batch(core_stack,
-                                                                   step.name,
-                                                                   normalized_spec,
-                                                                   wf_params,
-                                                                   prev_outputs,
-                                                                   next_step)
-
-        elif "subpipe" in step.spec:
-            normalized_spec = validate_subpipe_step(step)
-            steps_to_add = sp.handle_subpipe(core_stack,
-                                             step.name,
-                                             normalized_spec,
-                                             next_step)
-
-        elif "Type" in step.spec:
-            normalized_spec = validate_native_step(step)
-            steps_to_add = yield from ns.handle_native_step(core_stack,
-                                                            step.name,
-                                                            normalized_spec,
-                                                            wf_params,
-                                                            next_step,
-                                                            depth)
-
-        elif "choices" in step.spec:
-            normalized_spec = validate_chooser_step(step)
-            steps_to_add = c.handle_chooser_step(core_stack,
-                                                 step.name,
-                                                 normalized_spec,
-                                                 next_step)
-
-        elif "branches" in step.spec:
-            normalized_spec = validate_parallel_step(step)
-            steps_to_add = ep.handle_parallel_step(core_stack,
-                                                   step.name,
-                                                   normalized_spec,
-                                                   wf_params,
-                                                   next_step,
-                                                   depth)
-
-        else:
-            raise RuntimeError(f"step '{step.name}' is not a recognized step type")
-
-        states.update(steps_to_add)
-
-    ret = {
-        "StartAt": first_step_name,
-        "States": states,
-    }
-
-    return ret
+# def make_branch0(core_stack: CoreStack,
+#                 steps: list,
+#                 wf_params: dict,
+#                 include_launcher: bool = False,
+#                 depth: int = 0) -> Generator[Resource, None, dict]:
+#
+#     logger = logging.getLogger(__name__)
+#
+#     step_iter = peekable(_stepperator(steps))
+#
+#     first_step_name = step_iter.peek(SENTRY).name
+#
+#     if include_launcher:
+#         first_step_name, states = make_launcher_step(core_stack, wf_params, first_step_name)
+#     else:
+#         states = {}
+#
+#     prev_outputs = {}
+#
+#     for step in step_iter:
+#         next_step = step_iter.peek(SENTRY)
+#
+#         if "scatter" in step.spec:
+#             normalized_spec = validate_scatter_step(step)
+#             prev_outputs, steps_to_add = yield from sg.handle_scatter_gather(core_stack,
+#                                                                              step.name,
+#                                                                              normalized_spec,
+#                                                                              wf_params,
+#                                                                              prev_outputs,
+#                                                                              next_step,
+#                                                                              depth)
+#
+#         elif "image" in step.spec:
+#             normalized_spec = validate_batch_step(step)
+#             prev_outputs, steps_to_add = yield from b.handle_batch(core_stack,
+#                                                                    step.name,
+#                                                                    normalized_spec,
+#                                                                    wf_params,
+#                                                                    prev_outputs,
+#                                                                    next_step)
+#
+#         elif "subpipe" in step.spec:
+#             normalized_spec = validate_subpipe_step(step)
+#             steps_to_add = sp.handle_subpipe(core_stack,
+#                                              step.name,
+#                                              normalized_spec,
+#                                              next_step)
+#
+#         elif "Type" in step.spec:
+#             normalized_spec = validate_native_step(step)
+#             steps_to_add = yield from ns.handle_native_step(core_stack,
+#                                                             step.name,
+#                                                             normalized_spec,
+#                                                             wf_params,
+#                                                             next_step,
+#                                                             depth)
+#
+#         elif "choices" in step.spec:
+#             normalized_spec = validate_chooser_step(step)
+#             steps_to_add = c.handle_chooser_step(core_stack,
+#                                                  step.name,
+#                                                  normalized_spec,
+#                                                  next_step)
+#
+#         elif "branches" in step.spec:
+#             normalized_spec = validate_parallel_step(step)
+#             steps_to_add = ep.handle_parallel_step(core_stack,
+#                                                    step.name,
+#                                                    normalized_spec,
+#                                                    wf_params,
+#                                                    next_step,
+#                                                    depth)
+#
+#         else:
+#             raise RuntimeError(f"step '{step.name}' is not a recognized step type")
+#
+#         states.update(steps_to_add)
+#
+#     ret = {
+#         "StartAt": first_step_name,
+#         "States": states,
+#     }
+#
+#     return ret
 
 
 def write_state_machine_to_fh(sfn_def: dict, fh) -> dict:

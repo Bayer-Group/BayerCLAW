@@ -185,7 +185,8 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
     }
 
     def helper():
-        job_def_name1 = yield from job_definition_rc(core_stack, step_name, sample_batch_step, task_role)
+        step = Step(step_name, {**sample_batch_step, **{"Next": "next_step"}})
+        job_def_name1 = yield from job_definition_rc(core_stack, step, task_role)
         assert job_def_name1 == expected_job_def_name
 
     for job_def_rc in helper():
@@ -206,11 +207,11 @@ def test_get_skip_behavior(spec, expect):
     assert result == expect
 
 
-@pytest.mark.parametrize("next_step, next_or_end", [
-    (Step("next_step", {}), {"Next": "next_step"}),
-    (SENTRY,                {"End": True})
+@pytest.mark.parametrize("next_or_end", [
+    {"Next": "next_step"},
+    {"End": True},
 ])
-def test_batch_step(next_step, next_or_end, monkeypatch, mock_core_stack, sample_batch_step):
+def test_batch_step(next_or_end, monkeypatch, mock_core_stack, sample_batch_step):
     expected_body = {
         "Type": "Task",
         "Resource": "arn:aws:states:::batch:submitJob.sync",
@@ -264,19 +265,24 @@ def test_batch_step(next_step, next_or_end, monkeypatch, mock_core_stack, sample
         },
         "ResultPath": None,
         "OutputPath": "$",
+        **next_or_end
     }
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
+    spec = Step("step_name", {**sample_batch_step, **next_or_end})
+    result = batch_step(core_stack, spec, "TestJobDef")
+    assert result == expected_body
 
-    result = batch_step(core_stack, sample_batch_step, "TestJobDef", next_step)
-    assert result == {**expected_body, **next_or_end}
 
-
-@pytest.mark.parametrize("wf_params", [{"no_task_role": ""},
-                                       {"task_role": "arn:from:workflow:params"}])
-@pytest.mark.parametrize("step_task_role_request", [{},
-                                                    {"task_role": "arn:from:step:spec"}])
+@pytest.mark.parametrize("wf_params", [
+    {"no_task_role": ""},
+    {"task_role": "arn:from:workflow:params"}
+])
+@pytest.mark.parametrize("step_task_role_request", [
+    {},
+    {"task_role": "arn:from:step:spec"}
+])
 def test_handle_batch(wf_params, step_task_role_request, monkeypatch, mock_core_stack, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
@@ -297,8 +303,9 @@ def test_handle_batch(wf_params, step_task_role_request, monkeypatch, mock_core_
     }
 
     def helper():
-        test_spec = {**sample_batch_step, **step_task_role_request}
-        prev_outputs, states = yield from handle_batch(core_stack, "step_name", test_spec, wf_params, {}, Step("next_step_name", {}))
+        test_spec = {**sample_batch_step, **step_task_role_request, **{"Next": "next_step_name"}}
+        test_step = Step("step_name", test_spec)
+        prev_outputs, states = yield from handle_batch(core_stack, test_step, wf_params, {})
         assert prev_outputs == expected_prev_outputs
         assert len(states) == 1
         assert isinstance(states[0], State)
@@ -338,7 +345,8 @@ def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
     }
 
     def helper():
-        prev_outputs, states = yield from handle_batch(core_stack, "step_name", sample_batch_step, {}, {}, Step("next_step_name", {}))
+        step = Step("step_name", {**sample_batch_step, **{"Next": "next_step_name"}})
+        prev_outputs, states = yield from handle_batch(core_stack, step, {"wf": "params"}, {"prev": "outputs"})
         assert len(states) == 2
         assert all(isinstance(s, State) for s in states)
 
@@ -371,7 +379,8 @@ def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_ste
     }
 
     def helper():
-        _, states = yield from handle_batch(core_stack, "step_name", sample_batch_step, {}, prev_outputs, Step("next_step_name", {}))
+        step = Step("step_name", sample_batch_step)
+        _, states = yield from handle_batch(core_stack, step, {"wf": "params"}, prev_outputs)
         inputs = json.loads(states[0].spec["Parameters"]["Parameters"]["inputs"])
         assert inputs == prev_outputs
 

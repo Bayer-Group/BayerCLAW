@@ -2,25 +2,13 @@ import logging
 from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import CoreStack, Step, Resource, State, next_or_end, lambda_logging_block
-
-
-# the rules
-#   written by user
-#     ResultPath -> null (except Wait, Succeed, Fail)
-#     OutputPath -> $ (except Succeed?, Fail)
-#     Next/End -> from next/end
-#   generated in compiler
-#     launcher (Task: lambda)
-#     enhanced parallel 1 (Task: lambda)
-#     enhanced parallel 2 (Succeed)
+from .util import CoreStack, Resource, State
 
 
 def handle_native_step(core_stack: CoreStack,
                        step_name: str,
                        spec: dict,
                        wf_params: dict,
-                       next_step: Step,
                        map_depth: int) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
     logger.info(f"making native step {step_name}")
@@ -46,11 +34,5 @@ def handle_native_step(core_stack: CoreStack,
 
         if spec["Type"] != "Fail":
             ret.update({"OutputPath": "$"})
-
-    # ret.pop("End", None)
-
-    # todo: need to work with "next" or "Next" (handle in next_or_end?)
-    # if spec["Type"] not in {"Succeed", "Fail"} and "Next" not in spec:  # ???
-    #     ret.update(next_or_end(next_step))
 
     return [State(step_name, ret)]
