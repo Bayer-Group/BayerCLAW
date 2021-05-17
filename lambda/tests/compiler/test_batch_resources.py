@@ -263,7 +263,8 @@ def test_batch_step(next_or_end, monkeypatch, mock_core_stack, sample_batch_step
                 ],
             },
         },
-        "ResultPath": None,
+        "ResultSelector": sample_batch_step["outputs"],
+        "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
         **next_or_end
     }
@@ -381,7 +382,8 @@ def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_ste
     def helper():
         step = Step("step_name", sample_batch_step)
         _, states = yield from handle_batch(core_stack, step, {"wf": "params"}, prev_outputs)
-        inputs = json.loads(states[0].spec["Parameters"]["Parameters"]["inputs"])
-        assert inputs == prev_outputs
+        # inputs = json.loads(states[0].spec["Parameters"]["Parameters"]["inputs"])
+        # assert inputs == prev_outputs
+        assert states[0].spec["Parameters"]["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())

@@ -1,4 +1,5 @@
 from datetime import timedelta
+import json
 import os
 import re
 from typing import Dict, Union, Any, NamedTuple
@@ -14,6 +15,14 @@ class Step(NamedTuple):
     @property
     def next_or_end(self) -> dict:
         ret = {k: self.spec[k] for k in {"Next", "End"} & set(self.spec)}
+        return ret
+
+    @property
+    def input_field(self) -> dict:
+        if self.spec["inputs"] is None:
+            ret = {"inputs.$": "States.JsonToString($.prev_outputs)"}
+        else:
+            ret = {"inputs": json.dumps(self.spec["inputs"])}
         return ret
 
 

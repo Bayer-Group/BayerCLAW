@@ -220,7 +220,8 @@ def batch_step(core_stack: CoreStack,
             "Parameters": {
                 "repo.$": "$.repo",
                 # "parameters": json.dumps(spec["params"]),
-                "inputs": json.dumps(step.spec["inputs"]),
+                # "inputs": json.dumps(step.spec["inputs"]),
+                **step.input_field,
                 "references": json.dumps(step.spec["references"]),
                 "outputs": json.dumps(step.spec["outputs"]),
                 "skip": skip_behavior,
@@ -254,7 +255,10 @@ def batch_step(core_stack: CoreStack,
                 ],
             },
         },
-        "ResultPath": None,
+        "ResultSelector": {
+            **step.spec["outputs"],
+        },
+        "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
     }
 
@@ -277,8 +281,8 @@ def handle_batch(core_stack: CoreStack,
 
     subbed_spec = do_param_substitution(step.spec)
 
-    if subbed_spec["inputs"] is None:
-        subbed_spec["inputs"] = prev_outputs
+    # if subbed_spec["inputs"] is None:
+    #     subbed_spec["inputs"] = prev_outputs
 
     subbed_step = Step(step.name, subbed_spec)
 
