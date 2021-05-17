@@ -273,13 +273,7 @@ def handle_batch(core_stack: CoreStack,
     logger = logging.getLogger(__name__)
     logger.info(f"making batch step {step.name}")
 
-    try:
-        task_role = step.spec["task_role"]
-    except KeyError:
-        try:
-            task_role = wf_params["task_role"]
-        except KeyError:
-            task_role = core_stack.output("ECSTaskRoleArn")
+    task_role = step.spec.get("task_role") or wf_params.get("task_role") or core_stack.output("ECSTaskRoleArn")
 
     subbed_spec = do_param_substitution(step.spec)
 
