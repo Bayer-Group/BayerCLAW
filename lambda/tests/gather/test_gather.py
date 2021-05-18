@@ -115,10 +115,11 @@ def test_lambda_handler(caplog, repo_bucket):
         },
     }
 
+    expect = {"manifest": "test-step_manifest.json"}
     result = lambda_handler(event, {})
-    assert result == f"s3://{repo_bucket.name}/repo/path/test-step_manifest.json"
+    assert result == expect
 
-    manifest_key = result.split("/", 3)[-1]
+    manifest_key = f"repo/path/{result['manifest']}"
     manifest_s3 = repo_bucket.Object(manifest_key)
     response = manifest_s3.get()
     with closing(response["Body"]) as fp:
@@ -152,4 +153,4 @@ def test_lambda_handler_no_manifest(caplog, repo_bucket):
     }
 
     result = lambda_handler(event, {})
-    assert result == "no manifest"
+    assert result == {}

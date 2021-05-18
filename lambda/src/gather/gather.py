@@ -61,6 +61,8 @@ def lambda_handler(event: dict, context):
 
         jobby_outputs = substitute_job_data(parent_outputs, parent_job_data)
 
+        ret = {}
+
         if len(jobby_outputs) > 0:
             repos = jmespath.search("results[].repo", event)
             finder = partial(find_output_files, repos=repos)
@@ -68,11 +70,12 @@ def lambda_handler(event: dict, context):
             with ThreadPoolExecutor(max_workers=len(jobby_outputs)) as executor:
                 manifest = dict(executor.map(finder, jobby_outputs.items()))
 
-            manifest_path = f"{parent_repo}/{step_name}_manifest.json"
+            manifest_filename = f"{step_name}_manifest.json"
+            manifest_path = f"{parent_repo}/{manifest_filename}"
             manifest_bucket, manifest_key = manifest_path.split("/", 3)[2:]
             manifest_obj = boto3.resource("s3").Object(manifest_bucket, manifest_key)
             manifest_obj.put(Body=json.dumps(manifest).encode("utf-8"))
-        else:
-            manifest_path = "no manifest"
 
-        return manifest_path
+            ret["manifest"] = manifest_filename
+
+        return ret
