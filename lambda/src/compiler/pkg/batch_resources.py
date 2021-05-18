@@ -9,7 +9,7 @@ import boto3
 import humanfriendly
 
 from .qc_resources import handle_qc_check
-from .util import CoreStack, Step, Resource, State, make_logical_name, next_or_end, do_param_substitution,\
+from .util import CoreStack, Step, Resource, State, make_logical_name, do_param_substitution,\
     time_string_to_seconds
 
 SCRATCH_PATH = "/_bclaw_scratch"
@@ -220,7 +220,6 @@ def batch_step(core_stack: CoreStack,
             "Parameters": {
                 "repo.$": "$.repo",
                 # "parameters": json.dumps(spec["params"]),
-                # "inputs": json.dumps(step.spec["inputs"]),
                 **step.input_field,
                 "references": json.dumps(step.spec["references"]),
                 "outputs": json.dumps(step.spec["outputs"]),
@@ -272,18 +271,13 @@ def batch_step(core_stack: CoreStack,
 
 def handle_batch(core_stack: CoreStack,
                  step: Step,
-                 wf_params: dict,
-                 prev_outputs: dict) -> Generator[Resource, None, Tuple[dict, List[State]]]:
+                 wf_params: dict) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
     logger.info(f"making batch step {step.name}")
 
     task_role = step.spec.get("task_role") or wf_params.get("task_role") or core_stack.output("ECSTaskRoleArn")
 
     subbed_spec = do_param_substitution(step.spec)
-
-    # if subbed_spec["inputs"] is None:
-    #     subbed_spec["inputs"] = prev_outputs
-
     subbed_step = Step(step.name, subbed_spec)
 
     job_def_name = yield from job_definition_rc(core_stack, subbed_step, task_role)
@@ -297,4 +291,4 @@ def handle_batch(core_stack: CoreStack,
     else:
         ret = [State(step.name, batch_step(core_stack, subbed_step, job_def_name, **subbed_step.spec["retry"]))]
 
-    return subbed_spec["outputs"], ret
+    return ret

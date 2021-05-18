@@ -146,6 +146,7 @@ scatter_step_schema = Schema(All(
         Required("steps", "steps list is required"):
             All(Length(min=1, msg="at least one step is required"), [{str: dict}]),
         Optional("outputs", default={}): Any(None, {str: str}),
+        **next_or_end,
     },
     # It's technically OK if scatter shares keys with these, because it's namespaced as ${scatter.foo}
     no_shared_keys("params", "inputs", "outputs")

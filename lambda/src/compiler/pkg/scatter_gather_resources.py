@@ -6,24 +6,24 @@ from . import state_machine_resources as sm
 from .util import CoreStack, Step, Resource, State, next_or_end, do_param_substitution, lambda_logging_block
 
 
-def scatter_step(core_stack: CoreStack, step_name: str, spec: dict, next_step_name: str) -> dict:
+def scatter_step(core_stack: CoreStack, step: Step, map_step_name: str) -> dict:
     ret = {
         "Type": "Task",
         "Resource": core_stack.output("ScatterLambdaArn"),
         "Parameters": {
             "repo.$": "$.repo",
-            "scatter": json.dumps(spec["scatter"]),
-            "inputs": json.dumps(spec["inputs"]),
-            **lambda_logging_block(step_name),
+            "scatter": json.dumps(step.spec["scatter"]),
+            **step.input_field,
+            **lambda_logging_block(step.name),
         },
         "ResultPath": "$.items",
-        "Next": next_step_name
+        "Next": map_step_name
     }
 
     return ret
 
 
-def map_step(sub_branch: dict, next_step_name: str) -> dict:
+def map_step(sub_branch: dict, gather_step_name: str) -> dict:
     ret = {
         "Type": "Map",
         "ItemsPath": "$.items",
@@ -31,62 +31,59 @@ def map_step(sub_branch: dict, next_step_name: str) -> dict:
             "id_prefix.$": "$.id_prefix",
             "index.$": "States.Format('{}', $$.Map.Item.Index)",  # stringify the index
             "job_file.$": "$.job_file",
+            "prev_outputs": {},
             "repo.$": "$$.Map.Item.Value.repo",
         },
         "Iterator": sub_branch,
         "ResultPath": "$.results",
-        "Next": next_step_name,
+        "Next": gather_step_name,
     }
 
     return ret
 
 
-def gather_step(core_stack: CoreStack, step_name: str, spec: dict, next_step: Step) -> dict:
+def gather_step(core_stack: CoreStack, step: Step) -> dict:
     ret = {
         "Type": "Task",
         "Resource": core_stack.output("GatherLambdaArn"),
         "Parameters": {
             "repo.$": "$.repo",
-            "outputs": json.dumps(spec["outputs"]),
+            "outputs": json.dumps(step.spec["outputs"]),
             "results.$": "$.results",
-            **lambda_logging_block(step_name),
+            **lambda_logging_block(step.name),
         },
-        "ResultPath": "$.manifest",
-        **next_or_end(next_step)
+        "ResultPath": "$.prev_outputs",
+        "OutputPath": "$",
+        **step.next_or_end,
     }
 
     return ret
 
 
 def handle_scatter_gather(core_stack: CoreStack,
-                          step_name: str,
-                          spec: dict,
+                          step: Step,
                           wf_params: dict,
-                          prev_outputs: dict,
-                          next_step: Step,
                           map_depth: int
-                          ) -> Generator[Resource, None, Tuple[dict, List[State]]]:
+                          ) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
-    logger.info(f"making scatter gather steps for {step_name}")
+    logger.info(f"making scatter gather steps for {step.name}")
 
     if map_depth > 0:
         raise RuntimeError("Nested Scatter steps are not supported")
 
-    subbed_spec = do_param_substitution(spec)
+    subbed_spec = do_param_substitution(step.spec)
+    subbed_step = Step(step.name, subbed_spec)
 
-    if subbed_spec["inputs"] is None:
-        subbed_spec["inputs"] = prev_outputs
+    sub_branch = yield from sm.make_branch(core_stack, subbed_step.spec["steps"], wf_params, depth=map_depth + 1)
 
-    sub_branch = yield from sm.make_branch(core_stack, subbed_spec["steps"], wf_params, depth=map_depth + 1)
-
-    scatter_step_name = step_name  # this is what previous step will be expecting
-    map_step_name = f"{step_name}.map"
-    gather_step_name = f"{step_name}.gather"
+    scatter_step_name = subbed_step.name
+    map_step_name = f"{subbed_step.name}.map"
+    gather_step_name = f"{subbed_step.name}.gather"
 
     ret = [
-        State(scatter_step_name, scatter_step(core_stack, step_name, subbed_spec, map_step_name)),
+        State(scatter_step_name, scatter_step(core_stack, subbed_step, map_step_name)),
         State(map_step_name, map_step(sub_branch, gather_step_name)),
-        State(gather_step_name, gather_step(core_stack, step_name, subbed_spec, next_step))
+        State(gather_step_name, gather_step(core_stack, subbed_step))
     ]
 
-    return subbed_spec["outputs"], ret
+    return ret

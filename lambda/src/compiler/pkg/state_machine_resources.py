@@ -52,20 +52,6 @@ def capitalize_key_inplace(d: dict, k: str) -> None:
         pass
 
 
-# def fill_in_nexts_and_ends(states: list) -> None:
-#     next_state = None
-#
-#     for state in reversed(states):
-#         if state.spec["Type"] not in {"Choice", "Succeed", "Fail"}:
-#             if "Next" not in state.spec and "End" not in state.spec:
-#                 if next_state is None:
-#                     state.spec.update({"End": True})
-#                 else:
-#                     state.spec.update({"Next": next_state.name})
-#
-#         next_state = state
-
-
 def fill_in_nexts_and_ends(steps: list) -> None:
     next_step = None
 
@@ -82,24 +68,23 @@ def fill_in_nexts_and_ends(steps: list) -> None:
         next_step = step
 
 
-# todo: creating a global prev_outputs so I don't have to figure out how to pass it back
-#       when it's probably going away anyway
-prev_outputs = {}
-
-
 def process_step(core_stack: CoreStack,
                  step: Step,
                  wf_params: dict,
                  depth: int) -> Generator[Resource, None, List[State]]:
-    # todo: temp
-    global prev_outputs
+    if "scatter" in step.spec:
+        normalized_step = validate_scatter_step(step)
+        steps_to_add = yield from sg.handle_scatter_gather(core_stack,
+                                                           normalized_step,
+                                                           wf_params,
+                                                           depth)
+        return steps_to_add
 
-    if "image" in step.spec:
+    elif "image" in step.spec:
         normalized_step = validate_batch_step(step)
-        prev_outputs, steps_to_add = yield from b.handle_batch(core_stack,
-                                                               normalized_step,
-                                                               wf_params,
-                                                               prev_outputs)
+        steps_to_add = yield from b.handle_batch(core_stack,
+                                                 normalized_step,
+                                                 wf_params)
         return steps_to_add
 
     elif "Type" in step.spec:

@@ -295,19 +295,10 @@ def test_handle_batch(wf_params, step_task_role_request, monkeypatch, mock_core_
     else:
         expected_job_role_arn = "ecs_task_role_arn"
 
-    expected_prev_outputs = {
-        "paired1": "paired_trim_1.fq",
-        "paired2": "paired_trim_2.fq",
-        "unpaired1": "unpaired_trim_1.fq",
-        "unpaired2": "unpaired_trim_2.fq",
-        "trim_log": "${job.SAMPLE_ID}-fastP.json"
-    }
-
     def helper():
         test_spec = {**sample_batch_step, **step_task_role_request, **{"Next": "next_step_name"}}
         test_step = Step("step_name", test_spec)
-        prev_outputs, states = yield from handle_batch(core_stack, test_step, wf_params, {})
-        assert prev_outputs == expected_prev_outputs
+        states = yield from handle_batch(core_stack, test_step, wf_params)
         assert len(states) == 1
         assert isinstance(states[0], State)
         assert states[0].name == "step_name"
@@ -347,7 +338,7 @@ def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
 
     def helper():
         step = Step("step_name", {**sample_batch_step, **{"Next": "next_step_name"}})
-        prev_outputs, states = yield from handle_batch(core_stack, step, {"wf": "params"}, {"prev": "outputs"})
+        states = yield from handle_batch(core_stack, step, {"wf": "params"})
         assert len(states) == 2
         assert all(isinstance(s, State) for s in states)
 
@@ -373,17 +364,10 @@ def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_ste
     core_stack = CoreStack()
 
     sample_batch_step["inputs"] = None
-    prev_outputs = {
-        "adapter": "s3://bucket/path/to/adapers.fa",
-        "reads1": "s3://bucket/path/to/reads1.fq",
-        "reads2": "s3://bucket/path/to/reads2.fq",
-    }
 
     def helper():
         step = Step("step_name", sample_batch_step)
-        _, states = yield from handle_batch(core_stack, step, {"wf": "params"}, prev_outputs)
-        # inputs = json.loads(states[0].spec["Parameters"]["Parameters"]["inputs"])
-        # assert inputs == prev_outputs
+        states = yield from handle_batch(core_stack, step, {"wf": "params"})
         assert states[0].spec["Parameters"]["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())
