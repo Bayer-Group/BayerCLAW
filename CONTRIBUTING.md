@@ -25,7 +25,7 @@ Fork the repository and make changes on your fork on a branch:
 
 Note that the maintainers work on branches in this repository.
 
-Work hard to ensure your pull request is valid.
+Work hard to ensure your pull request is valid. This includes code quality, clear naming, and including unit tests. Please read the Code Of Conduct at the bottom of this file.
 
 Pull request descriptions should be as clear as possible and include a reference to all the issues that they address. In GitHub, you can reference an
 issue by adding a line to your commit description that follows the format:
@@ -37,32 +37,8 @@ where N is the issue number.
 
 ## Merge approval
 
-Repository maintainers use **LGTM (Looks Good To Me)** in comments on the code review to indicate acceptance.
+Repository maintainers will review the pull request and make sure it provides the correct level of code quality & correctness. 
 
-A change requires LGTMs from an absolute majority of the **MAINTAINERS**. The **Benevolent Dictator For Life (BDFL)** reserves sole veto power. We recommend also
-getting an LGTM from the BDFL in advance of merging to avoid the possibility of a revert.
-
-
-#### Small patch exception
-
-There are exceptions to the merge approval process. Currently these are:
-
-* Your patch fixes spelling or grammar errors.
-* Your patch fixes Markdown formatting or syntax errors in any .md files in this repository
-
-
-## How can I become a maintainer?
-
-Make important contributions. Don't forget, being a maintainer is a time investment. Make sure you will have time to make yourself available. You don't have to be a maintainer to make a difference on the project!
-
-
-## What is a maintainer's responsibility?
-
-It is every maintainer's responsibility to:
-
-1. Deliver prompt feedback and decisions on pull requests.
-2. Be available to anyone with questions, bug reports, criticism, etc. on their component. This includes Slack and GitHub requests
-3. Make sure their component respects the philosophy, design and road map of the project.
 
 
 ## How are decisions made?
@@ -75,12 +51,11 @@ All decisions, big and small, follow the same 3 steps:
 
 2. Discuss the pull request. Anyone can do this.
 
-3. Accept (`LGTM`) or refuse a pull request. The relevant maintainers
-   do this (see below "Who decides what?")
+3. Accept or refuse a pull request. The relevant maintainers do this (see below "Who decides what?")
 
    1. Accepting pull requests
 
-      1. If the pull request appears to be ready to merge, give it a `LGTM`, which stands for "Looks Good To Me".
+      1. If the pull request appears to be ready to merge, approve it.
 
       2. If the pull request has some small problems that need to be changed, make a comment addressing the issues.
 
@@ -102,23 +77,23 @@ All decisions, big and small, follow the same 3 steps:
 All decisions are pull requests, and the relevant maintainers make decisions by accepting or refusing pull requests. Review and acceptance by anyone is
 denoted by adding a comment in the pull request: `LGTM`. However, only currently listed `MAINTAINERS` are counted towards the required majority.
 
-Event repositories follow the timeless, highly efficient and totally unfair system known as [Benevolent dictator for life](http://en.wikipedia.org/wiki/Benevolent_Dictator_for_Life). This means that all decisions are made in the end, by default, by **BDFL**. In
-practice decisions are spread across the maintainers with the goal of consensus prior to all merges.
-
-The current BDFL is listed by convention in the first line of the MAINTAINERS file with a suffix of "BDFL".
+The maintainers will be listed in the MAINTAINER file, all these people will be in the employment of Bayer.
 
 
 ## I'm a maintainer, should I make pull requests too?
 
 Yes. Nobody should ever push to master directly. All changes should be made through a pull request.
 
+## Code Of Conduct
 
-## Who assigns maintainers?
+As contributors and maintainers of this project, we pledge to respect all people who contribute through reporting issues, posting feature requests, updating documentation, submitting pull requests or patches, and other activities.
 
-MAINTAINERS are changed via pull requests and the standard approval process - i.e. create an issue and make a pull request with the
-changes to the MAINTAINERS file.
+We are committed to making participation in this project a harassment-free experience for everyone, regardless of level of experience, gender, gender identity and expression, sexual orientation, disability, personal appearance, body size, race, ethnicity, age, or religion.
 
+Examples of unacceptable behavior by participants include the use of sexual language or imagery, derogatory comments or personal attacks, trolling, public or private harassment, insults, or other unprofessional conduct.
 
-## How is this process changed?
+Project maintainers have the right and responsibility to remove, edit, or reject comments, commits, code, wiki edits, issues, and other contributions that are not aligned to this Code of Conduct. Project maintainers who do not follow the Code of Conduct may be removed from the project team.
 
-Just like everything else: by making a pull request :)
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by opening an issue or contacting one or more of the project maintainers.
+
+This Code of Conduct is adapted from the Contributor Covenant, version 1.0.0, available at https://www.contributor-covenant.org/version/1/0/0/code-of-conduct.html
