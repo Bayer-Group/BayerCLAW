@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.subpipe_resources import file_submit_step, run_subpipe_step, file_retrieve_step, handle_subpipe
-from ...src.compiler.pkg.util import CoreStack, Step, SENTRY
+from ...src.compiler.pkg.util import CoreStack, Step
 
 
 @pytest.fixture(scope="module")
@@ -28,7 +28,8 @@ def test_file_submit_step(sample_subpipe_spec, monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
-    result = file_submit_step(core_stack, "step_name", sample_subpipe_spec, "next_step_name")
+    test_step = Step("step_name", sample_subpipe_spec)
+    result = file_submit_step(core_stack, test_step, "run_subpipe_step_name")
     expect = {
         "Type": "Task",
         "Resource": "subpipes_lambda_arn",
@@ -48,13 +49,14 @@ def test_file_submit_step(sample_subpipe_spec, monkeypatch, mock_core_stack):
         },
         "ResultPath": "$.subpipe",
         "OutputPath": "$",
-        "Next": "next_step_name",
+        "Next": "run_subpipe_step_name",
     }
     assert result == expect
 
 
 def test_run_subpipe_step(sample_subpipe_spec):
-    result = run_subpipe_step(sample_subpipe_spec, "next_step_name")
+    test_step = Step("step_name", sample_subpipe_spec)
+    result = run_subpipe_step(test_step, "retrieve_step_name")
     expect = {
         "Type": "Task",
         "Resource": "arn:aws:states:::states:startExecution.sync",
@@ -63,6 +65,7 @@ def test_run_subpipe_step(sample_subpipe_spec):
                 "index": "main",
                 "id_prefix.$": "$.id_prefix",
                 "job_file.$": "$.job_file",
+                "prev_outputs": {},
                 "repo.$": "$.subpipe.sub_repo",
                 "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id",
             },
@@ -70,18 +73,21 @@ def test_run_subpipe_step(sample_subpipe_spec):
         },
         "ResultPath": None,
         "OutputPath": "$",
-        "Next": "next_step_name"
+        "Next": "retrieve_step_name"
     }
     assert result == expect
 
 
-@pytest.mark.parametrize("next_step, next_or_end", [(Step("next_step", {}), {"Next": "next_step"}),
-                                                    (SENTRY, {"End": True})])
-def test_file_retrieve_step(next_step, next_or_end, sample_subpipe_spec, monkeypatch, mock_core_stack):
+@pytest.mark.parametrize("next_or_end", [
+    {"Next": "next_step"},
+    {"End": True}
+])
+def test_file_retrieve_step(next_or_end, sample_subpipe_spec, monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
-    result = file_retrieve_step(core_stack, "test_step_name", sample_subpipe_spec, next_step)
+    test_step = Step("step_name", {**sample_subpipe_spec, **next_or_end})
+    result = file_retrieve_step(core_stack, test_step)
     expect = {
         "Type": "Task",
         "Resource": "subpipes_lambda_arn",
@@ -98,11 +104,12 @@ def test_file_retrieve_step(next_step, next_or_end, sample_subpipe_spec, monkeyp
                 "job_file_version.$": "$.job_file.version",
                 "job_file_s3_request_id.$": "$.job_file.s3_request_id",
                 "sfn_execution_id.$": "$$.Execution.Name",
-                "step_name": "test_step_name",
+                "step_name": "step_name",
                 "workflow_name": "${WorkflowName}",
             },
         },
-        "ResultPath": None,
+        "ResultSelector": {},
+        "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
         **next_or_end
     }
@@ -113,7 +120,8 @@ def test_handle_subpipe(sample_subpipe_spec, monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
-    states = handle_subpipe(core_stack, "step_name", sample_subpipe_spec, Step("next_step_name", {}))
+    test_step = Step("step_name", {**sample_subpipe_spec, "Next": "next_step_name"})
+    states = handle_subpipe(core_stack, test_step)
     assert len(states) == 3
 
     assert states[0].name == "step_name"

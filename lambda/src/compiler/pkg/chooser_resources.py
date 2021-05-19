@@ -1,7 +1,8 @@
 import jmespath
+import logging
 from typing import List
 
-from .util import CoreStack, Step, State, lambda_logging_block, SENTRY
+from .util import CoreStack, Step, State, lambda_logging_block
 
 
 def choice_spec(expr_str: str, next_step: str) -> dict:
@@ -14,11 +15,14 @@ def choice_spec(expr_str: str, next_step: str) -> dict:
 
 
 # todo: need logging
-def handle_chooser_step(core_stack: CoreStack, step_name: str, spec: dict, next_step: Step) -> List[State]:
-    choice_step_name = f"{step_name}.choose"
+def handle_chooser_step(core_stack: CoreStack, step: Step) -> List[State]:
+    logger = logging.getLogger(__name__)
+    logger.info(f"making chooser step {step.name}")
 
-    exprs = jmespath.search("choices[].if", spec)
-    nexts = jmespath.search("choices[].next", spec)
+    choice_step_name = f"{step.name}.choose"
+
+    exprs = jmespath.search("choices[].if", step.spec)
+    nexts = jmespath.search("choices[].next", step.spec)
 
     choices = [choice_spec(e, n) for e, n in zip(exprs, nexts)]
 
@@ -27,9 +31,9 @@ def handle_chooser_step(core_stack: CoreStack, step_name: str, spec: dict, next_
         "Resource": core_stack.output("ChooserLambdaArn"),
         "Parameters": {
             "repo.$": "$.repo",
-            "inputs": spec["inputs"],
+            "inputs": step.spec["inputs"],
             "expressions": exprs,
-            **lambda_logging_block(step_name),
+            **lambda_logging_block(step.name),
         },
         "ResultPath": "$.choice",
         "OutputPath": "$",
@@ -45,7 +49,7 @@ def handle_chooser_step(core_stack: CoreStack, step_name: str, spec: dict, next_
         choice_step.update({"Default": next_step.name})
 
     ret = [
-        State(step_name, task_step),
+        State(step.name, task_step),
         State(choice_step_name, choice_step),
     ]
 

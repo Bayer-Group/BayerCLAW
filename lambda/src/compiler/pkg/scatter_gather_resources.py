@@ -1,9 +1,9 @@
 import json
 import logging
-from typing import Generator, List, Tuple
+from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import CoreStack, Step, Resource, State, next_or_end, do_param_substitution, lambda_logging_block
+from .util import CoreStack, Step, Resource, State, do_param_substitution, lambda_logging_block
 
 
 def scatter_step(core_stack: CoreStack, step: Step, map_step_name: str) -> dict:

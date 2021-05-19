@@ -2,40 +2,41 @@ import json
 import logging
 from typing import List
 
-from .util import CoreStack, Step, State, next_or_end, lambda_logging_block
+from .util import CoreStack, Step, State, lambda_logging_block
 
 
-def file_submit_step(core_stack: CoreStack, step_name: str, spec: dict, next_step_name: str) -> dict:
+def file_submit_step(core_stack: CoreStack, step: Step, run_subpipe_step_name: str) -> dict:
     ret = {
         "Type": "Task",
         "Resource": core_stack.output("SubpipesLambdaArn"),
         "Parameters": {
             "repo.$": "$.repo",
-            "submit": json.dumps(spec["submit"]),
-            **lambda_logging_block(step_name),
+            "submit": json.dumps(step.spec["submit"]),
+            **lambda_logging_block(step.name),
         },
         "ResultPath": "$.subpipe",
         "OutputPath": "$",
-        "Next": next_step_name,
+        "Next": run_subpipe_step_name,
     }
 
     return ret
 
 
-def run_subpipe_step(spec: dict, next_step_name: str) -> dict:
-    if spec["subpipe"].startswith("arn:"):
-        state_machine_arn = spec["subpipe"]
-    else:
-        state_machine_arn = "arn:aws:states:${AWSRegion}:${AWSAccountId}:stateMachine:" + spec['subpipe']
+def run_subpipe_step(step: Step, retrieve_step_name: str) -> dict:
+    state_machine_arn = step.spec["subpipe"]
+
+    if not state_machine_arn.startswith("arn:"):
+        state_machine_arn = "arn:aws:states:${AWSRegion}:${AWSAccountId}:stateMachine:" + state_machine_arn
 
     ret = {
         "Type": "Task",
         "Resource": "arn:aws:states:::states:startExecution.sync",
         "Parameters": {
             "Input": {
-                "index": "main",
                 "id_prefix.$": "$.id_prefix",
+                "index": "main",
                 "job_file.$": "$.job_file",
+                "prev_outputs": {},
                 "repo.$": "$.subpipe.sub_repo",
                 "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id",
             },
@@ -43,44 +44,47 @@ def run_subpipe_step(spec: dict, next_step_name: str) -> dict:
         },
         "ResultPath": None,
         "OutputPath": "$",
-        "Next": next_step_name
+        "Next": retrieve_step_name
     }
 
     return ret
 
 
-def file_retrieve_step(core_stack: CoreStack, step_name: str, spec: dict, next_step: Step) -> dict:
+def file_retrieve_step(core_stack: CoreStack, step: Step) -> dict:
     ret = {
         "Type": "Task",
         "Resource": core_stack.output("SubpipesLambdaArn"),
         "Parameters": {
             "repo.$": "$.repo",
-            "retrieve": json.dumps(spec["retrieve"]),
+            "retrieve": json.dumps(step.spec["retrieve"]),
             "subpipe": {
                 "sub_repo.$": "$.subpipe.sub_repo",
             },
-            **lambda_logging_block(step_name)
+            **lambda_logging_block(step.name)
         },
-        "ResultPath": None,
+        "ResultSelector": {},
+        "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
-        **next_or_end(next_step)
+        **step.next_or_end,
     }
 
     return ret
 
 
-def handle_subpipe(core_stack: CoreStack, step_name: str, spec: dict, next_step: Step) -> List[State]:
+def handle_subpipe(core_stack: CoreStack,
+                   step: Step
+                   ) -> List[State]:
     logger = logging.getLogger(__name__)
-    logger.info(f"making subpipe step {step_name}")
+    logger.info(f"making subpipe step {step.name}")
 
-    submit_step_name = step_name
-    subpipe_step_name = f"{step_name}.subpipe"
-    retrieve_step_name = f"{step_name}.retrieve"
+    submit_step_name = step.name
+    subpipe_step_name = f"{step.name}.subpipe"
+    retrieve_step_name = f"{step.name}.retrieve"
 
     ret = [
-        State(submit_step_name, file_submit_step(core_stack, step_name, spec, subpipe_step_name)),
-        State(subpipe_step_name, run_subpipe_step(spec, retrieve_step_name)),
-        State(retrieve_step_name, file_retrieve_step(core_stack, step_name, spec, next_step)),
+        State(submit_step_name, file_submit_step(core_stack, step, subpipe_step_name)),
+        State(subpipe_step_name, run_subpipe_step(step, retrieve_step_name)),
+        State(retrieve_step_name, file_retrieve_step(core_stack, step)),
     ]
 
     return ret
