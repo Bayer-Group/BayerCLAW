@@ -2,7 +2,8 @@ import json
 import logging
 from typing import List
 
-from .util import CoreStack, Step, State, lambda_logging_block
+from .util import CoreStack, State, lambda_logging_block
+from .util import Step2 as Step
 
 
 def file_submit_step(core_stack: CoreStack, step: Step, run_subpipe_step_name: str) -> dict:

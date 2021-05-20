@@ -3,7 +3,8 @@ import logging
 from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import CoreStack, Step, Resource, State, do_param_substitution, lambda_logging_block
+from .util import CoreStack, Resource, State, do_param_substitution, lambda_logging_block
+from .util import Step2 as Step
 
 
 def scatter_step(core_stack: CoreStack, step: Step, map_step_name: str) -> dict:
@@ -72,7 +73,7 @@ def handle_scatter_gather(core_stack: CoreStack,
         raise RuntimeError("Nested Scatter steps are not supported")
 
     subbed_spec = do_param_substitution(step.spec)
-    subbed_step = Step(step.name, subbed_spec)
+    subbed_step = Step(step.name, subbed_spec, step.next)
 
     sub_branch = yield from sm.make_branch(core_stack, subbed_step.spec["steps"], wf_params, depth=map_depth + 1)
 

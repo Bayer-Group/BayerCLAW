@@ -142,7 +142,6 @@ def test_handle_native_step_stet():
     assert len(resources) == 0
 
 
-@pytest.mark.skip(reason="need to have batch states working first")
 def test_handle_parallel_native_step(monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()

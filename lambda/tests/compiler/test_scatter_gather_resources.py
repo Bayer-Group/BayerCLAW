@@ -5,7 +5,8 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.scatter_gather_resources import scatter_step, map_step, gather_step, handle_scatter_gather
-from ...src.compiler.pkg.util import CoreStack, Step, SENTRY
+from ...src.compiler.pkg.util import CoreStack
+from ...src.compiler.pkg.util import Step2 as Step
 
 
 def test_scatter_step(monkeypatch, mock_core_stack):
@@ -26,8 +27,8 @@ def test_scatter_step(monkeypatch, mock_core_stack):
         },
     }
 
-    test_step = Step("test_step", spec)
-    result = scatter_step(core_stack, test_step, "next_step_name")
+    test_step = Step("test_step", spec, "unused")
+    result = scatter_step(core_stack, test_step, "map_step_name")
     expect = {
         "Type": "Task",
         "Resource": "scatter_lambda_arn",
@@ -47,14 +48,14 @@ def test_scatter_step(monkeypatch, mock_core_stack):
             },
         },
         "ResultPath": "$.items",
-        "Next": "next_step_name",
+        "Next": "map_step_name",
     }
     assert result == expect
 
 
 def test_map_step():
     sub_branch = {"fake": "branch"}
-    result = map_step(sub_branch, "next_step_name")
+    result = map_step(sub_branch, "gather_step_name")
     expect = {
         "Type": "Map",
         "ItemsPath": "$.items",
@@ -67,16 +68,16 @@ def test_map_step():
         },
         "Iterator": sub_branch,
         "ResultPath": "$.results",
-        "Next": "next_step_name",
+        "Next": "gather_step_name",
     }
     assert result == expect
 
 
-@pytest.mark.parametrize("next_or_end", [
-    {"Next": "next_step"},
-    {"End": True},
+@pytest.mark.parametrize("next_step_name, next_or_end", [
+    ("next_step", {"Next": "next_step"}),
+    ("", {"End": True}),
 ])
-def test_gather_step(next_or_end, monkeypatch, mock_core_stack):
+def test_gather_step(next_step_name, next_or_end, monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
@@ -89,9 +90,8 @@ def test_gather_step(next_or_end, monkeypatch, mock_core_stack):
             "output1": "outfile1.txt",
             "output2": "outfile2.txt",
         },
-        **next_or_end,
     }
-    test_step = Step("test_step", spec)
+    test_step = Step("test_step", spec, next_step_name)
 
     expect = {
         "Type": "Task",
@@ -156,7 +156,6 @@ def sample_scatter_step():
     yield ret
 
 
-@pytest.mark.skip(reason="need to fix")
 def test_handle_scatter_gather(monkeypatch, mock_core_stack, sample_scatter_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
@@ -164,7 +163,7 @@ def test_handle_scatter_gather(monkeypatch, mock_core_stack, sample_scatter_step
     wf_params = {"wf": "params"}
 
     def helper():
-        step = Step("step_name", sample_scatter_step)
+        step = Step("step_name", sample_scatter_step, "next_step_name")
         states = yield from handle_scatter_gather(core_stack, step, wf_params, 0)
 
         assert len(states) == 3
@@ -202,14 +201,13 @@ def test_handle_scatter_gather(monkeypatch, mock_core_stack, sample_scatter_step
 
 def test_handle_scatter_gather_too_deep():
     def helper():
-        fake_step = Step("fake", {"fake": ""})
+        fake_step = Step("fake", {"fake": ""}, "fake_next_step")
         with pytest.raises(RuntimeError, match=r"Nested Scatter steps are not supported"):
             _ = yield from handle_scatter_gather("fake_core_stack", fake_step, {"wf": "params"}, 1)
 
     _ = list(helper())
 
 
-@pytest.mark.skip(reason="need to fix")
 def test_handle_scatter_gather_auto_inputs(monkeypatch, mock_core_stack, sample_scatter_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
@@ -217,7 +215,7 @@ def test_handle_scatter_gather_auto_inputs(monkeypatch, mock_core_stack, sample_
     sample_scatter_step["inputs"] = None
 
     def helper():
-        test_step = Step("step_name", sample_scatter_step)
+        test_step = Step("step_name", sample_scatter_step, "next_step_name")
         states = yield from handle_scatter_gather(core_stack, test_step, {"wf": "params"}, 0)
         assert states[0].spec["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 

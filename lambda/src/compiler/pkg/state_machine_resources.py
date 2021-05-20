@@ -96,19 +96,25 @@ def process_step(core_stack: CoreStack,
                  step: Step,
                  wf_params: dict,
                  depth: int) -> Generator[Resource, None, List[State]]:
-    # if "scatter" in step.spec:
-    #     normalized_step = validate_scatter_step(step)
-    #     steps_to_add = yield from sg.handle_scatter_gather(core_stack,
-    #                                                        normalized_step,
-    #                                                        wf_params,
-    #                                                        depth)
-    #     return steps_to_add
+    if "scatter" in step.spec:
+        normalized_step = validate_scatter_step(step)
+        steps_to_add = yield from sg.handle_scatter_gather(core_stack,
+                                                           normalized_step,
+                                                           wf_params,
+                                                           depth)
+        return steps_to_add
 
-    if "image" in step.spec:
+    elif "image" in step.spec:
         normalized_step = validate_batch_step(step)
         steps_to_add = yield from b.handle_batch(core_stack,
                                                  normalized_step,
                                                  wf_params)
+        return steps_to_add
+
+    elif "subpipe" in step.spec:
+        normalized_step = validate_subpipe_step(step)
+        steps_to_add = sp.handle_subpipe(core_stack,
+                                         normalized_step)
         return steps_to_add
 
     elif "Type" in step.spec:
