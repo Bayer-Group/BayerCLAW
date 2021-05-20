@@ -2,21 +2,22 @@ import logging
 from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import CoreStack, Step, Resource, State
+from .util import CoreStack, Resource, State
+from .util import Step2 as Step
 
 
 def handle_native_step(core_stack: CoreStack,
                        step: Step,
-                       # step_name: str,
-                       # spec: dict,
                        wf_params: dict,
                        map_depth: int) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
     logger.info(f"making native step {step.name}")
 
+    step_type = step.spec["Type"]
+
     ret = step.spec.copy()
 
-    if step.spec["Type"] == "Parallel":
+    if step_type == "Parallel":
         sub_branches = []
 
         for branch in step.spec["Branches"]:
@@ -30,10 +31,16 @@ def handle_native_step(core_stack: CoreStack,
         ret.pop("_stet")
 
     except KeyError:
-        if step.spec["Type"] not in {"Wait", "Succeed", "Fail"}:
+        if step_type not in {"Wait", "Succeed", "Fail"}:
             ret.update({"ResultPath": None})
 
-        if step.spec["Type"] != "Fail":
+        if step_type != "Fail":
             ret.update({"OutputPath": "$"})
+
+    ret.pop("Next", None)
+    ret.pop("End", None)
+
+    if step_type not in {"Succeed", "Fail"}:
+        ret.update(**step.next_or_end)
 
     return [State(step.name, ret)]

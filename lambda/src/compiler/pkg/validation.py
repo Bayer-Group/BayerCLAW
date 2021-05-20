@@ -3,7 +3,7 @@ from itertools import chain
 
 from voluptuous import *
 
-from .util import Step
+from .util import Step2 as Step
 
 
 class CompilerError(Exception):
@@ -186,29 +186,29 @@ def _validator(spec: dict, schema: Schema, where: str):
 
 def validate_batch_step(step: Step) -> Step:
     normalized_spec = _validator(step.spec, batch_step_schema, f"batch job step '{step.name}'")
-    return Step(step.name, normalized_spec)
+    return Step(step.name, normalized_spec, step.next)
 
 
 def validate_native_step(step: Step) -> Step:
     normalized_spec = _validator(step.spec, native_step_schema, f"native step '{step.name}")
-    return Step(step.name, normalized_spec)
+    return Step(step.name, normalized_spec, step.next)
 
 
 def validate_parallel_step(step: Step) -> Step:
     normalized_spec = _validator(step.spec, parallel_step_schema, f"parallel step '{step.name}")
-    return Step(step.name, normalized_spec)
+    return Step(step.name, normalized_spec, step.next)
 
 
 def validate_scatter_step(step: Step) -> Step:
     normalized_spec = _validator(step.spec, scatter_step_schema, f"scatter/gather step '{step.name}'")
-    return Step(step.name, normalized_spec)
+    return Step(step.name, normalized_spec, step.next)
 
 
 def validate_subpipe_step(step: Step) -> Step:
     normalized_spec = _validator(step.spec, subpipe_step_schema, f"subpipe step '{step.name}'")
-    return Step(step.name, normalized_spec)
+    return Step(step.name, normalized_spec, step.next)
 
 
 def validate_chooser_step(step: Step) -> Step:
     normalized_spec = _validator(step.spec, chooser_step_schema, f"chooser step '{step.name}'")
-    return Step(step.name, normalized_spec)
+    return Step(step.name, normalized_spec, step.next)

@@ -9,8 +9,9 @@ import boto3
 import humanfriendly
 
 from .qc_resources import handle_qc_check
-from .util import CoreStack, Step, Resource, State, make_logical_name, do_param_substitution,\
+from .util import CoreStack, Resource, State, make_logical_name, do_param_substitution,\
     time_string_to_seconds
+from .util import Step2 as Step
 
 SCRATCH_PATH = "/_bclaw_scratch"
 EFS_PATH = "/mnt/efs"
@@ -278,7 +279,7 @@ def handle_batch(core_stack: CoreStack,
     task_role = step.spec.get("task_role") or wf_params.get("task_role") or core_stack.output("ECSTaskRoleArn")
 
     subbed_spec = do_param_substitution(step.spec)
-    subbed_step = Step(step.name, subbed_spec)
+    subbed_step = Step(step.name, subbed_spec, step.next)
 
     job_def_name = yield from job_definition_rc(core_stack, subbed_step, task_role)
 

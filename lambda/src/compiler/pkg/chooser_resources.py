@@ -14,7 +14,6 @@ def choice_spec(expr_str: str, next_step: str) -> dict:
     return ret
 
 
-# todo: need logging
 def handle_chooser_step(core_stack: CoreStack, step: Step) -> List[State]:
     logger = logging.getLogger(__name__)
     logger.info(f"making chooser step {step.name}")
@@ -40,13 +39,15 @@ def handle_chooser_step(core_stack: CoreStack, step: Step) -> List[State]:
         "Next": choice_step_name,
     }
 
+    next_or_end = step.next_or_end
+    if "End" in next_or_end:
+        raise RuntimeError("wtf")
+
     choice_step = {
         "Type": "Choice",
         "Choices": choices,
+        "Default": next_or_end["Next"],
     }
-
-    if next_step is not SENTRY:
-        choice_step.update({"Default": next_step.name})
 
     ret = [
         State(step.name, task_step),

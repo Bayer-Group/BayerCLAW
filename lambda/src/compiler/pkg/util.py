@@ -8,6 +8,31 @@ import boto3
 import jmespath
 
 
+class Step2(NamedTuple):
+    name: str
+    spec: dict
+    next: str
+
+    @property
+    def next_or_end(self) -> dict:
+        if self.next == "":
+            return {"End": True}
+        else:
+            return {"Next": self.next}
+
+    # def next_or_end(self) -> dict:
+    #     ret = {k: self.spec[k] for k in {"Next", "End"} & set(self.spec)}
+    #     return ret
+
+    @property
+    def input_field(self) -> dict:
+        if self.spec["inputs"] is None:
+            ret = {"inputs.$": "States.JsonToString($.prev_outputs)"}
+        else:
+            ret = {"inputs": json.dumps(self.spec["inputs"])}
+        return ret
+
+
 class Step(NamedTuple):
     name: str
     spec: dict

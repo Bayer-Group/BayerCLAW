@@ -1,15 +1,14 @@
-from typing import Tuple, List
-
-from .util import CoreStack, Step, State, lambda_logging_block
+from .util import CoreStack, State, lambda_logging_block
+from .util import Step2 as Step
 
 
 def qc_checker_step(core_stack: CoreStack,
-                    step_name: str,
-                    qc_spec: dict,
-                    next_or_end: dict,
+                    batch_step: Step,
                     retry_attempts: int = 3,
                     wait_interval: int = 3,
                     backoff_rate: float = 1.5) -> dict:
+    qc_spec = batch_step.spec["qc_check"]
+
     ret = {
         "Type": "Task",
         "Resource": core_stack.output("QCCheckerLambdaArn"),
@@ -18,7 +17,7 @@ def qc_checker_step(core_stack: CoreStack,
             "qc_result_file": qc_spec["qc_result_file"],
             "qc_expression": qc_spec["stop_early_if"],
             "execution_id.$": "$$.Execution.Id",
-            **lambda_logging_block(step_name),
+            **lambda_logging_block(batch_step.name),
         },
         "Retry": [
             {
@@ -37,7 +36,7 @@ def qc_checker_step(core_stack: CoreStack,
         ],
         "ResultPath": None,
         "OutputPath": "$",
-        **next_or_end,
+        **batch_step.next_or_end,
     }
 
     return ret
@@ -45,19 +44,5 @@ def qc_checker_step(core_stack: CoreStack,
 
 def handle_qc_check(core_stack: CoreStack, batch_step: Step) -> State:
     qc_checker_step_name = f"{batch_step.name}.qc_checker"
-    ret = State(qc_checker_step_name,
-                qc_checker_step(core_stack, batch_step.name, batch_step.spec["qc_check"], batch_step.next_or_end))
+    ret = State(qc_checker_step_name, qc_checker_step(core_stack, batch_step))
     return ret
-
-
-# def handle_qc_check(core_stack: CoreStack,
-#                     batch_step_name: str,
-#                     qc_spec: dict,
-#                     next_or_end: dict) -> Tuple[str, List[State]]:
-#     qc_checker_step_name = f"{batch_step_name}.qc_checker"
-#
-#     ret = [
-#         State(qc_checker_step_name, qc_checker_step(core_stack, batch_step_name, qc_spec, next_or_end)),
-#     ]
-#
-#     return qc_checker_step_name, ret

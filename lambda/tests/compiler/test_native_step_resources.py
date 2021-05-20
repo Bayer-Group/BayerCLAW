@@ -5,7 +5,8 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.native_step_resources import handle_native_step
-from ...src.compiler.pkg.util import CoreStack, Step, State, lambda_logging_block
+from ...src.compiler.pkg.util import CoreStack, State
+from ...src.compiler.pkg.util import Step2 as Step
 
 
 pass_test = {
@@ -16,8 +17,8 @@ pass_test = {
     "Result": {"y": 1},
     "ResultPath": "override_this",
     "OutputPath": "override_this",
-    "Next": "next_step",
-    "End": True,
+    "Next": "override_this",
+    "End": False,
 }
 
 task_test = {
@@ -28,8 +29,8 @@ task_test = {
     "Parameters": {"x": 1},
     "ResultPath": "override_this",
     "OutputPath": "override_this",
-    "Next": "next_step",
-    "End": True,
+    "Next": "override_this",
+    "End": False,
 }
 
 wait_test = {
@@ -41,8 +42,8 @@ wait_test = {
     "TimestampPath": "$.timestamp",
     "InputPath": "$.input_path",
     "OutputPath": "override_this",
-    "Next": "next_step",
-    "End": True,
+    "Next": "override_this",
+    "End": False,
 }
 
 succeed_test = {
@@ -59,13 +60,21 @@ fail_test = {
     "Cause": "it failed",
 }
 
-
-@pytest.mark.parametrize("test_input", [pass_test, task_test, wait_test, succeed_test, fail_test])
-def test_handle_native_step(test_input):
+@pytest.mark.parametrize("test_input, next_or_end", [
+    (pass_test, "next_step"),
+    (pass_test, ""),
+    (task_test, "next_step"),
+    (task_test, ""),
+    (wait_test, "next_step"),
+    (wait_test, ""),
+    (succeed_test, "unused"),
+    (fail_test, "unused"),
+])
+def test_handle_native_step(test_input, next_or_end):
     wf_params = {"wf": "params"}
 
     def helper():
-        test_step = Step("step_name", test_input)
+        test_step = Step("step_name", test_input, next_or_end)
         result, *more = yield from handle_native_step("core_stack_placeholder", test_step, wf_params, 0)
         assert len(more) == 0
         assert isinstance(result, State)
@@ -83,11 +92,18 @@ def test_handle_native_step(test_input):
         except KeyError:
             pass
 
-        if test_input["Type"] in {"Succeed", "Fail"}:
+        if result.spec["Type"] in {"Succeed", "Fail"}:
             assert "Next" not in result
+            assert "End" not in result
         else:
-            next_ = result.spec.pop("Next")
-            assert next_ == "next_step"
+            if next_or_end == "":
+                end_value = result.spec.pop("End")
+                assert end_value is True
+                assert "Next" not in result
+            else:
+                next_value = result.spec.pop("Next")
+                assert next_value == next_or_end
+                assert "End" not in result
 
         # make sure all other fields are unchanged
         assert result.spec.items() <= test_input.items()
@@ -107,13 +123,14 @@ def test_handle_native_step_stet():
     wf_params = {"wf": "params"}
 
     def helper():
-        test_step = Step("step_name", test_input)
+        test_step = Step("step_name", test_input, "next_step")
         result, *more = yield from handle_native_step("core_stack_placeholder", test_step, wf_params, 0)
         expect = {
             "Type": "AnyType",
             "ResultPath": "keep_this_result_path",
             "OutputPath": "keep_this_output_path",
             "Other": "stuff",
+            "Next": "next_step",
         }
 
         assert len(more) == 0
@@ -125,6 +142,7 @@ def test_handle_native_step_stet():
     assert len(resources) == 0
 
 
+@pytest.mark.skip(reason="need to have batch states working first")
 def test_handle_parallel_native_step(monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
@@ -191,13 +209,13 @@ def test_handle_parallel_native_step(monkeypatch, mock_core_stack):
                   memory: 4
                   spot: true
                 skip_if_output_exists: true
-      Next: next_step
+      Next: override_this
     """)
     spec = yaml.safe_load(step_yaml)
     wf_params = {"wf": "params"}
 
     def helper():
-        test_step = Step("step_name", spec)
+        test_step = Step("step_name", spec, "next_step")
         result, *more = yield from handle_native_step(core_stack, test_step, wf_params, 0)
         # print(str(result))
         assert len(more) == 0

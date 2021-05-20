@@ -1,14 +1,15 @@
 import pytest
 
 from ...src.compiler.pkg.qc_resources import qc_checker_step, handle_qc_check
-from ...src.compiler.pkg.util import CoreStack, Step, State
+from ...src.compiler.pkg.util import CoreStack, State
+from ...src.compiler.pkg.util import Step2 as Step
 
 
-@pytest.mark.parametrize("next_or_end", [
-    {"Next": "next_step"},
-    {"End": True},
+@pytest.mark.parametrize("next_step_name, next_or_end", [
+    ("next_step", {"Next": "next_step"}),
+    ("", {"End": True}),
 ])
-def test_qc_checker_step(next_or_end, monkeypatch, mock_core_stack):
+def test_qc_checker_step(next_step_name, next_or_end, monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
@@ -16,7 +17,9 @@ def test_qc_checker_step(next_or_end, monkeypatch, mock_core_stack):
         "qc_result_file": "qc_file.json",
         "stop_early_if": "test_expression"
     }
-    result = qc_checker_step(core_stack, "test_step", qc_spec, next_or_end)
+    batch_step = Step("test_step", {"qc_check": qc_spec}, next_step_name)
+
+    result = qc_checker_step(core_stack, batch_step)
     expected = {
         "Type": "Task",
         "Resource": "qc_checker_lambda_arn",
@@ -73,10 +76,9 @@ def test_handle_qc_check(monkeypatch, mock_core_stack):
                 "test2@case.com",
             ],
         },
-        "Next": "next_step"
     }
 
-    batch_step = Step("step_name", batch_spec)
+    batch_step = Step("step_name", batch_spec, "next_step")
 
     result = handle_qc_check(core_stack, batch_step)
 
@@ -87,3 +89,4 @@ def test_handle_qc_check(monkeypatch, mock_core_stack):
     assert result.spec["Resource"] == "qc_checker_lambda_arn"
     assert result.spec["Parameters"]["qc_result_file"] == batch_spec["qc_check"]["qc_result_file"]
     assert result.spec["Parameters"]["qc_expression"] == batch_spec["qc_check"]["stop_early_if"]
+    assert result.spec["Next"] == "next_step"
