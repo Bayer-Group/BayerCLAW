@@ -13,7 +13,7 @@ from . import enhanced_parallel_resources as ep
 from . import native_step_resources as ns
 from . import scatter_gather_resources as sg
 from . import subpipe_resources as sp
-from .util import CoreStack, Resource, Step2, State, SENTRY, make_logical_name, lambda_logging_block
+from .util import CoreStack, Resource, State, SENTRY, make_logical_name, lambda_logging_block
 from .util import Step2 as Step
 from .validation import validate_batch_step, validate_native_step, validate_parallel_step, validate_scatter_step, \
     validate_subpipe_step, validate_chooser_step
@@ -54,7 +54,7 @@ def make_launcher_step(core_stack: CoreStack, wf_params: dict) -> dict:
 #         pass
 
 
-def make_step_list(steps: List[Dict]) -> List[Step2]:
+def make_step_list(steps: List[Dict]) -> List[Step]:
     ret = deque()
     next_step = ""
 
@@ -64,11 +64,11 @@ def make_step_list(steps: List[Dict]) -> List[Step2]:
         e = spec.get("End") or spec.get("end")
 
         if n is None and e is None:
-            step = Step2(name, spec, next_step)
+            step = Step(name, spec, next_step)
         elif n is not None:
-            step = Step2(name, spec, n)
+            step = Step(name, spec, n)
         else:
-            step = Step2(name, spec, "")
+            step = Step(name, spec, "")
 
         ret.appendleft(step)
         next_step = name
@@ -104,15 +104,14 @@ def process_step(core_stack: CoreStack,
     #                                                        depth)
     #     return steps_to_add
 
-    # if "image" in step.spec:
-    #     normalized_step = validate_batch_step(step)
-    #     steps_to_add = yield from b.handle_batch(core_stack,
-    #                                              normalized_step,
-    #                                              wf_params)
-    #     return steps_to_add
+    if "image" in step.spec:
+        normalized_step = validate_batch_step(step)
+        steps_to_add = yield from b.handle_batch(core_stack,
+                                                 normalized_step,
+                                                 wf_params)
+        return steps_to_add
 
-    # elif "Type" in step.spec:
-    if "Type" in step.spec:
+    elif "Type" in step.spec:
         normalized_step = validate_native_step(step)
         steps_to_add = yield from ns.handle_native_step(core_stack,
                                                         normalized_step,
@@ -133,17 +132,13 @@ def make_branch(core_stack: CoreStack,
         raw_steps.insert(0, launcher_step)
 
     steps = make_step_list(raw_steps)
-    # fill_in_nexts_and_ends(steps)
-
     states = {}
 
-    # for step in _stepperator(steps):
     for step in steps:
         states_to_add = yield from process_step(core_stack, step, wf_params, depth)
         states.update(states_to_add)
 
     ret = {
-        # "StartAt": next(iter(steps[0])),
         "StartAt": steps[0].name,
         "States": states,
     }
