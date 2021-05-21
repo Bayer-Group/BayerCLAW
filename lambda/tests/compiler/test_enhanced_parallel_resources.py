@@ -1,6 +1,7 @@
 import json
 import textwrap
 
+import pytest
 import yaml
 
 from ...src.compiler.pkg.enhanced_parallel_resources import handle_parallel_step
@@ -8,7 +9,11 @@ from ...src.compiler.pkg.util import CoreStack, State, lambda_logging_block
 from ...src.compiler.pkg.util import Step2 as Step
 
 
-def test_handle_parallel_native_step_with_conditions(monkeypatch, mock_core_stack):
+@pytest.mark.parametrize("next_step_name, next_or_end", [
+    ("next_step", {"Next": "next_step"}),
+    ("", {"End": True}),
+])
+def test_handle_parallel_step_enhanced(next_step_name, next_or_end, monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
@@ -46,7 +51,7 @@ def test_handle_parallel_native_step_with_conditions(monkeypatch, mock_core_stac
     wf_params = {"wf": "params"}
 
     def helper():
-        step = Step("step_name", spec, "next_step")
+        step = Step("step_name", spec, next_step_name)
 
         result, *more = yield from handle_parallel_step(core_stack, step, wf_params, 0)
         assert len(more) == 0
@@ -54,7 +59,7 @@ def test_handle_parallel_native_step_with_conditions(monkeypatch, mock_core_stac
         assert result.spec["Type"] == "Parallel"
         assert result.spec["ResultPath"] is None
         assert result.spec["OutputPath"] == "$"
-        assert result.spec["Next"] == "next_step"
+        assert next_or_end.items() <= result.spec.items()
         assert len(result.spec["Branches"]) == 3
 
         # branch "1"
