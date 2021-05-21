@@ -98,32 +98,45 @@ def process_step(core_stack: CoreStack,
                  depth: int) -> Generator[Resource, None, List[State]]:
     if "scatter" in step.spec:
         normalized_step = validate_scatter_step(step)
-        steps_to_add = yield from sg.handle_scatter_gather(core_stack,
-                                                           normalized_step,
-                                                           wf_params,
-                                                           depth)
-        return steps_to_add
+        states_to_add = yield from sg.handle_scatter_gather(core_stack,
+                                                            normalized_step,
+                                                            wf_params,
+                                                            depth)
 
     elif "image" in step.spec:
         normalized_step = validate_batch_step(step)
-        steps_to_add = yield from b.handle_batch(core_stack,
-                                                 normalized_step,
-                                                 wf_params)
-        return steps_to_add
+        states_to_add = yield from b.handle_batch(core_stack,
+                                                  normalized_step,
+                                                  wf_params)
 
     elif "subpipe" in step.spec:
         normalized_step = validate_subpipe_step(step)
-        steps_to_add = sp.handle_subpipe(core_stack,
+        states_to_add = sp.handle_subpipe(core_stack,
                                          normalized_step)
-        return steps_to_add
 
     elif "Type" in step.spec:
         normalized_step = validate_native_step(step)
-        steps_to_add = yield from ns.handle_native_step(core_stack,
-                                                        normalized_step,
-                                                        wf_params,
-                                                        depth)
-        return steps_to_add
+        states_to_add = yield from ns.handle_native_step(core_stack,
+                                                         normalized_step,
+                                                         wf_params,
+                                                         depth)
+
+    elif "choices" in step.spec:
+        normalized_step = validate_chooser_step(step)
+        states_to_add = c.handle_chooser_step(core_stack,
+                                              normalized_step)
+
+    elif "branches" in step.spec:
+        normalized_step = validate_parallel_step(step)
+        states_to_add = yield from ep.handle_parallel_step(core_stack,
+                                                           normalized_step,
+                                                           wf_params,
+                                                           depth)
+
+    else:
+        raise RuntimeError(f"step '{step.name}' is not a recognized step type")
+
+    return states_to_add
 
 
 def make_branch(core_stack: CoreStack,

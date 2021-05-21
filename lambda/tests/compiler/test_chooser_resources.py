@@ -1,10 +1,14 @@
+import json
 import logging
 import pytest
+
+from voluptuous.error import Invalid
 
 logging.basicConfig(level=logging.INFO)
 
 from ...src.compiler.pkg.chooser_resources import choice_spec, handle_chooser_step
-from ...src.compiler.pkg.util import CoreStack, Step, State, lambda_logging_block, SENTRY
+from ...src.compiler.pkg.util import CoreStack, State, lambda_logging_block, SENTRY
+from ...src.compiler.pkg.util import Step2 as Step
 
 
 def test_choice_spec():
@@ -20,12 +24,7 @@ def test_choice_spec():
     assert result == expect
 
 
-@pytest.mark.skip(reason="need to fix")
-@pytest.mark.parametrize("next_step, default", [
-    (Step("next_step", {}), {"Default": "next_step"}),
-    (SENTRY, None),
-])
-def test_make_chooser_steps(monkeypatch, mock_core_stack, next_step, default):
+def test_make_chooser_steps(monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
@@ -50,12 +49,14 @@ def test_make_chooser_steps(monkeypatch, mock_core_stack, next_step, default):
         ]
     }
 
+    test_step = Step("step_name", spec, "next_step")
+
     expected_task_spec = {
         "Type": "Task",
         "Resource": "chooser_lambda_arn",
         "Parameters": {
             "repo.$": "$.repo",
-            "inputs": spec["inputs"],
+            "inputs": json.dumps(spec["inputs"]),
             "expressions": [
                 "infile1.var1 == 1",
                 "infile2.var2 == 2",
@@ -87,9 +88,10 @@ def test_make_chooser_steps(monkeypatch, mock_core_stack, next_step, default):
                 "Next": "step97",
             },
         ],
+        "Default": "next_step"
     }
 
-    result = handle_chooser_step(core_stack, "step_name", spec, next_step)
+    result = handle_chooser_step(core_stack, test_step)
     assert len(result) == 2
     assert all(isinstance(s, State) for s in result)
 
@@ -99,8 +101,10 @@ def test_make_chooser_steps(monkeypatch, mock_core_stack, next_step, default):
 
     choice_state = result[1]
     assert choice_state.name == "step_name.choose"
+    assert choice_state.spec == expected_choice_spec
 
-    if next_step is not SENTRY:
-        assert choice_state.spec == {**expected_choice_spec, **default}
-    else:
-        assert choice_state.spec == expected_choice_spec
+
+def test_make_chooser_steps_terminal_state_fail(monkeypatch, mock_core_stack):
+    test_step = Step("step_name", {"not": "used"}, "")
+    with pytest.raises(Invalid, match="chooser steps cannot be terminal"):
+        _ = handle_chooser_step("core_stack_placeholder", test_step)

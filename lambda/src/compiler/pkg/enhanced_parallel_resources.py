@@ -1,38 +1,40 @@
+import logging
 from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import CoreStack, Step, Resource, State, next_or_end, lambda_logging_block
+from .util import CoreStack, Resource, State, next_or_end, lambda_logging_block
+from .util import Step2 as Step
 
 
 def handle_parallel_step(core_stack: CoreStack,
-                         step_name: str,
-                         spec: dict,
+                         step: Step,
                          wf_params: dict,
-                         next_step: Step,
                          map_depth: int) -> Generator[Resource, None, List[State]]:
-    inputs = spec["inputs"]
+    logger = logging.getLogger(__name__)
+    logger.info(f"making enhanced parallel step {step.name}")
+
     sfn_branches = []
 
-    for idx, branch in enumerate(spec["branches"], start=1):
+    for idx, branch in enumerate(step.spec["branches"], start=1):
         steps = branch["steps"]
         try:
             expression = branch["if"]
             next_step_name = next(iter(steps[0]))
-            skip_step_name = f"{step_name}: skip_{idx}"
+            skip_step_name = f"{step.name}: skip_{idx}"
 
             # note: this creates two native-type steps in the BayerCLAW spec language.
             # They will be processed into Amazon States Language in the sm.make_branch()
             # call below.
             preamble = [
                 {
-                    f"{step_name}: {expression}?": {
+                    f"{step.name}: {expression}?": {
                         "Type": "Task",
                         "Resource": core_stack.output("ChooserLambdaArn"),
                         "Parameters": {
                             "repo.$": "$.repo",
-                            "inputs": inputs,
+                            **step.input_field,
                             "expression": expression,
-                            **lambda_logging_block(step_name)
+                            **lambda_logging_block(step.name)
                         },
                         "Catch": [
                             {
@@ -70,7 +72,7 @@ def handle_parallel_step(core_stack: CoreStack,
         "Branches": sfn_branches,
         "ResultPath": None,
         "OutputPath": "$",
-        **next_or_end(next_step)
+        **step.next_or_end,
     }
 
-    return [State(step_name, ret)]
+    return [State(step.name, ret)]

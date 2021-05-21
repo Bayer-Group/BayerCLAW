@@ -31,7 +31,9 @@ def load_s3_object(s3_path: str) -> dict:
     return ret
 
 
-def load_vals(inputs: dict, repo: str) -> Generator[Tuple, None, None]:
+def load_vals(inputs_json: str, repo: str) -> Generator[Tuple, None, None]:
+    inputs = json.loads(inputs_json)
+
     job_data = load_s3_object(f"{repo}/_JOB_DATA_")
     yield "job", DottedCollection.factory(job_data["job"])
 
@@ -69,7 +71,7 @@ def run_exprs(exprs: list, vals: dict):
 def lambda_handler(event: dict, context: object):
     # event = {
     #   repo
-    #   inputs{}
+    #   inputs -- needs to be a json string for auto inputs compatibility
     #   expressions[] | expression
     #   logging{}
     # }

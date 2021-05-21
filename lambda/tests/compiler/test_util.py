@@ -5,6 +5,16 @@ from ...src.compiler.pkg.util import CoreStack, make_logical_name, next_or_end, 
     do_param_substitution, time_string_to_seconds, Step2, SENTRY
 
 
+@pytest.mark.parametrize("next_step, expect", [
+    ("", True),
+    ("not_terminal", False)
+])
+def test_step_is_terminal(next_step, expect):
+    step = Step2("name", {}, next_step)
+    result = step.is_terminal
+    assert result == expect
+
+
 @pytest.mark.parametrize("step, expect", [
     (Step2("name1", {"Other": "stuff"}, "next_step"), {"Next": "next_step"}),
     (Step2("name2", {"Other": "stuff"}, ""), {"End": True}),

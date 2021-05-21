@@ -14,8 +14,12 @@ class Step2(NamedTuple):
     next: str
 
     @property
+    def is_terminal(self) -> bool:
+        return self.next == ""
+
+    @property
     def next_or_end(self) -> dict:
-        if self.next == "":
+        if self.is_terminal:
             return {"End": True}
         else:
             return {"Next": self.next}

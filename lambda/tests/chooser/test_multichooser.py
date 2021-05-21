@@ -101,11 +101,11 @@ def test_load_s3_object(mock_repo):
 
 
 def test_load_vals(mock_repo):
-    inputs = {
+    inputs = json.dumps({
         "input1": "file1.json",
         "input2": "file2.json",
         "input3": "file3.json",
-    }
+    })
 
     expect = {
         "job": job_data["job"],
@@ -129,10 +129,10 @@ def test_load_vals(mock_repo):
     ({"input1": "file5.json"}, {"input1": data5}),
 ])
 def test_load_vals_single_input(mock_repo, inputs, expect0):
-    result = dict(load_vals(inputs, mock_repo))
+    result = dict(load_vals(json.dumps(inputs), mock_repo))
     expect = {**{"job": job_data["job"]}, **expect0}
-    print(str(result))
-    print(str(expect))
+    # print(str(result))
+    # print(str(expect))
     assert str(result) == str(expect)  # ugh
 
     if inputs["input1"] == "file1.json":
@@ -199,11 +199,11 @@ def test_run_exprs(vals, expect):
     (["not job.eh", "input1.a > 99", "input2.f != 7", "input3[0] < 0"], None)
 ])
 def test_lambda_handler_multi_expr(mock_repo, exprs, expect):
-    inputs = {
+    inputs = json.dumps({
         "input1": "file1.json",
         "input2": "file2.json",
         "input3": "file3.json",
-    }
+    })
 
     event = {
         "repo": mock_repo,
@@ -224,7 +224,7 @@ def test_lambda_handler_multi_expr(mock_repo, exprs, expect):
 def test_lambda_handler_multi_expr_job_data_only(mock_repo, exprs, expect):
     event = {
         "repo": mock_repo,
-        "inputs": {},
+        "inputs": json.dumps({}),
         "expressions": exprs,
         "logging": {}
     }
@@ -240,7 +240,7 @@ def test_lambda_handler_multi_expr_job_data_only(mock_repo, exprs, expect):
 def test_lambda_handler_multi_expr_single_input(mock_repo, inputs, exprs, expect):
     event = {
         "repo": mock_repo,
-        "inputs": inputs,
+        "inputs": json.dumps(inputs),
         "expressions": exprs,
         "logging": {}
     }
@@ -256,7 +256,7 @@ def test_lambda_handler_multi_expr_single_input(mock_repo, inputs, exprs, expect
 def test_lambda_handler_single_expr_succeed(mock_repo, inputs, expression):
     event = {
         "repo": mock_repo,
-        "inputs": inputs,
+        "inputs": json.dumps(inputs),
         "expression": expression,
         "logging": {}
     }
@@ -273,7 +273,7 @@ def test_lambda_handler_single_expr_succeed(mock_repo, inputs, expression):
 def test_lambda_handler_single_expr_fail(mock_repo, inputs, expression):
     event = {
         "repo": mock_repo,
-        "inputs": inputs,
+        "inputs": json.dumps(inputs),
         "expression": expression,
         "logging": {}
     }

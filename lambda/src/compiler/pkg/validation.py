@@ -119,6 +119,7 @@ parallel_step_schema = Schema(
                     },
                 ]
             ),
+        **next_or_end,
     }
 )
 
@@ -133,7 +134,8 @@ chooser_step_schema = Schema(
                         Required("if", msg="no 'if' condition found"): str,
                         Required("next", msg="no 'next' name found"): str,
                     },
-                ])
+                ]),
+        Optional("next"): str,
     }
 )
 
@@ -158,6 +160,7 @@ subpipe_step_schema = Schema(
         Optional("submit", default=[]): [str],
         Required("subpipe"): str,
         Optional("retrieve", default=[]): [str],
+        **next_or_end,
     }
 )
 
