@@ -168,6 +168,8 @@ def main(commands: List[str],
             logger.exception("runner failed")
             status = 255
 
+        else:
+            logger.info("runner finished")
     return status
 
 

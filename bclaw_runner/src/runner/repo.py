@@ -146,9 +146,9 @@ class Repository(object):
 
     def download_inputs(self, input_spec: Dict[str, str], optional: bool) -> Dict[str, str]:
         if optional:
-            logger.info("downloading optional files from S3")
+            logger.info(f"downloading {len(input_spec)} optional file(s) from S3")
         else:
-            logger.info("downloading required files from S3")
+            logger.info(f"downloading {len(input_spec)} required file(s) from S3")
 
         s3_paths = {k: self.add_s3_path(v) for k, v in input_spec.items()}
         expanded_s3_paths = list(_inputerator(s3_paths.values()))
