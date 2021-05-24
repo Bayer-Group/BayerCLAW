@@ -124,8 +124,13 @@ def main(commands: List[str],
             # download references, link to workspace
             local_references = get_reference_inputs(jobby_references)
 
+            print(str(subbed_inputs))
+
             # split inputs into required & optional here
             required_inputs, optional_inputs = split_inputs(subbed_inputs)
+
+            print(str(required_inputs))
+            print(str(optional_inputs))
 
             # download inputs -> returns local filenames
             local_required_inputs = repo.download_inputs(required_inputs, optional=False)
