@@ -18,7 +18,6 @@ Options:
 
 import json
 import logging.config
-from operator import itemgetter
 import os
 import sys
 from typing import Dict, List, Tuple
@@ -65,19 +64,26 @@ def get_config() -> dict:
     return cfg
 
 
+# this emulates operator.itemgetter, except that it always returns a tuple
+def my_itemgetter(*items):
+    def _impl(obj):
+        return tuple(obj[i] for i in items)
+    return _impl
+
+
 def split_inputs(all_inputs: dict) -> Tuple[Dict, Dict]:
     required_iter, optional_iter = partition(lambda s: s.endswith("?"), all_inputs)
 
     required_keys = list(required_iter)
     try:
-        required_getter = itemgetter(*required_keys)
+        required_getter = my_itemgetter(*required_keys)
         required_ret = {k: v for k, v in zip(required_keys, required_getter(all_inputs))}
     except TypeError:
         required_ret = {}
 
     optional_keys = list(optional_iter)
     try:
-        optional_getter = itemgetter(*optional_keys)
+        optional_getter = my_itemgetter(*optional_keys)
         optional_ret = {k.rstrip("?"): v for k, v in zip(optional_keys, optional_getter(all_inputs))}
     except TypeError:
         optional_ret = {}
@@ -124,13 +130,8 @@ def main(commands: List[str],
             # download references, link to workspace
             local_references = get_reference_inputs(jobby_references)
 
-            logger.info(f"subbed inputs = {str(subbed_inputs)}")
-
-            # split inputs into required & optional here
+            # split inputs into required & optional
             required_inputs, optional_inputs = split_inputs(subbed_inputs)
-
-            logger.info(f"required_inputs = {str(required_inputs)}")
-            logger.info(f"optional_inputs = {str(optional_inputs)}")
 
             # download inputs -> returns local filenames
             local_required_inputs = repo.download_inputs(required_inputs, optional=False)

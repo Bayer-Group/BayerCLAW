@@ -9,7 +9,7 @@ import boto3
 import moto
 import pytest
 
-from ..src.runner.runner_main import split_inputs, main, cli
+from ..src.runner.runner_main import my_itemgetter, split_inputs, main, cli
 
 
 TEST_BUCKET = "test-bucket"
@@ -57,6 +57,18 @@ opt_inputs = {
     "opt2?": "file4.txt",
 }
 
+
+@pytest.mark.parametrize("items, expect", [
+    ([], tuple()),
+    (["req1"], ("file1.txt",)),
+    (["req1", "req2"], ("file1.txt", "file2.txt")),
+])
+def test_my_itemgetter(items, expect):
+    getter = my_itemgetter(*items)
+    result = getter(req_inputs)
+    assert result == expect
+
+
 @pytest.mark.parametrize("all, expected_req, expected_opt", [
     ({**req_inputs, **opt_inputs}, req_inputs, opt_inputs),
     (req_inputs, req_inputs, {}),
@@ -71,6 +83,13 @@ def test_split_inputs(all, expected_req, expected_opt):
         orig_key = k + "?"
         assert orig_key in expected_opt
         assert v == expected_opt[orig_key]
+
+
+def test_split_inputs_one_item():
+    all_inputs = {"basic_out": "basic_out.txt"}
+    result, _ = split_inputs(all_inputs)
+    # if you use operator.itemgetter, result will be {"basic_out": "b"}
+    assert result == {"basic_out": "basic_out.txt"}
 
 
 def test_main(monkeypatch, tmp_path, mock_bucket, read_config):
