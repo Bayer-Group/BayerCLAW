@@ -18,11 +18,13 @@ Options:
 
 import json
 import logging.config
+from operator import itemgetter
 import os
 import sys
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from docopt import docopt
+from more_itertools import partition
 
 from .cache import get_reference_inputs
 from .custom_logs import LOGGING_CONFIG
@@ -61,6 +63,26 @@ def get_config() -> dict:
         cfg = json.load(fp)
 
     return cfg
+
+
+def split_inputs(all_inputs: dict) -> Tuple[Dict, Dict]:
+    required_iter, optional_iter = partition(lambda s: s.endswith("?"), all_inputs)
+
+    required_keys = list(required_iter)
+    try:
+        required_getter = itemgetter(*required_keys)
+        required_ret = {k: v for k, v in zip(required_keys, required_getter(all_inputs))}
+    except TypeError:
+        required_ret = {}
+
+    optional_keys = list(optional_iter)
+    try:
+        optional_getter = itemgetter(*optional_keys)
+        optional_ret = {k.rstrip("?"): v for k, v in zip(optional_keys, optional_getter(all_inputs))}
+    except TypeError:
+        optional_ret = {}
+
+    return required_ret, optional_ret
 
 
 def main(commands: List[str],
@@ -102,12 +124,20 @@ def main(commands: List[str],
             # download references, link to workspace
             local_references = get_reference_inputs(jobby_references)
 
+            # split inputs into required & optional here
+            required_inputs, optional_inputs = split_inputs(subbed_inputs)
+
             # download inputs -> returns local filenames
-            local_inputs = repo.download_inputs(subbed_inputs)
+            local_required_inputs = repo.download_inputs(required_inputs, optional=False)
+            local_optional_inputs = repo.download_inputs(optional_inputs, optional=True)
             local_outputs = subbed_outputs
 
             # substitute local filenames into commands
-            subbed_commands = substitute(jobby_commands, {**local_inputs, **local_outputs, **jobby_params, **local_references})
+            subbed_commands = substitute(jobby_commands, {**local_required_inputs,
+                                                          **local_optional_inputs,
+                                                          **local_outputs,
+                                                          **jobby_params,
+                                                          **local_references})
 
             local_job_data = write_job_data_file(job_data_obj, wrk)
 

@@ -9,7 +9,7 @@ import boto3
 import moto
 import pytest
 
-from ..src.runner.runner_main import main, cli
+from ..src.runner.runner_main import split_inputs, main, cli
 
 
 TEST_BUCKET = "test-bucket"
@@ -47,6 +47,32 @@ def mock_get_config(cfg: dict):
     return _ret
 
 
+req_inputs = {
+    "req1": "file1.txt",
+    "req2": "file2.txt",
+}
+
+opt_inputs = {
+    "opt1?": "file3.txt",
+    "opt2?": "file4.txt",
+}
+
+@pytest.mark.parametrize("all, expected_req, expected_opt", [
+    ({**req_inputs, **opt_inputs}, req_inputs, opt_inputs),
+    (req_inputs, req_inputs, {}),
+    (opt_inputs, {}, opt_inputs),
+    ({}, {}, {}),
+])
+def test_split_inputs(all, expected_req, expected_opt):
+    req_result, opt_result = split_inputs(all)
+    assert req_result == expected_req
+    assert len(opt_result) == len(expected_opt)
+    for k, v in opt_result.items():
+        orig_key = k + "?"
+        assert orig_key in expected_opt
+        assert v == expected_opt[orig_key]
+
+
 def test_main(monkeypatch, tmp_path, mock_bucket, read_config):
     monkeypatch.setenv("BC_STEP_NAME", "step1")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
@@ -63,7 +89,8 @@ def test_main(monkeypatch, tmp_path, mock_bucket, read_config):
     inputs = {
         "input1": "file${job.key1}",
         "input2": "file${job.key2}",
-        "input3": "file${param1}",
+        "input3?": "file${param1}",
+        "input4?": "file99"
     }
 
     outputs = {
@@ -80,6 +107,7 @@ def test_main(monkeypatch, tmp_path, mock_bucket, read_config):
         "echo ${parent.value} >> ${output3}",
         "echo ${scatter.value} >> ${output3}",
         "echo ${param1} >> ${output3}"
+        "echo ${input4} >> ${output3}"
     ]
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
@@ -136,6 +164,7 @@ def test_main(monkeypatch, tmp_path, mock_bucket, read_config):
     parent_value
     scatter_value
     3
+    file99
     """)
     outfile3 = mock_bucket.Object("repo/path/outfile3").get()
     with closing(outfile3["Body"]) as fp:
