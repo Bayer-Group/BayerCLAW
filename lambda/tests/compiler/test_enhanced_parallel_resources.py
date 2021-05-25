@@ -5,8 +5,7 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.enhanced_parallel_resources import handle_parallel_step
-from ...src.compiler.pkg.util import CoreStack, State, lambda_logging_block
-from ...src.compiler.pkg.util import Step2 as Step
+from ...src.compiler.pkg.util import CoreStack, Step, State, lambda_logging_block
 
 
 @pytest.mark.parametrize("next_step_name, next_or_end", [

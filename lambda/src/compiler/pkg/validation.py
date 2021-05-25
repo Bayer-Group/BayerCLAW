@@ -3,7 +3,7 @@ from itertools import chain
 
 from voluptuous import *
 
-from .util import Step2 as Step
+from .util import Step
 
 
 class CompilerError(Exception):

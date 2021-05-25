@@ -9,8 +9,7 @@ import yaml
 from ...src.compiler.pkg.batch_resources import parse_uri, get_ecr_uri, get_custom_job_queue_arn, get_job_queue,\
     get_memory_in_mibs, get_skip_behavior, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH
 from ...src.compiler.pkg.misc_resources import LAUNCHER_STACK_NAME
-from ...src.compiler.pkg.util import CoreStack, Resource, State
-from ...src.compiler.pkg.util import Step2 as Step
+from ...src.compiler.pkg.util import CoreStack, Step, Resource, State
 
 
 @pytest.mark.parametrize("uri, expected", [

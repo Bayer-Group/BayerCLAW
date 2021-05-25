@@ -9,9 +9,8 @@ import boto3
 import humanfriendly
 
 from .qc_resources import handle_qc_check
-from .util import CoreStack, Resource, State, make_logical_name, do_param_substitution,\
+from .util import CoreStack, Step, Resource, State, make_logical_name, do_param_substitution,\
     time_string_to_seconds
-from .util import Step2 as Step
 
 SCRATCH_PATH = "/_bclaw_scratch"
 EFS_PATH = "/mnt/efs"

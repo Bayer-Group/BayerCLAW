@@ -4,8 +4,7 @@ from typing import List
 
 from voluptuous.error import Invalid
 
-from .util import CoreStack, State, lambda_logging_block
-from .util import Step2 as Step
+from .util import CoreStack, Step, State, lambda_logging_block
 
 
 def choice_spec(expr_str: str, next_step: str) -> dict:

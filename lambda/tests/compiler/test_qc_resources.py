@@ -1,8 +1,7 @@
 import pytest
 
 from ...src.compiler.pkg.qc_resources import qc_checker_step, handle_qc_check
-from ...src.compiler.pkg.util import CoreStack, State
-from ...src.compiler.pkg.util import Step2 as Step
+from ...src.compiler.pkg.util import CoreStack, Step, State
 
 
 @pytest.mark.parametrize("next_step_name, next_or_end", [

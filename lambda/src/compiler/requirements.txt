@@ -1,4 +1,3 @@
 humanfriendly
-more_itertools
 pyyaml
 voluptuous

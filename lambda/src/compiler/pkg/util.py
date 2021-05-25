@@ -2,13 +2,13 @@ from datetime import timedelta
 import json
 import os
 import re
-from typing import Dict, Union, Any, NamedTuple
+from typing import Any, NamedTuple
 
 import boto3
 import jmespath
 
 
-class Step2(NamedTuple):
+class Step(NamedTuple):
     name: str
     spec: dict
     next: str
@@ -23,28 +23,6 @@ class Step2(NamedTuple):
             return {"End": True}
         else:
             return {"Next": self.next}
-
-    # def next_or_end(self) -> dict:
-    #     ret = {k: self.spec[k] for k in {"Next", "End"} & set(self.spec)}
-    #     return ret
-
-    @property
-    def input_field(self) -> dict:
-        if self.spec["inputs"] is None:
-            ret = {"inputs.$": "States.JsonToString($.prev_outputs)"}
-        else:
-            ret = {"inputs": json.dumps(self.spec["inputs"])}
-        return ret
-
-
-class Step(NamedTuple):
-    name: str
-    spec: dict
-
-    @property
-    def next_or_end(self) -> dict:
-        ret = {k: self.spec[k] for k in {"Next", "End"} & set(self.spec)}
-        return ret
 
     @property
     def input_field(self) -> dict:
@@ -63,9 +41,6 @@ class Resource(NamedTuple):
 class State(NamedTuple):
     name: str
     spec: dict
-
-
-SENTRY = Step("SENTRY", {})
 
 
 class CoreStack(object):
@@ -87,20 +62,6 @@ class CoreStack(object):
 def make_logical_name(s: str) -> str:
     words = (w.capitalize() for w in re.split(r"[\W_]+", s))
     ret = "".join(words)
-    return ret
-
-
-# def next_or_end2(step: Step) -> dict:
-#     ret = {k: step.spec[k] for k in {"Next", "End"} & set(step.spec)}
-#     return ret
-
-
-def next_or_end(next_step: Step) -> Dict[str, Union[bool, str]]:
-    if next_step is SENTRY:
-        ret = {"End": True}
-    else:
-        ret = {"Next": next_step.name}
-
     return ret
 
 

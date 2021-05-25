@@ -2,8 +2,7 @@ import logging
 from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import CoreStack, Resource, State
-from .util import Step2 as Step
+from .util import CoreStack, Step, Resource, State
 
 
 def handle_native_step(core_stack: CoreStack,

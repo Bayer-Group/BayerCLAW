@@ -1,8 +1,8 @@
 import json
 import pytest
 
-from ...src.compiler.pkg.util import CoreStack, make_logical_name, next_or_end, _param_subber, \
-    do_param_substitution, time_string_to_seconds, Step2, SENTRY
+from ...src.compiler.pkg.util import CoreStack, Step, make_logical_name, _param_subber, \
+    do_param_substitution, time_string_to_seconds
 
 
 @pytest.mark.parametrize("next_step, expect", [
@@ -10,15 +10,14 @@ from ...src.compiler.pkg.util import CoreStack, make_logical_name, next_or_end, 
     ("not_terminal", False)
 ])
 def test_step_is_terminal(next_step, expect):
-    step = Step2("name", {}, next_step)
+    step = Step("name", {}, next_step)
     result = step.is_terminal
     assert result == expect
 
 
 @pytest.mark.parametrize("step, expect", [
-    (Step2("name1", {"Other": "stuff"}, "next_step"), {"Next": "next_step"}),
-    (Step2("name2", {"Other": "stuff"}, ""), {"End": True}),
-    # (Step("name3", {"Other": "stuff"}), {}),
+    (Step("name1", {"Other": "stuff"}, "next_step"), {"Next": "next_step"}),
+    (Step("name2", {"Other": "stuff"}, ""), {"End": True}),
 ])
 def test_step_next_or_end(step, expect):
     result = step.next_or_end
@@ -26,9 +25,9 @@ def test_step_next_or_end(step, expect):
 
 
 @pytest.mark.parametrize("step, expect", [
-    (Step2("name1", {"Other": "stuff", "inputs": {"file1": "one", "file2": "two"}}, ""), {"inputs": json.dumps({"file1": "one", "file2": "two"})}),
-    (Step2("name2", {"Other": "stuff", "inputs": {}}, ""), {"inputs": json.dumps({})}),
-    (Step2("name3", {"Other": "stuff", "inputs": None}, ""), {"inputs.$": "States.JsonToString($.prev_outputs)"})
+    (Step("name1", {"Other": "stuff", "inputs": {"file1": "one", "file2": "two"}}, ""), {"inputs": json.dumps({"file1": "one", "file2": "two"})}),
+    (Step("name2", {"Other": "stuff", "inputs": {}}, ""), {"inputs": json.dumps({})}),
+    (Step("name3", {"Other": "stuff", "inputs": None}, ""), {"inputs.$": "States.JsonToString($.prev_outputs)"})
 ])
 def test_step_input_field(step, expect):
     result = step.input_field
@@ -47,13 +46,6 @@ def test_make_logical_name():
     result = make_logical_name(orig_name)
     expect = "ANameWithLotsOfWeirdCharactersThatWillNeverWorkAsALogicalName12345"
     assert result == expect
-
-
-# @pytest.mark.parametrize("test_step, next_or_end_", [(Step("step_name", {}, "next_step"), {"Next": "next_step"}),
-#                                                      (Step("step_name", {}, ""), {"End": True})])
-# def test_next_or_end(test_step, next_or_end_):
-#     result = next_or_end(next_step)
-#     assert result == next_or_end_
 
 
 @pytest.mark.parametrize("target, expect", [

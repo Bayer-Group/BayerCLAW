@@ -5,8 +5,7 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.subpipe_resources import file_submit_step, run_subpipe_step, file_retrieve_step, handle_subpipe
-from ...src.compiler.pkg.util import CoreStack
-from ...src.compiler.pkg.util import Step2 as Step
+from ...src.compiler.pkg.util import CoreStack, Step
 
 
 @pytest.fixture(scope="module")
@@ -19,8 +18,7 @@ def sample_subpipe_spec() -> dict:
       retrieve:
         - fileX.txt -> file3.txt
         - fileY.txt
-      """
-    )
+      """)
     ret = yaml.safe_load(step_yaml)
     return ret
 

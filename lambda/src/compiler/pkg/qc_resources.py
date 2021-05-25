@@ -1,5 +1,4 @@
-from .util import CoreStack, State, lambda_logging_block
-from .util import Step2 as Step
+from .util import CoreStack, Step, State, lambda_logging_block
 
 
 def qc_checker_step(core_stack: CoreStack,

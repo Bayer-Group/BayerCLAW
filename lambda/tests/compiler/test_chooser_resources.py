@@ -7,8 +7,7 @@ from voluptuous.error import Invalid
 logging.basicConfig(level=logging.INFO)
 
 from ...src.compiler.pkg.chooser_resources import choice_spec, handle_chooser_step
-from ...src.compiler.pkg.util import CoreStack, State, lambda_logging_block, SENTRY
-from ...src.compiler.pkg.util import Step2 as Step
+from ...src.compiler.pkg.util import CoreStack, Step, State, lambda_logging_block
 
 
 def test_choice_spec():

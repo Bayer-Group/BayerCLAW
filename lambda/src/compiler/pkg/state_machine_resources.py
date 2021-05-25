@@ -1,11 +1,10 @@
 from collections import deque
 import json
 import logging
-from typing import Generator, Tuple, Iterable, List, Dict
+from typing import Generator, List, Dict
 from uuid import uuid4
 
 import boto3
-from more_itertools import peekable
 
 from . import batch_resources as b
 from . import chooser_resources as c
@@ -13,8 +12,7 @@ from . import enhanced_parallel_resources as ep
 from . import native_step_resources as ns
 from . import scatter_gather_resources as sg
 from . import subpipe_resources as sp
-from .util import CoreStack, Resource, State, SENTRY, make_logical_name, lambda_logging_block
-from .util import Step2 as Step
+from .util import CoreStack, Step, Resource, State, make_logical_name, lambda_logging_block
 from .validation import validate_batch_step, validate_native_step, validate_parallel_step, validate_scatter_step, \
     validate_subpipe_step, validate_chooser_step
 
@@ -40,20 +38,6 @@ def make_launcher_step(core_stack: CoreStack, wf_params: dict) -> dict:
     return ret
 
 
-# def _stepperator(steps: Iterable) -> Generator[Step, None, None]:
-#     for record in steps:
-#         name, spec = next(iter(record.items()))
-#         step = Step(name, spec)
-#         yield step
-
-
-# def capitalize_key_inplace(d: dict, k: str) -> None:
-#     try:
-#         d[k.capitalize()] = d.pop(k)
-#     except KeyError:
-#         pass
-
-
 def make_step_list(steps: List[Dict]) -> List[Step]:
     ret = deque()
     next_step = ""
@@ -76,22 +60,6 @@ def make_step_list(steps: List[Dict]) -> List[Step]:
     return list(ret)
 
 
-# def fill_in_nexts_and_ends(steps: list) -> None:
-#     next_step = None
-#
-#     for step in _stepperator(reversed(steps)):
-#         capitalize_key_inplace(step.spec, "next")
-#         capitalize_key_inplace(step.spec, "end")
-#
-#         if "Next" not in step.spec and "End" not in step.spec:
-#             if next_step is None:
-#                 step.spec.update({"End": True})
-#             else:
-#                 step.spec.update({"Next": next_step.name})
-#
-#         next_step = step
-
-
 def process_step(core_stack: CoreStack,
                  step: Step,
                  wf_params: dict,
@@ -112,7 +80,7 @@ def process_step(core_stack: CoreStack,
     elif "subpipe" in step.spec:
         normalized_step = validate_subpipe_step(step)
         states_to_add = sp.handle_subpipe(core_stack,
-                                         normalized_step)
+                                          normalized_step)
 
     elif "Type" in step.spec:
         normalized_step = validate_native_step(step)
@@ -163,92 +131,6 @@ def make_branch(core_stack: CoreStack,
     }
 
     return ret
-
-
-# def make_branch0(core_stack: CoreStack,
-#                 steps: list,
-#                 wf_params: dict,
-#                 include_launcher: bool = False,
-#                 depth: int = 0) -> Generator[Resource, None, dict]:
-#
-#     logger = logging.getLogger(__name__)
-#
-#     step_iter = peekable(_stepperator(steps))
-#
-#     first_step_name = step_iter.peek(SENTRY).name
-#
-#     if include_launcher:
-#         first_step_name, states = make_launcher_step(core_stack, wf_params, first_step_name)
-#     else:
-#         states = {}
-#
-#     prev_outputs = {}
-#
-#     for step in step_iter:
-#         next_step = step_iter.peek(SENTRY)
-#
-#         if "scatter" in step.spec:
-#             normalized_spec = validate_scatter_step(step)
-#             prev_outputs, steps_to_add = yield from sg.handle_scatter_gather(core_stack,
-#                                                                              step.name,
-#                                                                              normalized_spec,
-#                                                                              wf_params,
-#                                                                              prev_outputs,
-#                                                                              next_step,
-#                                                                              depth)
-#
-#         elif "image" in step.spec:
-#             normalized_spec = validate_batch_step(step)
-#             prev_outputs, steps_to_add = yield from b.handle_batch(core_stack,
-#                                                                    step.name,
-#                                                                    normalized_spec,
-#                                                                    wf_params,
-#                                                                    prev_outputs,
-#                                                                    next_step)
-#
-#         elif "subpipe" in step.spec:
-#             normalized_spec = validate_subpipe_step(step)
-#             steps_to_add = sp.handle_subpipe(core_stack,
-#                                              step.name,
-#                                              normalized_spec,
-#                                              next_step)
-#
-#         elif "Type" in step.spec:
-#             normalized_spec = validate_native_step(step)
-#             steps_to_add = yield from ns.handle_native_step(core_stack,
-#                                                             step.name,
-#                                                             normalized_spec,
-#                                                             wf_params,
-#                                                             next_step,
-#                                                             depth)
-#
-#         elif "choices" in step.spec:
-#             normalized_spec = validate_chooser_step(step)
-#             steps_to_add = c.handle_chooser_step(core_stack,
-#                                                  step.name,
-#                                                  normalized_spec,
-#                                                  next_step)
-#
-#         elif "branches" in step.spec:
-#             normalized_spec = validate_parallel_step(step)
-#             steps_to_add = ep.handle_parallel_step(core_stack,
-#                                                    step.name,
-#                                                    normalized_spec,
-#                                                    wf_params,
-#                                                    next_step,
-#                                                    depth)
-#
-#         else:
-#             raise RuntimeError(f"step '{step.name}' is not a recognized step type")
-#
-#         states.update(steps_to_add)
-#
-#     ret = {
-#         "StartAt": first_step_name,
-#         "States": states,
-#     }
-#
-#     return ret
 
 
 def write_state_machine_to_fh(sfn_def: dict, fh) -> dict:

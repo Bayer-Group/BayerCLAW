@@ -2,8 +2,7 @@ import logging
 from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import CoreStack, Resource, State, next_or_end, lambda_logging_block
-from .util import Step2 as Step
+from .util import CoreStack, Step, Resource, State, lambda_logging_block
 
 
 def handle_parallel_step(core_stack: CoreStack,
