@@ -64,29 +64,11 @@ def get_config() -> dict:
     return cfg
 
 
-# this emulates operator.itemgetter, except that it always returns a tuple
-def my_itemgetter(*items):
-    def _impl(obj):
-        return tuple(obj[i] for i in items)
-    return _impl
-
-
 def split_inputs(all_inputs: dict) -> Tuple[Dict, Dict]:
-    required_iter, optional_iter = partition(lambda s: s.endswith("?"), all_inputs)
+    required_keys, optional_keys = partition(lambda k: k.endswith("?"), all_inputs)
 
-    required_keys = list(required_iter)
-    try:
-        required_getter = my_itemgetter(*required_keys)
-        required_ret = {k: v for k, v in zip(required_keys, required_getter(all_inputs))}
-    except TypeError:
-        required_ret = {}
-
-    optional_keys = list(optional_iter)
-    try:
-        optional_getter = my_itemgetter(*optional_keys)
-        optional_ret = {k.rstrip("?"): v for k, v in zip(optional_keys, optional_getter(all_inputs))}
-    except TypeError:
-        optional_ret = {}
+    required_ret = {r: all_inputs[r] for r in required_keys}
+    optional_ret = {o.rstrip("?"): all_inputs[o] for o in optional_keys}
 
     return required_ret, optional_ret
 
