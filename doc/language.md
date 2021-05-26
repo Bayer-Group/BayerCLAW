@@ -120,6 +120,12 @@ The fields of the step specification objects are:
   * `backoff_rate` (optional): An exponential backoff multiplier. Must be greater than 1.0. Default is 1.5
 * `timeout` (optional): Amount of time to allow batch jobs to run before terminating them. Expressed as a time string
 as described under `retry/interval` above. Default is to impose no timeout on batch jobs.
+* 🆕`next` (optional): Name of the next step to execute after the current step completes. Default behavior is to
+go to the next step in the steps list. Using a `next` field, you can make your workflow skip over steps or even return
+to an earlier step in the process. `next` cannot, however, be used to jump into or out of the steps block of a
+ Parallel or scatter-gather type step. `next` is useful in conjunction with chooser steps TODO: link.
+* 🆕`end` (optional): Causes the workflow (or current steps block) to terminate in a SUCCESS state immediately after
+the current step finishes. Also useful in conjunction with chooser steps. TODO: link
 
 ### Sample workflow template
 ```YAML
@@ -297,3 +303,4 @@ For example, here is a parallel step with two branches, the first containing two
 Other `Parallel` step fields are supported as described in the
 [states language documentation](https://states-language.net/spec.html); but again,
 `ResultPath`, `OutputPath`, and `Next/End` will be overwritten.
+
