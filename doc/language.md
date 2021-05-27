@@ -11,6 +11,7 @@
 - [String substitution](#string-substitution)
 - [Auto-repo and auto-inputs](#auto-repo-and-auto-inputs)
 - [Native Step Functions steps](#native-step-functions-steps)
+- [Chooser steps](#chooser-steps)
 
 ## Simple example
 
@@ -123,9 +124,9 @@ as described under `retry/interval` above. Default is to impose no timeout on ba
 * 🆕`next` (optional): Name of the next step to execute after the current step completes. Default behavior is to
 go to the next step in the steps list. Using a `next` field, you can make your workflow skip over steps or even return
 to an earlier step in the process. `next` cannot, however, be used to jump into or out of the steps block of a
- Parallel or scatter-gather type step. `next` is useful in conjunction with chooser steps TODO: link.
+ Parallel or scatter-gather type step. `next` is useful in conjunction with [chooser steps](#chooser-steps).
 * 🆕`end` (optional): Causes the workflow (or current steps block) to terminate in a SUCCESS state immediately after
-the current step finishes. Also useful in conjunction with chooser steps. TODO: link
+the current step finishes. Also useful in conjunction with [chooser steps](#chooser-steps).
 
 ### Sample workflow template
 ```YAML
@@ -304,3 +305,9 @@ Other `Parallel` step fields are supported as described in the
 [states language documentation](https://states-language.net/spec.html); but again,
 `ResultPath`, `OutputPath`, and `Next/End` will be overwritten.
 
+## Chooser steps
+
+Branching in BayerCLAW workflows is enabled by using chooser steps. There are two types of chooser steps: simple
+choosers, which are useful for skipping single or small numbers of steps in a workflow; and parallel choosers,
+which resemble Parallel native steps, but allow certain branches to be enabled or disabled based on
+conditions. Chooser steps are documented in [branching.md](branching.md).
