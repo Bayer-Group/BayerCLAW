@@ -95,8 +95,12 @@ def mock_repo():
         yield f"s3://{bucket_name}/{repo_name}"
 
 
-def test_load_s3_object(mock_repo):
-    result = load_s3_object(f"{mock_repo}/file1.json")
+@pytest.mark.parametrize("input_file", [
+    "file1.json",
+    "s3://repo-bucket/repo/file1.json",
+])
+def test_load_s3_object(input_file, mock_repo):
+    result = load_s3_object(mock_repo, input_file)
     assert result == data1
 
 
@@ -130,19 +134,25 @@ def test_load_vals(mock_repo):
 ])
 def test_load_vals_single_input(mock_repo, inputs, expect0):
     result = dict(load_vals(json.dumps(inputs), mock_repo))
-    expect = {**{"job": job_data["job"]}, **expect0}
-    # print(str(result))
-    # print(str(expect))
-    assert str(result) == str(expect)  # ugh
 
     if inputs["input1"] == "file1.json":
+        expect = {**{"job": job_data["job"]},
+                  **{"input1": expect0},
+                  **expect0}
+        assert str(result) == str(expect)  # ugh
+
+        assert isinstance(result["input1"], DottedDict)
         assert isinstance(result["a"], int)
         assert isinstance(result["b"], DottedList)
         assert isinstance(result["c"], DottedDict)
-    elif inputs["input1"] == "file4.json":
-        assert isinstance(result["input1"], DottedList)
     else:
-        assert isinstance(result["input1"], str)
+        expect = {**{"job": job_data["job"]}, **expect0}
+        assert str(result) == str(expect)  # ugh
+
+        if inputs["input1"] == "file4.json":
+            assert isinstance(result["input1"], DottedList)
+        else:
+            assert isinstance(result["input1"], str)
 
 
 @pytest.mark.parametrize("expr, expect", [
@@ -233,7 +243,8 @@ def test_lambda_handler_multi_expr_job_data_only(mock_repo, exprs, expect):
 
 
 @pytest.mark.parametrize("inputs, exprs, expect", [
-    ({"input1": "file1.json"}, ["a > 1", "b[2] == 4"], "b[2] == 4"),
+    ({"input1": "file1.json"}, ["a == 1", "input1.b[2] == 4"], "a == 1"),
+    ({"input1": "file1.json"}, ["a > 1", "input1.b[2] == 4"], "input1.b[2] == 4"),
     ({"input1": "file4.json"}, ["input1[0] > 100", "input1[1] == 100", "input1[2] < 100"], "input1[2] < 100"),
     ({"input1": "file5.json"}, ["input1.startswith('q')", "input1.endswith('h')"], "input1.endswith('h')"),
 ])

@@ -119,7 +119,9 @@ def test_download_this_missing_optional_file(tmp_path, repo_bucket, caplog):
     target = "s3://test-bucket/repo/path/file99"
     os.chdir(tmp_path)
     _download_this(target, True)
+    unexpected_file = tmp_path / "file99"
     assert "optional file not found" in caplog.text
+    assert os.path.exists(unexpected_file) is False
 
 
 def test_outputerator(tmp_path, caplog):
@@ -290,6 +292,12 @@ def test_download_inputs_missing_optional_file(monkeypatch, tmp_path, caplog, re
 
     assert result == expect
     assert f"optional file not found: {file_spec['missing_file']}; skipping" in caplog.text
+    assert os.path.exists(tmp_path / "file1")
+    assert os.path.exists(tmp_path / "file2")
+    assert os.path.exists(tmp_path / "file3")
+    assert os.path.exists(tmp_path / "other_file")
+    assert os.path.exists(tmp_path / "different_file")
+    assert os.path.exists(tmp_path / "missing_file") is False
 
 
 @pytest.mark.parametrize("optional", [True, False])

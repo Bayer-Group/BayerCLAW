@@ -3,7 +3,7 @@ import json
 import logging
 import math
 import re
-from typing import Generator, Tuple
+from typing import Generator, Tuple, Any
 
 import boto3
 from dotted.collection import DottedCollection
@@ -19,7 +19,12 @@ class ConditionFailed(Exception):
     pass
 
 
-def load_s3_object(s3_path: str) -> dict:
+def load_s3_object(repo: str, input_file: str) -> Any:
+    if input_file.startswith("s3://"):
+        s3_path = input_file
+    else:
+        s3_path = f"{repo}/{input_file}"
+
     logger.info(f"loading {s3_path}")
     s3 = boto3.client("s3")
 
@@ -34,22 +39,17 @@ def load_s3_object(s3_path: str) -> dict:
 def load_vals(inputs_json: str, repo: str) -> Generator[Tuple, None, None]:
     inputs = json.loads(inputs_json)
 
-    job_data = load_s3_object(f"{repo}/_JOB_DATA_")
+    job_data = load_s3_object(repo, "_JOB_DATA_")
     yield "job", DottedCollection.factory(job_data["job"])
 
-    if len(inputs) == 1:
-        name, filename = next(iter(inputs.items()))
-        vals = load_s3_object(f"{repo}/{filename}")
-        if isinstance(vals, dict):
-            for name2, val in vals.items():
-                yield name2, DottedCollection.factory(val)
-        else:
-            yield name, DottedCollection.factory(vals)
+    for name, input_file in inputs.items():
+        vals = load_s3_object(repo, input_file)
+        yield name, DottedCollection.factory(vals)
 
-    elif len(inputs) > 1:
-        for name, filename in inputs.items():
-            vals = load_s3_object(f"{repo}/{filename}")
-            yield name, DottedCollection.factory(vals)
+        if len(inputs) == 1 and isinstance(vals, dict):
+            for name2, val in vals.items():
+                if name2 != name:
+                    yield name2, DottedCollection.factory(val)
 
 
 def eval_this(expr: str, vals: dict):

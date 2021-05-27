@@ -138,7 +138,7 @@ branch, however, will terminate the entire execution with a FAILED status.
 Conditions are written as Python expressions that evaluate to boolean values.
 
 The input files for evaluating the conditions must be in JSON format. Values in the files can be accessed using
-a [JMESPath-like](https://jmespath.org/tutorial.html) paths.
+[JSONPath-like](https://goessner.net/articles/JsonPath/) expressions.<sup id="a1">[1](#f1)</sup>
 
 As an example, suppose we had the following input files:
 
@@ -215,8 +215,9 @@ math.isclose(input1.b.e, 0.06)
 re.match(r'sasq.*', input2.z) is not None 
 ```
 
-If your chooser takes only one input file, you can leave the prefix (namespace) off of the path. So, for
-instance, if the aforementioned _input1.json_ was the only input file, you could write a condition like `b.d == -5`
+If your chooser takes only one input file, and that file contains a JSON object, you can leave the prefix (namespace)
+off of the path. So, for instance, if the aforementioned _input1.json_ was the only input file, you could write a
+condition like `b.d == -5`
 
 To access values from the job data file, use the prefix `job`. If your chooser works only with values from the
 job data file, you can omit the `inputs` block from the chooser spec. You will still need to use the `job` prefix
@@ -227,7 +228,7 @@ in the conditions, though.
 
 If workflow steps are skipped, the files they would have produced won't exist. Normally, this would be a problem
 since BayerCLAW crashes executions when it can't find all of the necessary inputs for a step. To tell BayerCLAW
-to ignore missing files, you can designate them as optional using a question mark:
+to ignore missing files, you can designate them as optional using question marks in the `inputs` block:
 
 ```yaml
 Chooser:
@@ -259,13 +260,11 @@ Step2:
 NB: do not include the question mark in the commands.
 
 If an optional file cannot be found in S3, no corresponding file -- not even an empty file -- will be placed in
-the batch job's working directory. The code in the `commands` block needs to account for this.
+the batch job's working directory. The code in the `commands` block needs to account for this. The `-e` file test
+operator, as shown in the example, can be helpful here.
 
 Optional inputs are only available in batch steps.
 
 
-
-# todo
-how do filename globs work with optional inputs?
-will input1.x work with single input?
-check that no file gets placed in working dir
+##### Footnotes
+<sup><b id="f1">1</b></sup> For very basic values of "JSONPath". [↵](#a1)
