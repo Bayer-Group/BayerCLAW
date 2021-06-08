@@ -15,12 +15,12 @@ batch:
         variables:
           SHELL_NAME: bash
           COPY_SELECT_SCRIPT: y
-    - identifier: alpine
-      env:
-        image: 775344547271.dkr.ecr.us-east-1.amazonaws.com/pyinstaller-alpine:latest
-        variables:
-          SHELL_NAME: sh
-          COPY_SELECT_SCRIPT: n
+#    - identifier: alpine
+#      env:
+#        image: acct.dkr.ecr.us-east-1.amazonaws.com/pyinstaller-alpine:latest
+#        variables:
+#          SHELL_NAME: sh
+#          COPY_SELECT_SCRIPT: n
 
 phases:
   install:
