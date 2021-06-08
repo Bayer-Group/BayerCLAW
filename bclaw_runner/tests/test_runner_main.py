@@ -30,7 +30,7 @@ JOB_DATA = {
 @pytest.fixture(scope="module")
 def mock_bucket():
     with moto.mock_s3():
-        yld = boto3.resource("s3").Bucket(TEST_BUCKET)
+        yld = boto3.resource("s3", region_name="us-east-1").Bucket(TEST_BUCKET)
         yld.create()
         yld.put_object(Key="repo/path/_JOB_DATA_", Body=json.dumps(JOB_DATA).encode("utf-8"))
         yld.put_object(Key="repo/path/file1", Body=b"file one")

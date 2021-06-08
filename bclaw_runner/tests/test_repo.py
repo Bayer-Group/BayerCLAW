@@ -24,7 +24,7 @@ DIFFERENT_FILE_CONTENT = "different file"
 @pytest.fixture(scope="module")
 def repo_bucket():
     with moto.mock_s3():
-        yld = boto3.resource("s3").Bucket(TEST_BUCKET)
+        yld = boto3.resource("s3", region_name="us-east-1").Bucket(TEST_BUCKET)
         yld.create()
         yld.put_object(Key="repo/path/_JOB_DATA_", Body=json.dumps(JOB_DATA).encode("utf-8"))
         yld.put_object(Key="repo/path/file1", Body=FILE1_CONTENT.encode("utf-8"))
@@ -38,8 +38,8 @@ def repo_bucket():
 @pytest.fixture(scope="module")
 def different_bucket():
     with moto.mock_s3():
-        boto3.client("s3").create_bucket(Bucket=DIFFERENT_BUCKET)
-        yld = boto3.resource("s3").Bucket(DIFFERENT_BUCKET)
+        boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=DIFFERENT_BUCKET)
+        yld = boto3.resource("s3", region_name="us-east-1").Bucket(DIFFERENT_BUCKET)
         yld.put_object(Key="different/path/different_file", Body=DIFFERENT_FILE_CONTENT.encode("utf-8"))
         yield yld
 
