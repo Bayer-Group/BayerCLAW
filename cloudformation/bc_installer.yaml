@@ -534,23 +534,6 @@ Resources:
         - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
         - "arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess"
 
-  CodePipelineNotificationRule:
-    Type: AWS::CodeStarNotifications::NotificationRule
-    Properties:
-      DetailType: BASIC
-      EventTypeIds:
-        - codepipeline-pipeline-pipeline-execution-started
-        - codepipeline-pipeline-pipeline-execution-succeeded
-        - codepipeline-pipeline-pipeline-execution-failed
-        - codepipeline-pipeline-pipeline-execution-canceled
-      Name: !Sub "${InstallationName}-admin-notif-rule"
-      Resource: !Sub "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}"
-      Status: ENABLED
-      Targets:
-        -
-          TargetType: SNS
-          TargetAddress: !Ref AdminSNSTopic
-
 Outputs:
   AdminSNSTopicName:
     Value: !GetAtt AdminSNSTopic.TopicName
