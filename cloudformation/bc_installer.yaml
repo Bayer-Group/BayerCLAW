@@ -5,17 +5,17 @@ Metadata:
     ParameterGroups:
       -
         Label:
+          default: Source
+        Parameters:
+          - CodeStarConnectionArn
+          - CoreRepo
+          - CoreBranch
+      -
+        Label:
           default: Identifiers
         Parameters:
           - InstallationName
           - CompilerMacroName
-      -
-        Label:
-          default: Source
-        Parameters:
-          - GitHubUser
-          - GitHubToken
-#          - CodeStarConnectionArn
       -
         Label:
           default: Environment
@@ -39,8 +39,6 @@ Metadata:
           - LauncherBucketName
           - LogRetentionDays
           - UseExistingCloudTrail
-          - CoreRepo
-          - CoreBranch
 
 Parameters:
   CodeStarConnectionArn:
@@ -55,24 +53,17 @@ Parameters:
   CoreBranch:
     Type: String
     Description: Git branch name in the BayerCLAW core code repo
-    Default: master
+    Default: main
 
   CoreRepo:
     Type: String
     Description: GitHub repo containing the BayerCLAW core code
-    Default: biotech/bclaw_public
+    Default: <user-id>/BayerCLAW
 
   EFSVolumeId:
     Type: String
     Description: EFS volume to mount, enter "None" for no volume.
     Default: "None"
-
-  GitHubUser:
-    Type: String
-
-  GitHubToken:
-    Type: String
-    NoEcho: true
 
   InstallationName:
     Type: String
@@ -112,12 +103,12 @@ Parameters:
   RootVolumeSize:
     Type: Number
     Description: Size (in GB) of the EBS root volume used by Batch jobs
-    Default: 100
+    Default: 50
 
   ScratchVolumeSize:
     Type: Number
     Description: Size (in GB) of the EBS scratch volume used by Batch jobs
-    Default: 1000
+    Default: 100
 
   SecurityGroups:
     Type: String
@@ -127,7 +118,8 @@ Parameters:
     Default: Auto
 
   Subnets:
-    Type: String
+#    Type: String
+    Type: List<AWS::EC2::Subnet::Id>
     Description: >
       Comma-separated list of subnet IDs for Batch jobs to run in. Subnets must have internet access
       either through a direct Internet Gateway connection or through a NAT Gateway.
@@ -320,7 +312,8 @@ Resources:
             Value: !Ref SecurityGroups
           - Name: SUBNETS
             Type: PLAINTEXT
-            Value: !Ref Subnets
+            Value: !Join [",", !Ref Subnets]
+#            Value: !Ref Subnets
           - Name: USE_EXISTING_CLOUDTRAIL
             Type: PLAINTEXT
             Value: !Ref UseExistingCloudTrail
@@ -370,28 +363,28 @@ Resources:
           Name: Source
           Actions:
             - Name: Core
-              ActionTypeId:
-                Category: Source
-                Owner: ThirdParty
-                Provider: GitHub
-                Version: "1"
 #              ActionTypeId:
 #                Category: Source
-#                Owner: AWS
-#                Provider: CodeStarSourceConnection
+#                Owner: ThirdParty
+#                Provider: GitHub
 #                Version: "1"
-              Configuration:
-                Owner: !Ref GitHubUser
-                Repo: !Ref CoreRepo
-                Branch: !Ref CoreBranch
-                OAuthToken: !Ref GitHubToken
-                PollForSourceChanges: false
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: "1"
 #              Configuration:
-#                ConnectionArn: !Ref CodeStarConnectionArn
-#                FullRepositoryId: !Ref CoreRepo
-#                BranchName: !Ref CoreBranch
-#                OutputArtifactFormat: CODE_ZIP
-#                DetectChanges: false
+#                Owner: !Ref GitHubUser
+#                Repo: !Ref CoreRepo
+#                Branch: !Ref CoreBranch
+#                OAuthToken: !Ref GitHubToken
+#                PollForSourceChanges: false
+              Configuration:
+                ConnectionArn: !Ref CodeStarConnectionArn
+                FullRepositoryId: !Ref CoreRepo
+                BranchName: !Ref CoreBranch
+                OutputArtifactFormat: CODE_ZIP
+                DetectChanges: false
               OutputArtifacts:
                 - Name: coreSrc
               RunOrder: 1
