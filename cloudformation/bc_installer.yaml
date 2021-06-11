@@ -43,22 +43,22 @@ Metadata:
 Parameters:
   CodeStarConnectionArn:
     Type: String
-    Description: ARN of a CodeStar Connection object that connects this AWS account to GitHub Enterprise
+    Description: ARN of a CodeStar Connection object that connects this AWS account to GitHub.
 
   CompilerMacroName:
     Type: String
-    Description: Compiler macro name, change this only for testing and development instances
+    Description: Compiler macro name, change this only if you are creating multiple BayerCLAW installations.
     Default: "BC_Compiler"
 
   CoreBranch:
     Type: String
-    Description: Git branch name in the BayerCLAW core code repo
+    Description: Git branch name in the BayerCLAW repo.
     Default: main
 
   CoreRepo:
     Type: String
-    Description: GitHub repo containing the BayerCLAW core code
-    Default: <user-id>/BayerCLAW
+    Description: GitHub repo containing the BayerCLAW core code.
+    Default: <github-user-id>/BayerCLAW
 
   EFSVolumeId:
     Type: String
@@ -67,7 +67,9 @@ Parameters:
 
   InstallationName:
     Type: String
-    Description: Name of this BayerCLAW installation
+    Description: >
+      Name of this BayerCLAW installation, change this only if you are creating multiple BayerCLAW
+      installations.
     Default: "bayerclaw"
 
   LauncherBucketName:
@@ -102,12 +104,12 @@ Parameters:
 
   RootVolumeSize:
     Type: Number
-    Description: Size (in GB) of the EBS root volume used by Batch jobs
+    Description: Size (in GB) of the EBS root volume used by Batch jobs.
     Default: 50
 
   ScratchVolumeSize:
     Type: Number
-    Description: Size (in GB) of the EBS scratch volume used by Batch jobs
+    Description: Size (in GB) of the EBS scratch volume used by Batch jobs.
     Default: 100
 
   SecurityGroups:
@@ -118,10 +120,9 @@ Parameters:
     Default: Auto
 
   Subnets:
-#    Type: String
     Type: List<AWS::EC2::Subnet::Id>
     Description: >
-      Comma-separated list of subnet IDs for Batch jobs to run in. Subnets must have internet access
+      Comma-separated list of subnet IDs for Batch jobs to run in. Subnets must have outbound internet access
       either through a direct Internet Gateway connection or through a NAT Gateway.
 
   UseExistingCloudTrail:
@@ -136,7 +137,17 @@ Parameters:
 
   VpcId:
     Type: AWS::EC2::VPC::Id
-    Description: ID of the VPC where BayerCLAW will live
+    Description: ID of the VPC where BayerCLAW will live.
+
+Rules:
+  SubnetsInVPC:
+    Assertions:
+      - Assert:
+          - "Fn::ValueOfAll":
+              - "AWS::EC2::Subnet::Id"
+              - VpcId
+          - "Fn::RefAll": "AWS::EC2::VPC::Id"
+        AssertDescription: "All subnets must be in the specified VPC"
 
 Resources:
   ResourceBucket:
@@ -313,7 +324,6 @@ Resources:
           - Name: SUBNETS
             Type: PLAINTEXT
             Value: !Join [",", !Ref Subnets]
-#            Value: !Ref Subnets
           - Name: USE_EXISTING_CLOUDTRAIL
             Type: PLAINTEXT
             Value: !Ref UseExistingCloudTrail
@@ -363,22 +373,11 @@ Resources:
           Name: Source
           Actions:
             - Name: Core
-#              ActionTypeId:
-#                Category: Source
-#                Owner: ThirdParty
-#                Provider: GitHub
-#                Version: "1"
               ActionTypeId:
                 Category: Source
                 Owner: AWS
                 Provider: CodeStarSourceConnection
                 Version: "1"
-#              Configuration:
-#                Owner: !Ref GitHubUser
-#                Repo: !Ref CoreRepo
-#                Branch: !Ref CoreBranch
-#                OAuthToken: !Ref GitHubToken
-#                PollForSourceChanges: false
               Configuration:
                 ConnectionArn: !Ref CodeStarConnectionArn
                 FullRepositoryId: !Ref CoreRepo
