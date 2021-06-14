@@ -52,7 +52,7 @@ Parameters:
 
   CoreBranch:
     Type: String
-    Description: Git branch name in the BayerCLAW repo.
+    Description: Git branch/tag/version name in the BayerCLAW repo.
     Default: main
 
   CoreRepo:
