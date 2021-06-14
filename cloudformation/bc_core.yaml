@@ -452,12 +452,13 @@ Resources:
           - DeviceName: /dev/xvda
             Ebs:
               VolumeSize: !Ref RootVolumeSize
+              VolumeType: gp3
           - DeviceName: /dev/sdh
             Ebs:
               DeleteOnTermination: true
               Encrypted: true
               VolumeSize: !Ref ScratchVolumeSize
-              VolumeType: gp2
+              VolumeType: gp3
         ImageId: !Ref AmiId
         InstanceInitiatedShutdownBehavior: terminate
         UserData:
