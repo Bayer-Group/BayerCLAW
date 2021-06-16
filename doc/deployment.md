@@ -11,7 +11,7 @@ ARN, you can use the following AWS CLI command:
 
 - **VPC ID:** The ID of a Virtual Private Cloud (VPC) where batch jobs will run. Unless there are specific security
     requirements for your pipelines, the account's default VPC is fine. If you're using a custom VPC, make sure it has
-    at least one subnet that can auto-assign a public IPv4 address. To get the VPC IDs in your account:
+    at least one subnet that can auto-assign public IPv4 addresses to EC2 instances. To get the VPC IDs in your account:
     ```bash
     aws ec2 describe-vpcs --query "Vpcs[].VpcId"
     ```
@@ -21,8 +21,8 @@ ARN, you can use the following AWS CLI command:
     aws ec2 describe-subnets --filters "Name=vpc-id, Values=<your VPC ID>"
     ```
   
-    If you're using the default VPC provided by AWS, any of the subnets should be suitable (it's best to choose more 
-    than one). For custom VPCs, be sure to choose a subnet with internet access.
+    If you're using the default VPC provided by AWS, any of the subnets should be suitable (it's best to use more 
+    than one). For custom VPCs, be sure to choose a subnet with outbound internet access.
 
 - **EFS ID (optional):**  You'll need this only if you want an EFS filesystem mounted in your Batch jobs. You can
     obtain the ID of your EFS filesystem (generally something like `fs-12345678`) on the AWS web console or with the
@@ -50,37 +50,41 @@ ARN, you can use the following AWS CLI command:
     If you do not need EFS, you can enter `Auto` to have BayerCLAW create a suitable security group.
 
 ## Installation
-1. Clone this GitHub repository to your local machine.
-2. In the CloudFormation console for your AWS account, click on the `Create stack` button. Select `With new resources
-(standard)` in the dropdown.
+1. Use the `Fork` button in the upper right of this page to fork this repository into your GitHub account. Then 
+clone the forked repository to your local machine.
+2. In the CloudFormation console for your AWS account, click on the `Create stack` button.
+    - If the `Create stack` button you see has a dropdown on it, select `With new resources (standard)` in the dropdown.
 3. On the `Create stack` page:
     - Under `Prerequisite - Prepare template`, select `Template is ready`.
     - Under `Specify template`, select `Upload a template file`. Use the `Choose file` button to select the
-    `bc_installer.yaml` file in your cloned repo.
-    
+    `bc_installer.yaml` file in your cloned repo. 
     Click the `Next` button.
 4. On the `Specify stack details` page:
     - Enter a name such as `bayerclaw-installer` for the installer stack.
     - Set parameters for this installation:
-        - **Identifiers**
-            - InstallationName: Name of the main BayerCLAW stack. Default is `bayerclaw`, don't change it for the initial deployment.
-            - CompilerMacroName: The name of the BayerCLAW compiler that will be created. Default is `BC_Compiler`, don't change
-            this for the initial deployment.
         - **Source parameters**
             - CodeStarConnectionArn: The ARN of the CodeStar Connection object through which CodePipeline will
             access GitHub.
+            - CoreRepo: Location (account and repo name) of your BayerCLAW fork.
+            - CoreBranch: Git branch to build. You shouldn't need to change this except for development and testing
+            purposes. 
+        - **Identifiers**
+            - InstallationName: Name of the main BayerCLAW stack. Default is `bayerclaw`, don't change it for the 
+            initial deployment.
+            - CompilerMacroName: The name of the BayerCLAW compiler that will be created. Default is `BC_Compiler`,
+            don't change this for the initial deployment.
         - **Enviroment parameters**
             - VpcId: The ID of the VPC where Batch jobs will run, as described above.
-            - Subnets: Comma-separated list of subnet IDs where Batch jobs will run. All subnets must have internet
+            - Subnets: Select the subnets where Batch jobs will run. All subnets must have outbound internet
             access, either through an Internet Gateway or Network Address Translation (NAT) gateway.
             - SecurityGroups: Comma-separated list of security group IDs that Batch jobs will run under. Security groups
             must allow all outbound HTTP and HTTPS traffic. Enter `Auto` to create a suitable security group.
         - **Batch parameters**
-            - RootVolumeSize: Size (in Gb) of the EBS volumes that host Docker images in Batch jobs. Default is 100 Gb
-            - ScratchVolumeSize: Size (in Gb) of the EBS volumes that hold the working directories for Batch jobs. Default
-            is 1000 Gb.
-            - MinvCpus: The minimum number of CPUs Batch will maintain at all times.
-            - MaxvCpus: Maximum number of CPUs that Batch will spin up simultaneously.
+            - RootVolumeSize: Size (in Gb) of the EBS volumes that host Docker images in Batch jobs. Default is 50 Gb
+            - ScratchVolumeSize: Size (in Gb) of the EBS volumes that hold the working directories for Batch jobs.
+            Default is 100 Gb.
+            - MinvCpus: The minimum number of CPUs that AWS Batch will maintain at all times.
+            - MaxvCpus: Maximum number of CPUs that AWS Batch will spin up simultaneously.
             - EFSVolumeId: ID of an EFS volume to mount on every Batch instance. Enter "None" if you do not want to
             mount an EFS volume.
         - **Advanced parameters**
@@ -91,9 +95,6 @@ ARN, you can use the following AWS CLI command:
             - LogRetentionDays: Number of days to keep CloudWatch log entries before deleting them. Default is 30 days.
             - UseExistingCloudTrail: Most users should enter `No`. However, if your account already has a CloudTrail trail
             monitoring all S3 buckets, enter `Yes`.
-            - CoreRepo: GitHub repo containing the BayerCLAW core code. This mostly for developers who have
-            forked the main repo.
-            - CoreBranch: BayerCLAW Core Git branch to build, for development and testing purposes. 
 5. On the `Configure stack options` page, keep the default options.
 6. Check all of the "I acknowledge..." statements at the bottom of the Review page, then click `Create stack`.
 
@@ -127,11 +128,12 @@ and uploads as well as other functions.
 
 ## Updating BayerCLAW
 
-Most updates can be performed by rerunning CodePipeline. This can be done using the `Release change` button on 
-the CodePipeline console or with the AWS CLI command `aws codepipeline start-pipeline-execution --name <codepipeline name>`.
+Most updates can be performed by rerunning CodePipeline. First, update your fork to match the main BayerCLAW repo.
+Then use the `Release change` button on the CodePipeline console to rerun the pipeline, or use the AWS CLI command
+`aws codepipeline start-pipeline-execution --name <codepipeline name>`.
 
 Some updates may require a full refresh of everything including the installer stack. To perform a full refresh:
-1. Pull the latest version of this GitHub repository to your local machine.
+1. Pull the latest version of your GitHub fork to your local machine.
 2. Run the command:
     ```bash
    aws cloudformation deploy --template-file bc_installer.yaml --stack-name <installer stack name>
@@ -158,4 +160,5 @@ Again, it's a good idea to make these names similar.
 
 To deploy a workflow using a particular installation, change the compiler name in workflow spec's `Template` line to
 that installation's `CompilerMacroName`, and submit the template to CloudFormation as usual. Note that each
-installation will have its own launcher bucket. Be sure to send job files to the correct launcher for the workflow.
+installation will have its own launcher bucket. Be sure to send job files to the correct launcher for the
+desired workflow.

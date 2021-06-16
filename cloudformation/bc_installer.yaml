@@ -5,15 +5,17 @@ Metadata:
     ParameterGroups:
       -
         Label:
+          default: Source
+        Parameters:
+          - CodeStarConnectionArn
+          - CoreRepo
+          - CoreBranch
+      -
+        Label:
           default: Identifiers
         Parameters:
           - InstallationName
           - CompilerMacroName
-      -
-        Label:
-          default: Source
-        Parameters:
-          - CodeStarConnectionArn
       -
         Label:
           default: Environment
@@ -37,28 +39,26 @@ Metadata:
           - LauncherBucketName
           - LogRetentionDays
           - UseExistingCloudTrail
-          - CoreRepo
-          - CoreBranch
 
 Parameters:
   CodeStarConnectionArn:
     Type: String
-    Description: ARN of a CodeStar Connection object that connects this AWS account to GitHub Enterprise
+    Description: ARN of a CodeStar Connection object that connects this AWS account to GitHub.
 
   CompilerMacroName:
     Type: String
-    Description: Compiler macro name, change this only for testing and development instances
+    Description: Compiler macro name, change this only if you are creating multiple BayerCLAW installations.
     Default: "BC_Compiler"
 
   CoreBranch:
     Type: String
-    Description: Git branch name in the BayerCLAW core code repo
-    Default: master
+    Description: Git branch/tag/version name in the BayerCLAW repo.
+    Default: main
 
   CoreRepo:
     Type: String
-    Description: GitHub repo containing the BayerCLAW core code
-    Default: biotech/bclaw_public
+    Description: GitHub repo containing the BayerCLAW core code.
+    Default: <github-user-id>/BayerCLAW
 
   EFSVolumeId:
     Type: String
@@ -67,7 +67,9 @@ Parameters:
 
   InstallationName:
     Type: String
-    Description: Name of this BayerCLAW installation
+    Description: >
+      Name of this BayerCLAW installation, change this only if you are creating multiple BayerCLAW
+      installations.
     Default: "bayerclaw"
 
   LauncherBucketName:
@@ -102,13 +104,13 @@ Parameters:
 
   RootVolumeSize:
     Type: Number
-    Description: Size (in GB) of the EBS root volume used by Batch jobs
-    Default: 100
+    Description: Size (in GB) of the EBS root volume used by Batch jobs.
+    Default: 50
 
   ScratchVolumeSize:
     Type: Number
-    Description: Size (in GB) of the EBS scratch volume used by Batch jobs
-    Default: 1000
+    Description: Size (in GB) of the EBS scratch volume used by Batch jobs.
+    Default: 100
 
   SecurityGroups:
     Type: String
@@ -118,9 +120,9 @@ Parameters:
     Default: Auto
 
   Subnets:
-    Type: String
+    Type: List<AWS::EC2::Subnet::Id>
     Description: >
-      Comma-separated list of subnet IDs for Batch jobs to run in. Subnets must have internet access
+      Comma-separated list of subnet IDs for Batch jobs to run in. Subnets must have outbound internet access
       either through a direct Internet Gateway connection or through a NAT Gateway.
 
   UseExistingCloudTrail:
@@ -135,7 +137,18 @@ Parameters:
 
   VpcId:
     Type: AWS::EC2::VPC::Id
-    Description: ID of the VPC where BayerCLAW will live
+    Description: ID of the VPC where BayerCLAW will live.
+
+Rules:
+  SubnetsInVPC:
+    Assertions:
+      - Assert:
+          "Fn::EachMemberIn":
+            - "Fn::ValueOfAll":
+                - "AWS::EC2::Subnet::Id"
+                - VpcId
+            - "Fn::RefAll": "AWS::EC2::VPC::Id"
+        AssertDescription: "All subnets must be in the specified VPC"
 
 Resources:
   ResourceBucket:
@@ -311,7 +324,7 @@ Resources:
             Value: !Ref SecurityGroups
           - Name: SUBNETS
             Type: PLAINTEXT
-            Value: !Ref Subnets
+            Value: !Join [",", !Ref Subnets]
           - Name: USE_EXISTING_CLOUDTRAIL
             Type: PLAINTEXT
             Value: !Ref UseExistingCloudTrail
@@ -533,23 +546,6 @@ Resources:
         - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
         - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
         - "arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess"
-
-  CodePipelineNotificationRule:
-    Type: AWS::CodeStarNotifications::NotificationRule
-    Properties:
-      DetailType: BASIC
-      EventTypeIds:
-        - codepipeline-pipeline-pipeline-execution-started
-        - codepipeline-pipeline-pipeline-execution-succeeded
-        - codepipeline-pipeline-pipeline-execution-failed
-        - codepipeline-pipeline-pipeline-execution-canceled
-      Name: !Sub "${InstallationName}-admin-notif-rule"
-      Resource: !Sub "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}"
-      Status: ENABLED
-      Targets:
-        -
-          TargetType: SNS
-          TargetAddress: !Ref AdminSNSTopic
 
 Outputs:
   AdminSNSTopicName:

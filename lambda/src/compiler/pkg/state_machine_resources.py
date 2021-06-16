@@ -1,7 +1,7 @@
 from collections import deque
 import json
 import logging
-from typing import Generator, List, Dict
+from typing import Generator, List, Dict, Tuple
 from uuid import uuid4
 
 import boto3

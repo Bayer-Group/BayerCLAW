@@ -36,7 +36,7 @@ OTHER_FILE_CONTENT = json.dumps({"x": {"a": 1, "b": 2},
 @pytest.fixture(scope="module")
 def repo_bucket():
     with moto.mock_s3():
-        yld = boto3.resource("s3").Bucket(TEST_BUCKET)
+        yld = boto3.resource("s3", region_name="us-east-1").Bucket(TEST_BUCKET)
         yld.create()
         yld.put_object(Key="repo/path/_JOB_DATA_", Body=json.dumps(JOB_DATA).encode("utf-8"))
         yld.put_object(Key="repo/path/file1", Body=FILE1_CONTENT.encode("utf-8"))

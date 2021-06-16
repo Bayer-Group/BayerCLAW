@@ -30,7 +30,7 @@ JOB_DATA = {"job": {"job": "data"}, "parent": {}, "scatter": {}}
 @pytest.fixture(scope="module")
 def repo_bucket():
     with moto.mock_s3():
-        yld = boto3.resource("s3").Bucket(TEST_BUCKET)
+        yld = boto3.resource("s3", region_name="us-east-1").Bucket(TEST_BUCKET)
         yld.create()
         yld.put_object(Key="repo/path/_JOB_DATA_", Body=json.dumps(JOB_DATA).encode("utf-8"))
 

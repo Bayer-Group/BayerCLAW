@@ -24,7 +24,7 @@ DIFFERENT_FILE_CONTENT = "different file"
 @pytest.fixture(scope="module")
 def repo_bucket():
     with moto.mock_s3():
-        yld = boto3.resource("s3").Bucket(TEST_BUCKET)
+        yld = boto3.resource("s3", region_name="us-east-1").Bucket(TEST_BUCKET)
         yld.create()
         yld.put_object(Key="repo/path/_JOB_DATA_", Body=json.dumps(JOB_DATA).encode("utf-8"))
         yld.put_object(Key="repo/path/file1", Body=FILE1_CONTENT.encode("utf-8"))
@@ -38,8 +38,8 @@ def repo_bucket():
 @pytest.fixture(scope="module")
 def different_bucket():
     with moto.mock_s3():
-        boto3.client("s3").create_bucket(Bucket=DIFFERENT_BUCKET)
-        yld = boto3.resource("s3").Bucket(DIFFERENT_BUCKET)
+        boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=DIFFERENT_BUCKET)
+        yld = boto3.resource("s3", region_name="us-east-1").Bucket(DIFFERENT_BUCKET)
         yld.put_object(Key="different/path/different_file", Body=DIFFERENT_FILE_CONTENT.encode("utf-8"))
         yield yld
 
@@ -79,8 +79,8 @@ def test_expand_s3_glob(repo_bucket, glob, expect):
 
 
 def test_inputerator(repo_bucket):
-    boto3.client("s3").create_bucket(Bucket=DIFFERENT_BUCKET)
-    different_bucket = boto3.resource("s3").Bucket(DIFFERENT_BUCKET)
+    boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=DIFFERENT_BUCKET)
+    different_bucket = boto3.resource("s3", region_name="us-east-1").Bucket(DIFFERENT_BUCKET)
     different_bucket.put_object(Key="different/path/different_file", Body=DIFFERENT_FILE_CONTENT.encode("utf-8"))
 
     paths = [
@@ -221,8 +221,8 @@ def test_download_inputs(optional, monkeypatch, tmp_path, repo_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
 
-    boto3.client("s3").create_bucket(Bucket=DIFFERENT_BUCKET)
-    different_bucket = boto3.resource("s3").Bucket(DIFFERENT_BUCKET)
+    boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=DIFFERENT_BUCKET)
+    different_bucket = boto3.resource("s3", region_name="us-east-1").Bucket(DIFFERENT_BUCKET)
     different_bucket.put_object(Key="different/path/different_file", Body=DIFFERENT_FILE_CONTENT.encode("utf-8"))
 
     file_spec = {
@@ -250,8 +250,8 @@ def test_download_inputs_missing_required_file(monkeypatch, tmp_path, repo_bucke
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
 
-    boto3.client("s3").create_bucket(Bucket=DIFFERENT_BUCKET)
-    different_bucket = boto3.resource("s3").Bucket(DIFFERENT_BUCKET)
+    boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=DIFFERENT_BUCKET)
+    different_bucket = boto3.resource("s3", region_name="us-east-1").Bucket(DIFFERENT_BUCKET)
     different_bucket.put_object(Key="different/path/different_file", Body=DIFFERENT_FILE_CONTENT.encode("utf-8"))
 
     file_spec = {
@@ -329,7 +329,7 @@ def test_upload_outputs(monkeypatch, tmp_path, repo_bucket):
     os.chdir(tmp_path)
     repo.upload_outputs(file_spec)
 
-    repo_objects = boto3.client("s3").list_objects_v2(Bucket=TEST_BUCKET, Prefix="repo_two/path")
+    repo_objects = boto3.client("s3", region_name="us-east-1").list_objects_v2(Bucket=TEST_BUCKET, Prefix="repo_two/path")
     repo_contents = sorted(jmespath.search("Contents[].Key", repo_objects))
     expect = sorted([
         "repo_two/path/output1",
