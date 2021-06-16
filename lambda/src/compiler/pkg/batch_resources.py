@@ -9,7 +9,7 @@ import boto3
 import humanfriendly
 
 from .qc_resources import handle_qc_check
-from .util import CoreStack, Step, Resource, State, make_logical_name, next_or_end, do_param_substitution,\
+from .util import CoreStack, Step, Resource, State, make_logical_name, do_param_substitution,\
     time_string_to_seconds
 
 SCRATCH_PATH = "/_bclaw_scratch"
@@ -68,10 +68,12 @@ def get_memory_in_mibs(request: Union[str, float, int]) -> int:
     return ret
 
 
-def job_definition_rc(core_stack: CoreStack, name: str, spec: dict, task_role: Union[str, dict]) -> Generator[Resource, None, str]:
-    job_def_name = make_logical_name(f"{name}.job.def")
+def job_definition_rc(core_stack: CoreStack,
+                      step: Step,
+                      task_role: Union[str, dict]) -> Generator[Resource, None, str]:
+    job_def_name = make_logical_name(f"{step.name}.job.def")
 
-    registry, image_version, image, version = parse_uri(spec["image"])
+    registry, image_version, image, version = parse_uri(step.spec["image"])
 
     job_def = {
         "Type": "AWS::Batch::JobDefinition",
@@ -84,7 +86,7 @@ def job_definition_rc(core_stack: CoreStack, name: str, spec: dict, task_role: U
                 "repo": "rrr",
                 "inputs": "iii",
                 "references": "fff",
-                "command": json.dumps(spec["commands"]),
+                "command": json.dumps(step.spec["commands"]),
                 "outputs": "ooo",
                 "skip": "sss",
             },
@@ -112,7 +114,7 @@ def job_definition_rc(core_stack: CoreStack, name: str, spec: dict, task_role: U
                     },
                     {
                         "Name": "BC_STEP_NAME",
-                        "Value": name,
+                        "Value": step.name,
                     },
                     {
                         "Name": "AWS_DEFAULT_REGION",
@@ -121,8 +123,8 @@ def job_definition_rc(core_stack: CoreStack, name: str, spec: dict, task_role: U
                         },
                     },
                 ],
-                "Vcpus": spec["compute"]["cpus"],
-                "Memory": get_memory_in_mibs(spec["compute"]["memory"]),
+                "Vcpus": step.spec["compute"]["cpus"],
+                "Memory": get_memory_in_mibs(step.spec["compute"]["memory"]),
                 "JobRoleArn": task_role,
                 "MountPoints": [
                     {
@@ -171,9 +173,9 @@ def job_definition_rc(core_stack: CoreStack, name: str, spec: dict, task_role: U
             },
         })
 
-    if spec.get("timeout") is not None:
+    if step.spec.get("timeout") is not None:
         job_def["Properties"]["Timeout"] = {
-            "AttemptDurationSeconds": max(time_string_to_seconds(spec["timeout"]), 60)
+            "AttemptDurationSeconds": max(time_string_to_seconds(step.spec["timeout"]), 60)
         }
 
     yield Resource(job_def_name, job_def)
@@ -191,9 +193,14 @@ def get_skip_behavior(spec: dict) -> str:
     return ret
 
 
-def batch_step(core_stack: CoreStack, spec: dict, job_definition_name: str, next_step: Union[Step, str],
-               attempts: int = 3, interval: str = "3s", backoff_rate: float = 1.5) -> dict:
-    skip_behavior = get_skip_behavior(spec)
+def batch_step(core_stack: CoreStack,
+               step: Step,
+               job_definition_name: str,
+               next_step_override: str = None,
+               attempts: int = 3,
+               interval: str = "3s",
+               backoff_rate: float = 1.5) -> dict:
+    skip_behavior = get_skip_behavior(step.spec)
 
     ret = {
         "Type": "Task",
@@ -209,13 +216,13 @@ def batch_step(core_stack: CoreStack, spec: dict, job_definition_name: str, next
         "Parameters": {
             "JobName.$": "States.Format('{}__{}__{}__{}', $$.StateMachine.Name, $$.State.Name, $.id_prefix, $.index)",
             "JobDefinition": f"${{{job_definition_name}}}",
-            "JobQueue": get_job_queue(core_stack, spec["compute"]),
+            "JobQueue": get_job_queue(core_stack, step.spec["compute"]),
             "Parameters": {
                 "repo.$": "$.repo",
                 # "parameters": json.dumps(spec["params"]),
-                "inputs": json.dumps(spec["inputs"]),
-                "references": json.dumps(spec["references"]),
-                "outputs": json.dumps(spec["outputs"]),
+                **step.input_field,
+                "references": json.dumps(step.spec["references"]),
+                "outputs": json.dumps(step.spec["outputs"]),
                 "skip": skip_behavior,
             },
             "ContainerOverrides": {
@@ -247,48 +254,41 @@ def batch_step(core_stack: CoreStack, spec: dict, job_definition_name: str, next
                 ],
             },
         },
-        "ResultPath": None,
+        "ResultSelector": {
+            **step.spec["outputs"],
+        },
+        "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
     }
 
-    if isinstance(next_step, str):
-        ret.update({"Next": next_step})
+    if next_step_override is None:
+        ret.update(**step.next_or_end)
     else:
-        ret.update(next_or_end(next_step))
+        ret.update({"Next": next_step_override})
 
     return ret
 
 
 def handle_batch(core_stack: CoreStack,
-                 step_name: str,
-                 spec: dict,
-                 wf_params: dict,
-                 prev_outputs: dict,
-                 next_step: Step
-                 ) -> Generator[Resource, None, Tuple[dict, List[State]]]:
+                 step: Step,
+                 wf_params: dict) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
-    logger.info(f"making batch step {step_name}")
+    logger.info(f"making batch step {step.name}")
 
-    if spec.get("task_role") is not None:
-        task_role = spec["task_role"]
-    elif wf_params.get("task_role") is not None:
-        task_role = wf_params["task_role"]
-    else:
-        task_role = core_stack.output("ECSTaskRoleArn")
+    task_role = step.spec.get("task_role") or wf_params.get("task_role") or core_stack.output("ECSTaskRoleArn")
 
-    subbed_spec = do_param_substitution(spec)
+    subbed_spec = do_param_substitution(step.spec)
+    subbed_step = Step(step.name, subbed_spec, step.next)
 
-    if subbed_spec["inputs"] is None:
-        subbed_spec["inputs"] = prev_outputs
-
-    job_def_name = yield from job_definition_rc(core_stack, step_name, subbed_spec, task_role)
+    job_def_name = yield from job_definition_rc(core_stack, subbed_step, task_role)
 
     if subbed_spec["qc_check"] is not None:
-        first_qc_step_name, qc_steps = handle_qc_check(core_stack, step_name, subbed_spec["qc_check"], next_step)
-        ret0 = batch_step(core_stack, subbed_spec, job_def_name, first_qc_step_name, **spec["retry"])
-        ret = [State(step_name, ret0)] + qc_steps
+        qc_state = handle_qc_check(core_stack, subbed_step)
+        ret0 = batch_step(core_stack, subbed_step, job_def_name, **subbed_step.spec["retry"],
+                          next_step_override=qc_state.name)
+        ret = [State(step.name, ret0), qc_state]
 
     else:
-        ret = [State(step_name, batch_step(core_stack, subbed_spec, job_def_name, next_step, **spec["retry"]))]
+        ret = [State(step.name, batch_step(core_stack, subbed_step, job_def_name, **subbed_step.spec["retry"]))]
 
-    return subbed_spec["outputs"], ret
+    return ret

@@ -29,6 +29,8 @@ def mock_core_stack(aws_credentials):
             ImageId: {ami.id}
 
       Outputs:
+        ChooserLambdaArn:
+          Value: chooser_lambda_arn
         ECSTaskRoleArn:
           Value: ecs_task_role_arn
         EFSVolumeId:

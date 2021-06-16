@@ -165,8 +165,6 @@ You can use BayerCLAW without a detailed understanding of how it uses AWS on you
 
 The AWS Step Functions web console is one good place to monitor your jobs.
 There will be a state machine matching your workflow stack name.
-The execution name will be your `job_name`, with a random suffix appended (todo: ouch).
-(This way, even if you run the same job twice, each execution gets a unique name.)
 
 ![Step Functions list of executions](tutorial/sf_exec_list.png)
 

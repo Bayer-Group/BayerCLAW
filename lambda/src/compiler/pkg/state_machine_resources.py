@@ -1,20 +1,23 @@
+from collections import deque
 import json
 import logging
-from typing import Generator, Tuple
+from typing import Generator, List, Dict, Tuple
 from uuid import uuid4
 
 import boto3
-from more_itertools import peekable
 
 from . import batch_resources as b
+from . import chooser_resources as c
+from . import enhanced_parallel_resources as ep
 from . import native_step_resources as ns
 from . import scatter_gather_resources as sg
 from . import subpipe_resources as sp
-from .util import CoreStack, Resource, Step, State, SENTRY, make_logical_name, lambda_logging_block
-from .validation import validate_batch_step, validate_native_step, validate_scatter_step, validate_subpipe_step
+from .util import CoreStack, Step, Resource, State, make_logical_name, lambda_logging_block
+from .validation import validate_batch_step, validate_native_step, validate_parallel_step, validate_scatter_step, \
+    validate_subpipe_step, validate_chooser_step
 
 
-def make_launcher_step(core_stack: CoreStack, wf_params: dict, next_step: str) -> Tuple[str, dict]:
+def make_launcher_step(core_stack: CoreStack, wf_params: dict) -> dict:
     launch_step_name = "Launch"
 
     ret = {
@@ -28,82 +31,102 @@ def make_launcher_step(core_stack: CoreStack, wf_params: dict, next_step: str) -
             },
             "ResultPath": "$",
             "OutputPath": "$",
-            "Next": next_step,
+            "_stet": True,
         },
     }
-    return launch_step_name, ret
+
+    return ret
 
 
-def _stepperator(steps: list):
-    for record in steps:
-        name, spec = next(iter(record.items()))
-        step = Step(name, spec)
-        yield step
+def make_step_list(steps: List[Dict]) -> List[Step]:
+    ret = deque()
+    next_step = ""
+
+    for step in reversed(steps):
+        name, spec = next(iter(step.items()))
+        n = spec.get("Next") or spec.get("next")
+        e = spec.get("End") or spec.get("end")
+
+        if n is None and e is None:
+            step = Step(name, spec, next_step)
+        elif n is not None:
+            step = Step(name, spec, n)
+        else:
+            step = Step(name, spec, "")
+
+        ret.appendleft(step)
+        next_step = name
+
+    return list(ret)
+
+
+def process_step(core_stack: CoreStack,
+                 step: Step,
+                 wf_params: dict,
+                 depth: int) -> Generator[Resource, None, List[State]]:
+    if "scatter" in step.spec:
+        normalized_step = validate_scatter_step(step)
+        states_to_add = yield from sg.handle_scatter_gather(core_stack,
+                                                            normalized_step,
+                                                            wf_params,
+                                                            depth)
+
+    elif "image" in step.spec:
+        normalized_step = validate_batch_step(step)
+        states_to_add = yield from b.handle_batch(core_stack,
+                                                  normalized_step,
+                                                  wf_params)
+
+    elif "subpipe" in step.spec:
+        normalized_step = validate_subpipe_step(step)
+        states_to_add = sp.handle_subpipe(core_stack,
+                                          normalized_step)
+
+    elif "Type" in step.spec:
+        normalized_step = validate_native_step(step)
+        states_to_add = yield from ns.handle_native_step(core_stack,
+                                                         normalized_step,
+                                                         wf_params,
+                                                         depth)
+
+    elif "choices" in step.spec:
+        normalized_step = validate_chooser_step(step)
+        states_to_add = c.handle_chooser_step(core_stack,
+                                              normalized_step)
+
+    elif "branches" in step.spec:
+        normalized_step = validate_parallel_step(step)
+        states_to_add = yield from ep.handle_parallel_step(core_stack,
+                                                           normalized_step,
+                                                           wf_params,
+                                                           depth)
+
+    else:
+        raise RuntimeError(f"step '{step.name}' is not a recognized step type")
+
+    return states_to_add
 
 
 def make_branch(core_stack: CoreStack,
-                steps: list,
+                raw_steps: list,
                 wf_params: dict,
                 include_launcher: bool = False,
                 depth: int = 0) -> Generator[Resource, None, dict]:
-
     logger = logging.getLogger(__name__)
 
-    step_iter = peekable(_stepperator(steps))
-
-    first_step_name = step_iter.peek(SENTRY).name
-
     if include_launcher:
-        first_step_name, states = make_launcher_step(core_stack, wf_params, first_step_name)
-    else:
-        states = {}
+        launcher_step = make_launcher_step(core_stack, wf_params)
+        raw_steps.insert(0, launcher_step)
 
-    prev_outputs = {}
+    steps = make_step_list(raw_steps)
+    states = {}
 
-    for step in step_iter:
-        next_step = step_iter.peek(SENTRY)
-
-        if "scatter" in step.spec:
-            normalized_spec = validate_scatter_step(step)
-            prev_outputs, steps_to_add = yield from sg.handle_scatter_gather(core_stack,
-                                                                             step.name,
-                                                                             normalized_spec,
-                                                                             wf_params,
-                                                                             prev_outputs,
-                                                                             next_step,
-                                                                             depth)
-
-        elif "image" in step.spec:
-            normalized_spec = validate_batch_step(step)
-            prev_outputs, steps_to_add = yield from b.handle_batch(core_stack,
-                                                                   step.name,
-                                                                   normalized_spec,
-                                                                   wf_params,
-                                                                   prev_outputs,
-                                                                   next_step)
-
-        elif "subpipe" in step.spec:
-            normalized_spec = validate_subpipe_step(step)
-            steps_to_add = sp.handle_subpipe(core_stack,
-                                             step.name,
-                                             normalized_spec,
-                                             next_step)
-
-        elif "Type" in step.spec:
-            normalized_spec = validate_native_step(step)
-            steps_to_add = yield from ns.handle_native_step(core_stack,
-                                                            step.name,
-                                                            normalized_spec,
-                                                            wf_params,
-                                                            next_step,
-                                                            depth)
-        else:
-            raise RuntimeError(f"step '{step.name}' is not a recognized step type")
-
-        states.update(steps_to_add)
+    for step in steps:
+        states_to_add = yield from process_step(core_stack, step, wf_params, depth)
+        states.update(states_to_add)
 
     ret = {
-        "StartAt": first_step_name,
+        "StartAt": steps[0].name,
         "States": states,
     }
 
@@ -148,8 +171,11 @@ def write_state_machine_to_s3(sfn_def: dict, core_stack: CoreStack) -> dict:
     return ret
 
 
-def handle_state_machine(core_stack: CoreStack, steps: list, wf_params: dict, dst_fh = None) -> Generator[Resource, None, str]:
-    state_machine_def = yield from make_branch(core_stack, steps, wf_params, include_launcher=True)
+def handle_state_machine(core_stack: CoreStack,
+                         raw_steps: List[Dict],
+                         wf_params: dict,
+                         dst_fh=None) -> Generator[Resource, None, str]:
+    state_machine_def = yield from make_branch(core_stack, raw_steps, wf_params, include_launcher=True)
 
     if dst_fh is None:
         state_machine_location = write_state_machine_to_s3(state_machine_def, core_stack)

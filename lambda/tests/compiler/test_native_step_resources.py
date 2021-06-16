@@ -13,10 +13,10 @@ pass_test = {
     "InputPath": "$.input_path",
     "Parameters": {"x": 1},
     "Result": {"y": 1},
-    "ResultPath": "$.result_path",
-    "OutputPath": "$.output_path",
-    "Next": "next_step",
-    "End": True,
+    "ResultPath": "override_this",
+    "OutputPath": "override_this",
+    "Next": "override_this",
+    "End": False,
 }
 
 task_test = {
@@ -25,10 +25,10 @@ task_test = {
     "Resource": "arn:etc:etc",
     "InputPath": "$.input_path",
     "Parameters": {"x": 1},
-    "ResultPath": "$.result_path",
-    "OutputPath": "$.output_path",
-    "Next": "next_step",
-    "End": True,
+    "ResultPath": "override_this",
+    "OutputPath": "override_this",
+    "Next": "override_this",
+    "End": False,
 }
 
 wait_test = {
@@ -39,16 +39,16 @@ wait_test = {
     "Timestamp": "2020-04-23T12:41:00Z",
     "TimestampPath": "$.timestamp",
     "InputPath": "$.input_path",
-    "OutputPath": "$.output_path",
-    "Next": "next_step",
-    "End": True,
+    "OutputPath": "override_this",
+    "Next": "override_this",
+    "End": False,
 }
 
 succeed_test = {
     "Type": "Succeed",
     "Comment": "test case for Succeed state",
     "InputPath": "$.input_path",
-    "OutputPath": "$.output_path",
+    "OutputPath": "override_this",
 }
 
 fail_test = {
@@ -59,33 +59,83 @@ fail_test = {
 }
 
 
-@pytest.mark.parametrize("test_input", [pass_test, task_test, wait_test, succeed_test, fail_test])
-def test_handle_native_step(test_input):
+@pytest.mark.parametrize("test_input, next_or_end", [
+    (pass_test, "next_step"),
+    (pass_test, ""),
+    (task_test, "next_step"),
+    (task_test, ""),
+    (wait_test, "next_step"),
+    (wait_test, ""),
+    (succeed_test, "unused"),
+    (fail_test, "unused"),
+])
+def test_handle_native_step(test_input, next_or_end):
     wf_params = {"wf": "params"}
 
     def helper():
-        result, *more = yield from handle_native_step("core_stack_placeholder", "step_name", test_input, wf_params, Step("next_step", {}), 0)
+        test_step = Step("step_name", test_input, next_or_end)
+        result, *more = yield from handle_native_step("core_stack_placeholder", test_step, wf_params, 0)
         assert len(more) == 0
         assert isinstance(result, State)
         assert result.name == "step_name"
 
-        result_path = result.spec.pop("ResultPath", "")
-        if result_path != "":
+        try:
+            result_path = result.spec.pop("ResultPath")
             assert result_path is None
+        except KeyError:
+            pass
 
-        output_path = result.spec.pop("OutputPath", None)
-        if output_path is not None:
+        try:
+            output_path = result.spec.pop("OutputPath")
             assert output_path == "$"
+        except KeyError:
+            pass
 
-        if test_input["Type"] in {"Succeed", "Fail"}:
+        if result.spec["Type"] in {"Succeed", "Fail"}:
             assert "Next" not in result
+            assert "End" not in result
         else:
-            next_ = result.spec.pop("Next")
-            assert next_ == "next_step"
+            if next_or_end == "":
+                end_value = result.spec.pop("End")
+                assert end_value is True
+                assert "Next" not in result
+            else:
+                next_value = result.spec.pop("Next")
+                assert next_value == next_or_end
+                assert "End" not in result
 
-        assert "End" not in result
-
+        # make sure all other fields are unchanged
         assert result.spec.items() <= test_input.items()
+
+    resources = list(helper())
+    assert len(resources) == 0
+
+
+def test_handle_native_step_stet():
+    test_input = {
+        "Type": "AnyType",
+        "ResultPath": "keep_this_result_path",
+        "OutputPath": "keep_this_output_path",
+        "_stet": True,
+        "Other": "stuff",
+    }
+    wf_params = {"wf": "params"}
+
+    def helper():
+        test_step = Step("step_name", test_input, "next_step")
+        result, *more = yield from handle_native_step("core_stack_placeholder", test_step, wf_params, 0)
+        expect = {
+            "Type": "AnyType",
+            "ResultPath": "keep_this_result_path",
+            "OutputPath": "keep_this_output_path",
+            "Other": "stuff",
+            "Next": "next_step",
+        }
+
+        assert len(more) == 0
+        assert isinstance(result, State)
+        assert result.name == "step_name"
+        assert result.spec == expect
 
     resources = list(helper())
     assert len(resources) == 0
@@ -97,6 +147,7 @@ def test_handle_parallel_native_step(monkeypatch, mock_core_stack):
 
     step_yaml = textwrap.dedent("""
       Type: Parallel
+      inputs: {}
       Branches:
         -
           steps:
@@ -156,13 +207,15 @@ def test_handle_parallel_native_step(monkeypatch, mock_core_stack):
                   memory: 4
                   spot: true
                 skip_if_output_exists: true
+      Next: override_this
     """)
-    step = yaml.safe_load(step_yaml)
+    spec = yaml.safe_load(step_yaml)
     wf_params = {"wf": "params"}
 
     def helper():
-        result, *more = yield from handle_native_step(core_stack, "step_name", step, wf_params, Step("next_step", {}), 0)
-        print(str(result))
+        test_step = Step("step_name", spec, "next_step")
+        result, *more = yield from handle_native_step(core_stack, test_step, wf_params, 0)
+        # print(str(result))
         assert len(more) == 0
         assert isinstance(result, State)
         assert result.name == "step_name"

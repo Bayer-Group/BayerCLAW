@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.scatter_gather_resources import scatter_step, map_step, gather_step, handle_scatter_gather
-from ...src.compiler.pkg.util import CoreStack, Step, SENTRY
+from ...src.compiler.pkg.util import CoreStack, Step
 
 
 def test_scatter_step(monkeypatch, mock_core_stack):
@@ -26,7 +26,8 @@ def test_scatter_step(monkeypatch, mock_core_stack):
         },
     }
 
-    result = scatter_step(core_stack, "test_step", spec, "next_step_name")
+    test_step = Step("test_step", spec, "unused")
+    result = scatter_step(core_stack, test_step, "map_step_name")
     expect = {
         "Type": "Task",
         "Resource": "scatter_lambda_arn",
@@ -46,14 +47,14 @@ def test_scatter_step(monkeypatch, mock_core_stack):
             },
         },
         "ResultPath": "$.items",
-        "Next": "next_step_name",
+        "Next": "map_step_name",
     }
     assert result == expect
 
 
 def test_map_step():
     sub_branch = {"fake": "branch"}
-    result = map_step(sub_branch, "next_step_name")
+    result = map_step(sub_branch, "gather_step_name")
     expect = {
         "Type": "Map",
         "ItemsPath": "$.items",
@@ -61,18 +62,21 @@ def test_map_step():
             "id_prefix.$": "$.id_prefix",
             "index.$": "States.Format('{}', $$.Map.Item.Index)",
             "job_file.$": "$.job_file",
+            "prev_outputs": {},
             "repo.$": "$$.Map.Item.Value.repo",
         },
         "Iterator": sub_branch,
         "ResultPath": "$.results",
-        "Next": "next_step_name",
+        "Next": "gather_step_name",
     }
     assert result == expect
 
 
-@pytest.mark.parametrize("next_step, next_or_end", [(Step("next_step", {}), {"Next": "next_step"}),
-                                                    (SENTRY, {"End": True})])
-def test_gather_step(next_step, next_or_end, monkeypatch, mock_core_stack):
+@pytest.mark.parametrize("next_step_name, next_or_end", [
+    ("next_step", {"Next": "next_step"}),
+    ("", {"End": True}),
+])
+def test_gather_step(next_step_name, next_or_end, monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
@@ -86,6 +90,7 @@ def test_gather_step(next_step, next_or_end, monkeypatch, mock_core_stack):
             "output2": "outfile2.txt",
         },
     }
+    test_step = Step("test_step", spec, next_step_name)
 
     expect = {
         "Type": "Task",
@@ -104,11 +109,12 @@ def test_gather_step(next_step, next_or_end, monkeypatch, mock_core_stack):
                 "step_name": "test_step",
                 "workflow_name": "${WorkflowName}",
             },
-       },
-        "ResultPath": "$.manifest",
-        **next_or_end
+        },
+        "ResultPath": "$.prev_outputs",
+        "OutputPath": "$",
+        **next_or_end,
     }
-    result = gather_step(core_stack, "test_step", spec, next_step)
+    result = gather_step(core_stack, test_step)
     assert result == expect
 
 
@@ -155,15 +161,10 @@ def test_handle_scatter_gather(monkeypatch, mock_core_stack, sample_scatter_step
 
     wf_params = {"wf": "params"}
 
-    expected_prev_outputs = {
-        "output1": "outfile1.txt",
-        "output2": "outfile2.txt",
-    }
-
     def helper():
-        prev_outputs, states = yield from handle_scatter_gather(core_stack, "step_name", sample_scatter_step, wf_params, {}, Step("next_step_name", {}), 0)
+        step = Step("step_name", sample_scatter_step, "next_step_name")
+        states = yield from handle_scatter_gather(core_stack, step, wf_params, 0)
 
-        assert prev_outputs == expected_prev_outputs
         assert len(states) == 3
 
         assert states[0].name == "step_name"
@@ -172,8 +173,8 @@ def test_handle_scatter_gather(monkeypatch, mock_core_stack, sample_scatter_step
 
         assert "parameters" not in states[0].spec["Parameters"]
         inputs0 = json.loads(states[0].spec["Parameters"]["inputs"])
-        assert inputs0["input1"] =="infile1.txt"
-        assert inputs0["input2"] =="infile2.txt"
+        assert inputs0["input1"] == "infile1.txt"
+        assert inputs0["input2"] == "infile2.txt"
 
         inputs1 = json.loads(states[1].spec["Iterator"]["States"]["Step1"]["Parameters"]["Parameters"]["inputs"])
         assert inputs1["input3"] == "1_infile3.txt"
@@ -199,8 +200,9 @@ def test_handle_scatter_gather(monkeypatch, mock_core_stack, sample_scatter_step
 
 def test_handle_scatter_gather_too_deep():
     def helper():
+        fake_step = Step("fake", {"fake": ""}, "fake_next_step")
         with pytest.raises(RuntimeError, match=r"Nested Scatter steps are not supported"):
-            _ = yield from handle_scatter_gather("fake", "fake", {"fake": ""}, {"fake": ""}, {}, Step("fake", {}), 1)
+            _ = yield from handle_scatter_gather("fake_core_stack", fake_step, {"wf": "params"}, 1)
 
     _ = list(helper())
 
@@ -210,14 +212,10 @@ def test_handle_scatter_gather_auto_inputs(monkeypatch, mock_core_stack, sample_
     core_stack = CoreStack()
 
     sample_scatter_step["inputs"] = None
-    prev_outputs = {
-        "input1": "input_one.txt",
-        "input2": "input_two.txt",
-    }
 
     def helper():
-        _, states = yield from handle_scatter_gather(core_stack, "step_name", sample_scatter_step, {}, prev_outputs, Step("next_step_name", {}), 0)
-        inputs = json.loads(states[0].spec["Parameters"]["inputs"])
-        assert inputs == prev_outputs
+        test_step = Step("step_name", sample_scatter_step, "next_step_name")
+        states = yield from handle_scatter_gather(core_stack, test_step, {"wf": "params"}, 0)
+        assert states[0].spec["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())

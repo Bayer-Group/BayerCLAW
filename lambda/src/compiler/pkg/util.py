@@ -1,17 +1,46 @@
-from collections import namedtuple
 from datetime import timedelta
+import json
 import os
 import re
-from typing import Dict, Union, Any
+from typing import Any, NamedTuple
 
 import boto3
 import jmespath
 
-Step = namedtuple("Step", "name spec")
-Resource = namedtuple("Resource", "name spec")
-State = namedtuple("State", "name spec")
 
-SENTRY = Step("SENTRY", {})
+class Step(NamedTuple):
+    name: str
+    spec: dict
+    next: str
+
+    @property
+    def is_terminal(self) -> bool:
+        return self.next == ""
+
+    @property
+    def next_or_end(self) -> dict:
+        if self.is_terminal:
+            return {"End": True}
+        else:
+            return {"Next": self.next}
+
+    @property
+    def input_field(self) -> dict:
+        if self.spec["inputs"] is None:
+            ret = {"inputs.$": "States.JsonToString($.prev_outputs)"}
+        else:
+            ret = {"inputs": json.dumps(self.spec["inputs"])}
+        return ret
+
+
+class Resource(NamedTuple):
+    name: str
+    spec: dict
+
+
+class State(NamedTuple):
+    name: str
+    spec: dict
 
 
 class CoreStack(object):
@@ -33,15 +62,6 @@ class CoreStack(object):
 def make_logical_name(s: str) -> str:
     words = (w.capitalize() for w in re.split(r"[\W_]+", s))
     ret = "".join(words)
-    return ret
-
-
-def next_or_end(next_step: Step) -> Dict[str, Union[bool, str]]:
-    if next_step is SENTRY:
-        ret = {"End": True}
-    else:
-        ret = {"Next": next_step.name}
-
     return ret
 
 

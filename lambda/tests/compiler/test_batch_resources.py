@@ -9,7 +9,7 @@ import yaml
 from ...src.compiler.pkg.batch_resources import parse_uri, get_ecr_uri, get_custom_job_queue_arn, get_job_queue,\
     get_memory_in_mibs, get_skip_behavior, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH
 from ...src.compiler.pkg.misc_resources import LAUNCHER_STACK_NAME
-from ...src.compiler.pkg.util import CoreStack, Step, Resource, State, SENTRY
+from ...src.compiler.pkg.util import CoreStack, Step, Resource, State
 
 
 @pytest.mark.parametrize("uri, expected", [
@@ -185,7 +185,8 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
     }
 
     def helper():
-        job_def_name1 = yield from job_definition_rc(core_stack, step_name, sample_batch_step, task_role)
+        step = Step(step_name, sample_batch_step, "next_step")
+        job_def_name1 = yield from job_definition_rc(core_stack, step, task_role)
         assert job_def_name1 == expected_job_def_name
 
     for job_def_rc in helper():
@@ -206,11 +207,11 @@ def test_get_skip_behavior(spec, expect):
     assert result == expect
 
 
-@pytest.mark.parametrize("next_step, next_or_end", [
-    (Step("next_step", {}), {"Next": "next_step"}),
-    (SENTRY,                {"End": True})
+@pytest.mark.parametrize("next_step_name, next_or_end", [
+    ("next_step", {"Next": "next_step"}),
+    ("", {"End": True}),
 ])
-def test_batch_step(next_step, next_or_end, monkeypatch, mock_core_stack, sample_batch_step):
+def test_batch_step(next_step_name, next_or_end, monkeypatch, mock_core_stack, sample_batch_step):
     expected_body = {
         "Type": "Task",
         "Resource": "arn:aws:states:::batch:submitJob.sync",
@@ -262,21 +263,27 @@ def test_batch_step(next_step, next_or_end, monkeypatch, mock_core_stack, sample
                 ],
             },
         },
-        "ResultPath": None,
+        "ResultSelector": sample_batch_step["outputs"],
+        "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
+        **next_or_end
     }
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
+    spec = Step("step_name", sample_batch_step, next_step_name)
+    result = batch_step(core_stack, spec, "TestJobDef")
+    assert result == expected_body
 
-    result = batch_step(core_stack, sample_batch_step, "TestJobDef", next_step)
-    assert result == {**expected_body, **next_or_end}
 
-
-@pytest.mark.parametrize("wf_params", [{"no_task_role": ""},
-                                       {"task_role": "arn:from:workflow:params"}])
-@pytest.mark.parametrize("step_task_role_request", [{},
-                                                    {"task_role": "arn:from:step:spec"}])
+@pytest.mark.parametrize("wf_params", [
+    {"no_task_role": ""},
+    {"task_role": "arn:from:workflow:params"}
+])
+@pytest.mark.parametrize("step_task_role_request", [
+    {},
+    {"task_role": "arn:from:step:spec"}
+])
 def test_handle_batch(wf_params, step_task_role_request, monkeypatch, mock_core_stack, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
@@ -288,18 +295,10 @@ def test_handle_batch(wf_params, step_task_role_request, monkeypatch, mock_core_
     else:
         expected_job_role_arn = "ecs_task_role_arn"
 
-    expected_prev_outputs = {
-        "paired1": "paired_trim_1.fq",
-        "paired2": "paired_trim_2.fq",
-        "unpaired1": "unpaired_trim_1.fq",
-        "unpaired2": "unpaired_trim_2.fq",
-        "trim_log": "${job.SAMPLE_ID}-fastP.json"
-    }
-
     def helper():
         test_spec = {**sample_batch_step, **step_task_role_request}
-        prev_outputs, states = yield from handle_batch(core_stack, "step_name", test_spec, wf_params, {}, Step("next_step_name", {}))
-        assert prev_outputs == expected_prev_outputs
+        test_step = Step("step_name", test_spec, "next_step_name")
+        states = yield from handle_batch(core_stack, test_step, wf_params)
         assert len(states) == 1
         assert isinstance(states[0], State)
         assert states[0].name == "step_name"
@@ -338,7 +337,8 @@ def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
     }
 
     def helper():
-        prev_outputs, states = yield from handle_batch(core_stack, "step_name", sample_batch_step, {}, {}, Step("next_step_name", {}))
+        step = Step("step_name", sample_batch_step, "next_step_name")
+        states = yield from handle_batch(core_stack, step, {"wf": "params"})
         assert len(states) == 2
         assert all(isinstance(s, State) for s in states)
 
@@ -364,15 +364,10 @@ def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_ste
     core_stack = CoreStack()
 
     sample_batch_step["inputs"] = None
-    prev_outputs = {
-        "adapter": "s3://bucket/path/to/adapers.fa",
-        "reads1": "s3://bucket/path/to/reads1.fq",
-        "reads2": "s3://bucket/path/to/reads2.fq",
-    }
 
     def helper():
-        _, states = yield from handle_batch(core_stack, "step_name", sample_batch_step, {}, prev_outputs, Step("next_step_name", {}))
-        inputs = json.loads(states[0].spec["Parameters"]["Parameters"]["inputs"])
-        assert inputs == prev_outputs
+        step = Step("step_name", sample_batch_step, "next_step")
+        states = yield from handle_batch(core_stack, step, {"wf": "params"})
+        assert states[0].spec["Parameters"]["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())

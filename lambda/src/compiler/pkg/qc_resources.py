@@ -1,10 +1,13 @@
-from typing import Tuple, List
-
-from .util import CoreStack, Step, State, next_or_end, lambda_logging_block
+from .util import CoreStack, Step, State, lambda_logging_block
 
 
-def qc_checker_step(core_stack: CoreStack, step_name: str, qc_spec: dict, next_step: Step,
-                    retry_attempts: int = 3, wait_interval: int = 3, backoff_rate: float = 1.5) -> dict:
+def qc_checker_step(core_stack: CoreStack,
+                    batch_step: Step,
+                    retry_attempts: int = 3,
+                    wait_interval: int = 3,
+                    backoff_rate: float = 1.5) -> dict:
+    qc_spec = batch_step.spec["qc_check"]
+
     ret = {
         "Type": "Task",
         "Resource": core_stack.output("QCCheckerLambdaArn"),
@@ -13,7 +16,7 @@ def qc_checker_step(core_stack: CoreStack, step_name: str, qc_spec: dict, next_s
             "qc_result_file": qc_spec["qc_result_file"],
             "qc_expression": qc_spec["stop_early_if"],
             "execution_id.$": "$$.Execution.Id",
-            **lambda_logging_block(step_name),
+            **lambda_logging_block(batch_step.name),
         },
         "Retry": [
             {
@@ -32,17 +35,13 @@ def qc_checker_step(core_stack: CoreStack, step_name: str, qc_spec: dict, next_s
         ],
         "ResultPath": None,
         "OutputPath": "$",
-        **next_or_end(next_step)
+        **batch_step.next_or_end,
     }
 
     return ret
 
 
-def handle_qc_check(core_stack: CoreStack, step_name: str, qc_spec: dict, next_step: Step) -> Tuple[str, List[State]]:
-    qc_checker_step_name = f"{step_name}.qc_checker"
-
-    ret = [
-        State(qc_checker_step_name, qc_checker_step(core_stack, step_name, qc_spec, next_step)),
-    ]
-
-    return qc_checker_step_name, ret
+def handle_qc_check(core_stack: CoreStack, batch_step: Step) -> State:
+    qc_checker_step_name = f"{batch_step.name}.qc_checker"
+    ret = State(qc_checker_step_name, qc_checker_step(core_stack, batch_step))
+    return ret

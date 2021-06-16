@@ -61,7 +61,7 @@ def _inputerator(s3_paths: Iterable[str]) -> Generator[str, None, None]:
             yield s3_path
 
 
-def _download_this(s3_path: str) -> None:
+def _download_this(s3_path: str, optional: bool) -> None:
     bucket, key = s3_path.split("/", 3)[2:]
     filename = os.path.basename(key)
     logger.info(f"starting download: {s3_path} -> {filename}")
@@ -71,7 +71,10 @@ def _download_this(s3_path: str) -> None:
         s3.Object(bucket, key).download_file(filename)
         logger.info(f"finished download: {s3_path} -> {filename}")
     except Exception as e:
-        raise RuntimeError(f"download failed: {s3_path}\nreason: {str(e)}")
+        if optional and "Not Found" in str(e):
+            logger.warning(f"optional file not found: {s3_path}; skipping")
+        else:
+            raise RuntimeError(f"download failed: {s3_path}\nreason: {str(e)}")
 
 
 def _outputerator(output_files: Iterable[str]) -> Generator[str, None, None]:
@@ -90,7 +93,9 @@ def _upload_that(local_file: str, bucket: str, prefix: str) -> None:
     session = boto3.Session()
     s3 = session.resource("s3")
     try:
-        s3.Object(bucket, key).upload_file(local_file, ExtraArgs={'ServerSideEncryption': 'AES256'})
+        s3.Object(bucket, key).upload_file(local_file,
+                                           ExtraArgs={"ServerSideEncryption": "AES256",
+                                                      "Metadata": {"execution_id": os.environ.get("BC_EXECUTION_ID", "undefined")}})
         logger.info(f"finished upload: {local_file} -> s3://{bucket}/{key}")
     except FileNotFoundError:
         logger.warning(f"{local_file} not found; skipping upload")
@@ -139,13 +144,18 @@ class Repository(object):
 
         return ret
 
-    def download_inputs(self, input_spec: Dict[str, str]) -> Dict[str, str]:
-        s3_paths = {k: self.add_s3_path(v) for k, v in input_spec.items()}
+    def download_inputs(self, input_spec: Dict[str, str], optional: bool) -> Dict[str, str]:
+        if optional:
+            logger.info(f"downloading {len(input_spec)} optional file(s) from S3")
+        else:
+            logger.info(f"downloading {len(input_spec)} required file(s) from S3")
 
+        s3_paths = {k: self.add_s3_path(v) for k, v in input_spec.items()}
         expanded_s3_paths = list(_inputerator(s3_paths.values()))
         if len(expanded_s3_paths) > 0:
-            with ThreadPoolExecutor(max_workers=len(expanded_s3_paths)) as executor:
-                _ = list(executor.map(_download_this, expanded_s3_paths))
+            downloader = partial(_download_this, optional=optional)
+            with ThreadPoolExecutor(max_workers=min(len(expanded_s3_paths), 256)) as executor:
+                _ = list(executor.map(downloader, expanded_s3_paths))
 
         ret = {k: os.path.basename(v) for k, v in input_spec.items()}
         return ret
@@ -154,7 +164,7 @@ class Repository(object):
         expanded_local_files = list(_outputerator(output_spec.values()))
         if len(expanded_local_files) > 0:
             uploader = partial(_upload_that, bucket=self.bucket, prefix=self.prefix)
-            with ThreadPoolExecutor(max_workers=len(expanded_local_files)) as executor:
+            with ThreadPoolExecutor(max_workers=min(len(expanded_local_files), 256)) as executor:
                 _ = list(executor.map(uploader, expanded_local_files))
 
     @backoff.on_exception(backoff.expo, RuntimeError, max_time=60)

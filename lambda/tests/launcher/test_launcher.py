@@ -157,6 +157,7 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
             "version": version,
             "s3_request_id": "ELVISLIVES",
         },
+        "prev_outputs": {},
         "repo": "s3://repo-bucket/path/to/repo/testJob",
     }
 

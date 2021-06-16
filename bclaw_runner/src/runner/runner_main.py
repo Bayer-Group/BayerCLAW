@@ -20,9 +20,10 @@ import json
 import logging.config
 import os
 import sys
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from docopt import docopt
+from more_itertools import partition
 
 from .cache import get_reference_inputs
 from .custom_logs import LOGGING_CONFIG
@@ -61,6 +62,15 @@ def get_config() -> dict:
         cfg = json.load(fp)
 
     return cfg
+
+
+def split_inputs(all_inputs: dict) -> Tuple[Dict, Dict]:
+    required_keys, optional_keys = partition(lambda k: k.endswith("?"), all_inputs)
+
+    required_ret = {r: all_inputs[r] for r in required_keys}
+    optional_ret = {o.rstrip("?"): all_inputs[o] for o in optional_keys}
+
+    return required_ret, optional_ret
 
 
 def main(commands: List[str],
@@ -102,12 +112,20 @@ def main(commands: List[str],
             # download references, link to workspace
             local_references = get_reference_inputs(jobby_references)
 
+            # split inputs into required & optional
+            required_inputs, optional_inputs = split_inputs(subbed_inputs)
+
             # download inputs -> returns local filenames
-            local_inputs = repo.download_inputs(subbed_inputs)
+            local_required_inputs = repo.download_inputs(required_inputs, optional=False)
+            local_optional_inputs = repo.download_inputs(optional_inputs, optional=True)
             local_outputs = subbed_outputs
 
             # substitute local filenames into commands
-            subbed_commands = substitute(jobby_commands, {**local_inputs, **local_outputs, **jobby_params, **local_references})
+            subbed_commands = substitute(jobby_commands, {**local_required_inputs,
+                                                          **local_optional_inputs,
+                                                          **local_outputs,
+                                                          **jobby_params,
+                                                          **local_references})
 
             local_job_data = write_job_data_file(job_data_obj, wrk)
 
@@ -132,6 +150,8 @@ def main(commands: List[str],
             logger.exception("runner failed")
             status = 255
 
+        else:
+            logger.info("runner finished")
     return status
 
 
