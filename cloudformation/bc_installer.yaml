@@ -524,19 +524,19 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Action:
-                  - "ec2:*"
-                  - "iam:*"
-                  - "s3:*"
-                  - "codedeploy:*"
-                  - "logs:*"
-                  - "batch:*"
-                  - "ssm:*"
-                  - "cloudtrail:*"
-                  - "cloudformation:*"
-                  - "lambda:*"
-                  - "dynamodb:*"
-              Effect: Allow
-              Resource: "*"
+                - "ec2:*"
+                - "iam:*"
+                - "s3:*"
+                - "codedeploy:*"
+                - "logs:*"
+                - "batch:*"
+                - "ssm:*"
+                - "cloudtrail:*"
+                - "cloudformation:*"
+                - "lambda:*"
+                - "dynamodb:*"
+                Effect: Allow
+                Resource: "*"
 #      ManagedPolicyArns:
 #        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 #        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
