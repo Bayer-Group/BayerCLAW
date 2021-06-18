@@ -518,17 +518,36 @@ Resources:
                 - codebuild.amazonaws.com
             Action:
               - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
-        - "arn:aws:iam::aws:policy/AWSCodeDeployFullAccess"
-        - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
-        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-        - "arn:aws:iam::aws:policy/AWSBatchFullAccess"
-        - "arn:aws:iam::aws:policy/IAMFullAccess"
-        - "arn:aws:iam::aws:policy/AmazonSSMFullAccess"
-        - "arn:aws:iam::aws:policy/AWSCloudTrail_FullAccess"
-        - "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
+      Policies:
+        - PolicyName: CoreBuilderPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Action:
+                  - "ec2:*"
+                  - "iam:*"
+                  - "s3:*"
+                  - "codedeploy:*"
+                  - "logs:*"
+                  - "batch:*"
+                  - "ssm:*"
+                  - "cloudtrail:*"
+                  - "cloudformation:*"
+                  - "lambda:*"
+                  - "dynamodb:*"
+              Effect: Allow
+              Resource: "*"
+#      ManagedPolicyArns:
+#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+#        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+#        - "arn:aws:iam::aws:policy/AWSCodeDeployFullAccess"
+#        - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
+#        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+#        - "arn:aws:iam::aws:policy/AWSBatchFullAccess"
+#        - "arn:aws:iam::aws:policy/IAMFullAccess"
+#        - "arn:aws:iam::aws:policy/AmazonSSMFullAccess"
+#        - "arn:aws:iam::aws:policy/AWSCloudTrail_FullAccess"
+#        - "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
 
   RunnerCodebuildRole:
     Type: AWS::IAM::Role
