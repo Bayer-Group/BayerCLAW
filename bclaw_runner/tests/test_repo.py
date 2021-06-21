@@ -270,8 +270,8 @@ def test_download_inputs_missing_optional_file(monkeypatch, tmp_path, caplog, re
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
 
-    boto3.client("s3").create_bucket(Bucket=DIFFERENT_BUCKET)
-    different_bucket = boto3.resource("s3").Bucket(DIFFERENT_BUCKET)
+    boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=DIFFERENT_BUCKET)
+    different_bucket = boto3.resource("s3", region_name="us-east-1").Bucket(DIFFERENT_BUCKET)
     different_bucket.put_object(Key="different/path/different_file", Body=DIFFERENT_FILE_CONTENT.encode("utf-8"))
 
     file_spec = {
