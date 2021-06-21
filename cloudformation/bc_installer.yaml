@@ -58,7 +58,7 @@ Parameters:
   CoreRepo:
     Type: String
     Description: GitHub repo containing the BayerCLAW core code.
-    Default: <github-user-id>/BayerCLAW
+    Default: Bayer-Group/BayerCLAW
 
   EFSVolumeId:
     Type: String

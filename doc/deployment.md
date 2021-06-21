@@ -2,9 +2,11 @@
 ## Prerequisites
 
 - **CodeStar Connection:** A CodeStar Connection enables CodePipeline to retrieve code from GitHub.
-If a Connection to `github.com` already exists in your account, there is no need to create
-another. Otherwise, to create a new Connection, follow the instructions [here](connection.md). To get the Connection
-ARN, you can use the following AWS CLI command:
+    Follow the instructions [here](https://docs.aws.amazon.com/dtconsole/latest/userguide/connections-create-github.html#connections-create-github-console)
+    to set up a connection. When the page asks you where you want to install the connector app, choose your
+    personal GitHub account, and allow it to install on all repositories.
+
+    To get the ARN of your Connection, you can use the following AWS CLI command:
     ```bash
     aws codestar-connections list-connections --query "Connections[].ConnectionArn"
     ```
@@ -50,24 +52,21 @@ ARN, you can use the following AWS CLI command:
     If you do not need EFS, you can enter `Auto` to have BayerCLAW create a suitable security group.
 
 ## Installation
-1. Use the `Fork` button in the upper right of this page to fork this repository into your GitHub account. Then 
-clone the forked repository to your local machine.
-2. In the CloudFormation console for your AWS account, click on the `Create stack` button.
+1. In the CloudFormation console for your AWS account, click on the `Create stack` button.
     - If the `Create stack` button you see has a dropdown on it, select `With new resources (standard)` in the dropdown.
-3. On the `Create stack` page:
+2. On the `Create stack` page:
     - Under `Prerequisite - Prepare template`, select `Template is ready`.
     - Under `Specify template`, select `Upload a template file`. Use the `Choose file` button to select the
     `bc_installer.yaml` file in your cloned repo. 
     Click the `Next` button.
-4. On the `Specify stack details` page:
+3. On the `Specify stack details` page:
     - Enter a name such as `bayerclaw-installer` for the installer stack.
     - Set parameters for this installation:
         - **Source parameters**
             - CodeStarConnectionArn: The ARN of the CodeStar Connection object through which CodePipeline will
             access GitHub.
-            - CoreRepo: Location (account and repo name) of your BayerCLAW fork.
-            - CoreBranch: Git branch to build. You shouldn't need to change this except for development and testing
-            purposes. 
+            - CoreRepo: Location (account and repo name) of the BayerCLAW repository. You shouldn't need to change this.
+            - CoreBranch: Git branch to build. You shouldn't need to change this.
         - **Identifiers**
             - InstallationName: Name of the main BayerCLAW stack. Default is `bayerclaw`, don't change it for the 
             initial deployment.
@@ -95,8 +94,8 @@ clone the forked repository to your local machine.
             - LogRetentionDays: Number of days to keep CloudWatch log entries before deleting them. Default is 30 days.
             - UseExistingCloudTrail: Most users should enter `No`. However, if your account already has a CloudTrail trail
             monitoring all S3 buckets, enter `Yes`.
-5. On the `Configure stack options` page, keep the default options.
-6. Check all of the "I acknowledge..." statements at the bottom of the Review page, then click `Create stack`.
+4. On the `Configure stack options` page, keep the default options.
+5. Check all of the "I acknowledge..." statements at the bottom of the Review page, then click `Create stack`.
 
 *For the initial build only:* After the installer stack reaches a `CREATE_COMPLETE` state, a CodePipeline run
 will be automatically started, which will create the rest of the resources BayerCLAW needs. You can monitor this
@@ -128,12 +127,12 @@ and uploads as well as other functions.
 
 ## Updating BayerCLAW
 
-Most updates can be performed by rerunning CodePipeline. First, update your fork to match the main BayerCLAW repo.
-Then use the `Release change` button on the CodePipeline console to rerun the pipeline, or use the AWS CLI command
+Most updates can be performed by rerunning CodePipeline. Use the `Release change` button on the CodePipeline console to
+rerun the pipeline, or use the AWS CLI command
 `aws codepipeline start-pipeline-execution --name <codepipeline name>`.
 
 Some updates may require a full refresh of everything including the installer stack. To perform a full refresh:
-1. Pull the latest version of your GitHub fork to your local machine.
+1. Pull the latest version of the BayerCLAW repo to your local machine.
 2. Run the command:
     ```bash
    aws cloudformation deploy --template-file bc_installer.yaml --stack-name <installer stack name>
