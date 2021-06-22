@@ -62,13 +62,13 @@ Resources:
       Protocol: lambda
       TopicArn: !Ref wfOutputSNSTopic
 
-#  wfSNSPermissionToInvokeLambda:
-#    Type: AWS::Lambda::Permission
-#    Properties:
-#      FunctionName: !Ref JobStatusLambdaArn
-#      Action: lambda:InvokeFunction
-#      Principal: sns.amazonaws.com
-#      SourceArn: !GetAtt wfSFNtoLambdaRule.Arn
+  wfSNSPermissionToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref JobStatusLambdaArn
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref wfOutputSNSTopic
 
 Outputs:
   wfOutputTopicArn:
