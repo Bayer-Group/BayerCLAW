@@ -647,6 +647,9 @@ Resources:
         -
           AttributeName: "timestamp"
           AttributeType: "N"
+        -
+          AttributeName: "jobFile"
+          AttributeType: "S"
       KeySchema:
         -
           AttributeName: "workflowName"
