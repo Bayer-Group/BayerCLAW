@@ -27,8 +27,9 @@ def lambda_handler(event: dict, context: object) -> None:
             "Item": {
                 "workflowName": wf_name,
                 "executionId": exec_id,
-                "jobFileName": job_file_name,
-                "jobFileVersion": job_file_version,
+                "jobFile": f"{job_file_name}#{job_file_version}",
+                # "jobFileName": job_file_name,
+                # "jobFileVersion": job_file_version,
                 "status": job_status,
                 "timestamp": int(timestamp.timestamp()),
                 "expiration": int(expiration.timestamp()),

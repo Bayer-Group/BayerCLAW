@@ -668,7 +668,22 @@ Resources:
             ProjectionType: INCLUDE
             NonKeyAttributes:
               - "executionId"
-              - "jobFileName"
+              - "jobFile"
+              - "status"
+        -
+          IndexName: executionsByJobFile
+          KeySchema:
+            -
+              AttributeName: "workflowName"
+              KeyType: "HASH"
+            -
+              AttributeName: "jobFile"
+              KeyType: "RANGE"
+          PROJECTION:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - "executionId"
+              - "timestamp"
               - "status"
       TimeToLiveSpecification:
         AttributeName: "expiration"
