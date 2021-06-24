@@ -91,8 +91,6 @@ def test_lambda_handler(status, ddb_table, monkeypatch):
         "executionId": "12345678-1234...",
         "workflowName": "test-workflow",
         "jobFile": "path/to/job.file#987654321",
-        # "jobFileName": "path/to/job.file",
-        # "jobFileVersion": "987654321",
         "status": status,
         "timestamp": expected_timestamp,
         "expiration": expected_expiration,
@@ -120,8 +118,6 @@ def test_lambda_handler_overwrite(old_status, new_status, expected_file_version,
             "executionId": "12345678-1234...",
             "status": old_status,
             "jobFile": "path/to/job.file#old"
-            # "jobFile": "path/to/job.file",
-            # "jobFileVersion": "old"
         }
     )
 
@@ -159,5 +155,4 @@ def test_lambda_handler_overwrite(old_status, new_status, expected_file_version,
         Select="ALL_ATTRIBUTES"
     )
 
-    # assert chek["Items"][0]["jobFileVersion"] == expected_file_version
-    assert chek["Items"][0]["jobFile"].endswith(expected_file_version)
+    assert chek["Items"][0]["jobFile"].endswith("#" + expected_file_version)
