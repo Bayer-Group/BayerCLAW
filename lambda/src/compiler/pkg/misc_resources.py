@@ -27,6 +27,7 @@ def notifications_substack_rc(core_stack: CoreStack, state_machine_logical_name:
     rc_bucket = core_stack.output("ResourceBucketName")
     template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/wf_notifications.yaml"
     handler_lambda_arn = core_stack.output("EventHandlerLambdaArn")
+    job_status_lambda_arn = core_stack.output("JobStatusLambdaArn")
 
     ret = {
         "Type": "AWS::CloudFormation::Stack",
@@ -34,6 +35,7 @@ def notifications_substack_rc(core_stack: CoreStack, state_machine_logical_name:
             "Parameters": {
                 "WorkflowName": {"Ref": "AWS::StackName"},
                 "HandlerLambdaArn": handler_lambda_arn,
+                "JobStatusLambdaArn": job_status_lambda_arn,
                 "StateMachineArn": {"Ref": state_machine_logical_name},
             },
             "TemplateURL": template_url,

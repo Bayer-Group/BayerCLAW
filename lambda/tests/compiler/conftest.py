@@ -39,6 +39,8 @@ def mock_core_stack(aws_credentials):
           Value: event_handler_lambda_arn
         GatherLambdaArn:
           Value: gather_lambda_arn
+        JobStatusLambdaArn:
+          Value: job_status_lambda_arn
         LauncherBucketName:
           Value: launcher_bucket_name
         LauncherLambdaArn:

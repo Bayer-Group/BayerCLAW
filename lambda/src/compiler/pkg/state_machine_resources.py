@@ -192,6 +192,12 @@ def handle_state_machine(core_stack: CoreStack,
             "RoleArn": core_stack.output("StatesExecutionRoleArn"),
             "DefinitionS3Location": state_machine_location,
             "DefinitionSubstitutions": None,
+            "Tags": [
+                {
+                    "Key": "bclaw:core-stack-name",
+                    "Value": core_stack.name,
+                },
+            ],
         },
     }
 

@@ -348,6 +348,29 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${EventHandlerLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  JobStatusLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: job_status.lambda_handler
+      Runtime: python3.8
+      CodeUri: lambda/src/job_status
+      Environment:
+        Variables:
+          JOB_STATUS_TABLE: !Ref JobStatusTable
+          EXPIRATION_DAYS: "90"
+      MemorySize: 128
+      Timeout: 60
+      Policies:
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+      DeploymentPreference:
+        Enabled: False
+
+  JobStatusLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${JobStatusLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
   CompilerMacro:
     Type: AWS::CloudFormation::Macro
     Properties:
@@ -610,6 +633,65 @@ Resources:
           ComputeEnvironment: !Ref SpotComputeEnvironment
       JobQueueName: !Sub ${AWS::StackName}-bclaw-spot-queue
 
+  # dynamodb
+  JobStatusTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "workflowName"
+          AttributeType: "S"
+        -
+          AttributeName: "executionId"
+          AttributeType: "S"
+        -
+          AttributeName: "timestamp"
+          AttributeType: "N"
+        -
+          AttributeName: "jobFile"
+          AttributeType: "S"
+      KeySchema:
+        -
+          AttributeName: "workflowName"
+          KeyType: "HASH"
+        -
+          AttributeName: "executionId"
+          KeyType: "RANGE"
+      LocalSecondaryIndexes:
+        -
+          IndexName: executionsByTimestamp
+          KeySchema:
+            -
+              AttributeName: "workflowName"
+              KeyType: "HASH"
+            -
+              AttributeName: "timestamp"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - "executionId"
+              - "jobFile"
+              - "status"
+        -
+          IndexName: executionsByJobFile
+          KeySchema:
+            -
+              AttributeName: "workflowName"
+              KeyType: "HASH"
+            -
+              AttributeName: "jobFile"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - "executionId"
+              - "timestamp"
+              - "status"
+      TimeToLiveSpecification:
+        AttributeName: "expiration"
+        Enabled: true
+      BillingMode: PAY_PER_REQUEST
 
 Outputs:
   ChooserLambdaArn:
@@ -632,6 +714,12 @@ Outputs:
 
   GatherLambdaLogGroupName:
     Value: !Ref GatherLambdaLogGroup
+
+  JobStatusLambdaArn:
+    Value: !GetAtt JobStatusLambda.Arn
+
+  JobStatusTableName:
+    Value: !Ref JobStatusTable
 
   LauncherBucketName:
     Value: !Ref LauncherBucket

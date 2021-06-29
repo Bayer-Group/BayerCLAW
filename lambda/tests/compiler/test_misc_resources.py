@@ -35,6 +35,7 @@ def test_notifications_substack_rc(monkeypatch, mock_core_stack):
             "Parameters": {
                 "WorkflowName": {"Ref": "AWS::StackName"},
                 "HandlerLambdaArn": "event_handler_lambda_arn",
+                "JobStatusLambdaArn": "job_status_lambda_arn",
                 "StateMachineArn": {"Ref": "FakeStateMachine"},
             },
             "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/wf_notifications.yaml",
