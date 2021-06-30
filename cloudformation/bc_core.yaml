@@ -205,6 +205,14 @@ Resources:
       Policies:
         - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
         - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
+        -
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: Allow
+              Action:
+                - batch:DescribeJobQueues
+              Resource: "*"
       DeploymentPreference:
         Enabled: false
 
@@ -580,7 +588,7 @@ Resources:
         InstanceTypes:
           - optimal
         MinvCpus: !Ref MinvCpus
-        DesiredvCpus: 2
+        DesiredvCpus: 0
         MaxvCpus: !Ref MaxvCpus
         SecurityGroupIds:
           !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Split [",", !Ref SecurityGroups]]
@@ -606,7 +614,7 @@ Resources:
         InstanceTypes:
           - optimal
         MinvCpus: !Ref MinvCpus
-        DesiredvCpus: 2
+        DesiredvCpus: 0
         MaxvCpus: !Ref MaxvCpus
         SecurityGroupIds:
           !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Split [",", !Ref SecurityGroups]]
