@@ -43,8 +43,8 @@ skip_msg = "only one of 'skip_on_rerun' or 'skip_if_output_exists' is allowed"
 next_or_end_msg = "cannot specify both 'next' and 'end' in a step"
 
 next_or_end = {
-    Exclusive("Next", "next_or_end", msg=next_or_end_msg): str,
-    Exclusive("End", "next_or_end", msg=next_or_end_msg): All(Boolean(), Msg(True, "'end' value must be truthy")),
+    Exclusive("next", "next_or_end", msg=next_or_end_msg): str,
+    Exclusive("end", "next_or_end", msg=next_or_end_msg): All(Boolean(), Msg(True, "'end' value must be truthy")),
 }
 
 batch_step_schema = Schema(All(
