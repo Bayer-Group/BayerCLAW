@@ -512,7 +512,7 @@ Resources:
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
         SecurityGroupIds:
-          !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Ref SecurityGroups]
+          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
         Subnets: !Join [",", !Ref Subnets]
 
   OnDemandQueueStack:
@@ -531,7 +531,7 @@ Resources:
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
         SecurityGroupIds:
-          !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Ref SecurityGroups]
+          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
         Subnets: !Join [",", !Ref Subnets]
 
 #  LaunchTemplate:
