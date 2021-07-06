@@ -441,43 +441,43 @@ Resources:
         - !Ref StatesExecutionRole
 
   # batch
-  EcsInstanceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - "ec2.amazonaws.com"
-            Action:
-              - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+#  EcsInstanceRole:
+#    Type: AWS::IAM::Role
+#    Properties:
+#      AssumeRolePolicyDocument:
+#        Version: 2012-10-17
+#        Statement:
+#          - Effect: Allow
+#            Principal:
+#              Service:
+#                - "ec2.amazonaws.com"
+#            Action:
+#              - "sts:AssumeRole"
+#      ManagedPolicyArns:
+#        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+#        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
 
-  EcsInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Roles:
-        - !Ref EcsInstanceRole
+#  EcsInstanceProfile:
+#    Type: AWS::IAM::InstanceProfile
+#    Properties:
+#      Roles:
+#        - !Ref EcsInstanceRole
 
-  BatchServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - "batch.amazonaws.com"
-            Action:
-              - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
+#  BatchServiceRole:
+#    Type: AWS::IAM::Role
+#    Properties:
+#      AssumeRolePolicyDocument:
+#        Version: 2012-10-17
+#        Statement:
+#          - Effect: Allow
+#            Principal:
+#              Service:
+#                - "batch.amazonaws.com"
+#            Action:
+#              - "sts:AssumeRole"
+#      ManagedPolicyArns:
+#        - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
 
   EcsTaskRole:
     Type: AWS::IAM::Role
@@ -496,150 +496,187 @@ Resources:
         - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
         - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
 
-  LaunchTemplate:
-    Type: AWS::EC2::LaunchTemplate
+  SpotQueue:
+    Type: AWS::Serverless::Application
     Properties:
-      LaunchTemplateData:
-        BlockDeviceMappings:
-          - DeviceName: /dev/xvda
-            Ebs:
-              VolumeSize: !Ref RootVolumeSize
-              VolumeType: gp3
-          - DeviceName: /dev/sdh
-            Ebs:
-              DeleteOnTermination: true
-              Encrypted: true
-              VolumeSize: !Ref ScratchVolumeSize
-              VolumeType: gp3
-        ImageId: !Ref AmiId
-        InstanceInitiatedShutdownBehavior: terminate
-        UserData:
-          "Fn::Base64":
-            "Fn::Sub": |
-              Content-Type: multipart/mixed; boundary="==BOUNDARY=="
-              MIME-Version:1.0
-
-              --==BOUNDARY==
-              Content-Type: text/x-shellscript; charset="us-ascii"
-
-              #! /bin/bash
-
-              function terminate {
-                sudo shutdown -h now
-                exit 1
-              }
-
-              trap terminate ERR
-
-              # Format and mount the EBS volume
-              if file -sL /dev/sdh | grep -q ": data$"; then
-                # this device is unformatted
-                mkfs -t ext4 /dev/sdh
-              fi
-              mkdir -p /scratch
-              mount /dev/sdh /scratch
-
-              # Mount EFS volume, if any
-              if [[ "${EFSVolumeId}" =~ ^fs- ]]; then
-                mkdir -p /mnt/efs
-                mount -t efs -o tls,ro ${EFSVolumeId}:/ /mnt/efs
-              fi
-
-              sudo yum install -y awscli.noarch
-
-              cd /scratch
-              cat > runner_installer.sh << EOF
-              aws s3 sync s3://${ResourceBucketName}/runner/ .
-
-              chmod +x select_runner.sh
-              chmod +x centos/bclaw_runner
-              chmod +x debian/bclaw_runner
-
-              EOF
-
-              source runner_installer.sh
-
-              # sanity checks
-              if [ ! -x select_runner.sh ]; then
-                terminate
-              fi
-
-              for d in centos debian
-              do
-                if [ ! -x $d/bclaw_runner ]; then
-                  terminate
-                fi
-              done
-
-              --==BOUNDARY==--
-
-  OnDemandComputeEnvironment:
-    Type: AWS::Batch::ComputeEnvironment
-    Properties:
-      ServiceRole: !GetAtt BatchServiceRole.Arn
-      Type: MANAGED
-      State: ENABLED
-      ComputeResources:
-        AllocationStrategy: BEST_FIT_PROGRESSIVE
-        LaunchTemplate:
-          LaunchTemplateId: !Ref LaunchTemplate
-          Version: !GetAtt LaunchTemplate.LatestVersionNumber
-        InstanceRole: !Ref EcsInstanceProfile
-        InstanceTypes:
-          - optimal
-        MinvCpus: !Ref MinvCpus
-        DesiredvCpus: 0
+      Location: bc_batch.yaml
+      Parameters:
+        AmiId: !Ref AmiId
+        EFSVolumeId: !Ref EFSVolumeId
+        # InstanceTypes: optimal
         MaxvCpus: !Ref MaxvCpus
+        MinvCpus: !Ref MinvCpus
+        # QueuePriority: 10
+        RequestType: "Spot"
+        ResourceBucketName: !Ref ResourceBucketName
+        RootVolumeSize: !Ref RootVolumeSize
+        ScratchVolumeSize: !Ref ScratchVolumeSize
         SecurityGroupIds:
           !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Split [",", !Ref SecurityGroups]]
         Subnets: !Ref Subnets
-        Type: EC2
-
-  SpotComputeEnvironment:
-    Type: AWS::Batch::ComputeEnvironment
-    Properties:
-      ServiceRole: !GetAtt BatchServiceRole.Arn
-      Type: MANAGED
-      State: ENABLED
-      ComputeResources:
-        AllocationStrategy: SPOT_CAPACITY_OPTIMIZED
-        # Setting the bid too low may mean jobs sometimes get stuck in the queue
-        # and never run until the price drops.  At 100%, they should never get stuck.
-        # This does not affect how much we pay, just whether we run or not given the market price.
-        BidPercentage: 100
-        LaunchTemplate:
-          LaunchTemplateId: !Ref LaunchTemplate
-          Version: !GetAtt LaunchTemplate.LatestVersionNumber
-        InstanceRole: !Ref EcsInstanceProfile
-        InstanceTypes:
-          - optimal
-        MinvCpus: !Ref MinvCpus
-        DesiredvCpus: 0
-        MaxvCpus: !Ref MaxvCpus
-        SecurityGroupIds:
-          !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Split [",", !Ref SecurityGroups]]
-        Subnets: !Ref Subnets
-        Type: SPOT
 
   OnDemandQueue:
-    Type: AWS::Batch::JobQueue
+    Type: AWS::Serverless::Application
     Properties:
-      Priority: 10
-      State: ENABLED
-      ComputeEnvironmentOrder:
-        - Order: 1
-          ComputeEnvironment: !Ref OnDemandComputeEnvironment
-      JobQueueName: !Sub ${AWS::StackName}-bclaw-on-demand-queue
+      Location: bc_batch.yaml
+        EFSVolumeId: !Ref EFSVolumeId
+        # InstanceTypes: optimal
+        MaxvCpus: !Ref MaxvCpus
+        MinvCpus: !Ref MinvCpus
+        # QueuePriority: 10
+        RequestType: "On-demand"
+        ResourceBucketName: !Ref ResourceBucketName
+        RootVolumeSize: !Ref RootVolumeSize
+        ScratchVolumeSize: !Ref ScratchVolumeSize
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Split [",", !Ref SecurityGroups]]
+        Subnets: !Ref Subnets
 
-  SpotQueue:
-    Type: AWS::Batch::JobQueue
-    Properties:
-      Priority: 10
-      State: ENABLED
-      ComputeEnvironmentOrder:
-        - Order: 1
-          ComputeEnvironment: !Ref SpotComputeEnvironment
-      JobQueueName: !Sub ${AWS::StackName}-bclaw-spot-queue
+#  LaunchTemplate:
+#    Type: AWS::EC2::LaunchTemplate
+#    Properties:
+#      LaunchTemplateData:
+#        BlockDeviceMappings:
+#          - DeviceName: /dev/xvda
+#            Ebs:
+#              VolumeSize: !Ref RootVolumeSize
+#              VolumeType: gp3
+#          - DeviceName: /dev/sdh
+#            Ebs:
+#              DeleteOnTermination: true
+#              Encrypted: true
+#              VolumeSize: !Ref ScratchVolumeSize
+#              VolumeType: gp3
+#        ImageId: !Ref AmiId
+#        InstanceInitiatedShutdownBehavior: terminate
+#        UserData:
+#          "Fn::Base64":
+#            "Fn::Sub": |
+#              Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+#              MIME-Version:1.0
+#
+#              --==BOUNDARY==
+#              Content-Type: text/x-shellscript; charset="us-ascii"
+#
+#              #! /bin/bash
+#
+#              function terminate {
+#                sudo shutdown -h now
+#                exit 1
+#              }
+#
+#              trap terminate ERR
+#
+#              # Format and mount the EBS volume
+#              if file -sL /dev/sdh | grep -q ": data$"; then
+#                # this device is unformatted
+#                mkfs -t ext4 /dev/sdh
+#              fi
+#              mkdir -p /scratch
+#              mount /dev/sdh /scratch
+#
+#              # Mount EFS volume, if any
+#              if [[ "${EFSVolumeId}" =~ ^fs- ]]; then
+#                mkdir -p /mnt/efs
+#                mount -t efs -o tls,ro ${EFSVolumeId}:/ /mnt/efs
+#              fi
+#
+#              sudo yum install -y awscli.noarch
+#
+#              cd /scratch
+#              cat > runner_installer.sh << EOF
+#              aws s3 sync s3://${ResourceBucketName}/runner/ .
+#
+#              chmod +x select_runner.sh
+#              chmod +x centos/bclaw_runner
+#              chmod +x debian/bclaw_runner
+#
+#              EOF
+#
+#              source runner_installer.sh
+#
+#              # sanity checks
+#              if [ ! -x select_runner.sh ]; then
+#                terminate
+#              fi
+#
+#              for d in centos debian
+#              do
+#                if [ ! -x $d/bclaw_runner ]; then
+#                  terminate
+#                fi
+#              done
+#
+#              --==BOUNDARY==--
+
+
+#  OnDemandComputeEnvironment:
+#    Type: AWS::Batch::ComputeEnvironment
+#    Properties:
+#      ServiceRole: !GetAtt BatchServiceRole.Arn
+#      Type: MANAGED
+#      State: ENABLED
+#      ComputeResources:
+#        AllocationStrategy: BEST_FIT_PROGRESSIVE
+#        LaunchTemplate:
+#          LaunchTemplateId: !Ref LaunchTemplate
+#          Version: !GetAtt LaunchTemplate.LatestVersionNumber
+#        InstanceRole: !Ref EcsInstanceProfile
+#        InstanceTypes:
+#          - optimal
+#        MinvCpus: !Ref MinvCpus
+#        DesiredvCpus: 0
+#        MaxvCpus: !Ref MaxvCpus
+#        SecurityGroupIds:
+#          !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Split [",", !Ref SecurityGroups]]
+#        Subnets: !Ref Subnets
+#        Type: EC2
+
+#  SpotComputeEnvironment:
+#    Type: AWS::Batch::ComputeEnvironment
+#    Properties:
+#      ServiceRole: !GetAtt BatchServiceRole.Arn
+#      Type: MANAGED
+#      State: ENABLED
+#      ComputeResources:
+#        AllocationStrategy: SPOT_CAPACITY_OPTIMIZED
+#        # Setting the bid too low may mean jobs sometimes get stuck in the queue
+#        # and never run until the price drops.  At 100%, they should never get stuck.
+#        # This does not affect how much we pay, just whether we run or not given the market price.
+#        BidPercentage: 100
+#        LaunchTemplate:
+#          LaunchTemplateId: !Ref LaunchTemplate
+#          Version: !GetAtt LaunchTemplate.LatestVersionNumber
+#        InstanceRole: !Ref EcsInstanceProfile
+#        InstanceTypes:
+#          - optimal
+#        MinvCpus: !Ref MinvCpus
+#        DesiredvCpus: 0
+#        MaxvCpus: !Ref MaxvCpus
+#        SecurityGroupIds:
+#          !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Split [",", !Ref SecurityGroups]]
+#        Subnets: !Ref Subnets
+#        Type: SPOT
+
+#  OnDemandQueue:
+#    Type: AWS::Batch::JobQueue
+#    Properties:
+#      Priority: 10
+#      State: ENABLED
+#      ComputeEnvironmentOrder:
+#        - Order: 1
+#          ComputeEnvironment: !Ref OnDemandComputeEnvironment
+#      JobQueueName: !Sub ${AWS::StackName}-bclaw-on-demand-queue
+
+#  SpotQueue:
+#    Type: AWS::Batch::JobQueue
+#    Properties:
+#      Priority: 10
+#      State: ENABLED
+#      ComputeEnvironmentOrder:
+#        - Order: 1
+#          ComputeEnvironment: !Ref SpotComputeEnvironment
+#      JobQueueName: !Sub ${AWS::StackName}-bclaw-spot-queue
 
   # dynamodb
   JobStatusTable:
@@ -742,7 +779,7 @@ Outputs:
     Value: !Ref LogRetentionDays
 
   OnDemandQueueArn:
-    Value: !Ref OnDemandQueue
+    Value: !GetAtt OnDemandQueue.Outputs.BatchQueueArn
 
   QCCheckerLambdaArn:
     Value: !GetAtt QCCheckerLambda.Arn
@@ -760,7 +797,7 @@ Outputs:
     Value: !Ref ScatterLambdaLogGroup
 
   SpotQueueArn:
-    Value: !Ref SpotQueue
+    Value: !GetAtt SpotQueue.Outputs.BatchQueueArn
 
   StatesExecutionRoleArn:
     Value: !GetAtt StatesExecutionRole.Arn

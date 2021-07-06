@@ -1,0 +1,240 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Metadata:
+  AWS::Cloudformation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: Source
+        Parameters:
+          - ResourceBucketName
+      -
+        Label:
+          default: Compute
+        Parameters:
+          - AmiId
+          - RequestType
+          - InstanceTypes
+          - MinvCpus
+          - MaxvCpus
+      -
+        Label:
+          default: Storage
+        Parameters:
+          - RootVolumeSize
+          - ScratchVolumeSize
+          - EFSVolumeId
+      -
+        Label:
+          default: Network
+        Parameters:
+          - SecurityGroupIds
+          - Subnets
+      -
+        Label:
+          default: Batch
+        Parameters:
+          - QueuePriority
+
+Parameters:
+  AmiId:
+    Type: AWS::EC2::Image::Id
+
+  EFSVolumeId:
+    Type: String
+    Default: "None"
+
+  InstanceTypes:
+    Type: CommaDelimitedList
+    Default: "optimal"
+
+  MaxvCpus:
+    Type: Number
+    Default: 256
+
+  MinvCpus:
+    Type: Number
+    Default: 0
+
+  QueuePriority:
+    Type: Number
+    Default: 10
+
+  RequestType:
+    Type: String
+    AllowedValues:
+      - Spot
+      - On-demand
+
+  ResourceBucketName:
+    Type: String
+
+  RootVolumeSize:
+    Type: Number
+    Default: 50
+
+  ScratchVolumeSize:
+    Type: Number
+    Default: 100
+
+  SecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+
+Conditions:
+  UseSpot: !Equals [!Ref RequestType, "Spot"]
+
+Resources:
+  EcsInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+
+  EcsInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EcsInstanceRole
+
+  BatchServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "batch.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
+
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: !Ref RootVolumeSize
+              VolumeType: gp3
+          - DeviceName: /dev/sdh
+            Ebs:
+              DeleteOnTermination: true
+              Encrypted: true
+              VolumeSize: !Ref ScratchVolumeSize
+              VolumeType: gp3
+        ImageId: !Ref AmiId
+        InstanceInitiatedShutdownBehavior: terminate
+        UserData:
+          "Fn::Base64":
+            "Fn::Sub": |
+              Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+              MIME-Version:1.0
+
+              --==BOUNDARY==
+              Content-Type: text/x-shellscript; charset="us-ascii"
+
+              #! /bin/bash
+
+              function terminate {
+                sudo shutdown -h now
+                exit 1
+              }
+
+              trap terminate ERR
+
+              # Format and mount the EBS volume
+              if file -sL /dev/sdh | grep -q ": data$"; then
+                # this device is unformatted
+                mkfs -t ext4 /dev/sdh
+              fi
+              mkdir -p /scratch
+              mount /dev/sdh /scratch
+
+              # Mount EFS volume, if any
+              if [[ "${EFSVolumeId}" =~ ^fs- ]]; then
+                mkdir -p /mnt/efs
+                mount -t efs -o tls,ro ${EFSVolumeId}:/ /mnt/efs
+              fi
+
+              sudo yum install -y awscli.noarch
+
+              cd /scratch
+              cat > runner_installer.sh << EOF
+              aws s3 sync s3://${ResourceBucketName}/runner/ .
+
+              chmod +x select_runner.sh
+              chmod +x centos/bclaw_runner
+              chmod +x debian/bclaw_runner
+
+              EOF
+
+              source runner_installer.sh
+
+              # sanity checks
+              if [ ! -x select_runner.sh ]; then
+                terminate
+              fi
+
+              for d in centos debian
+              do
+                if [ ! -x $d/bclaw_runner ]; then
+                  terminate
+                fi
+              done
+
+              --==BOUNDARY==--
+
+  ComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      ServiceRole: !GetAtt BatchServiceRole.Arn
+      Type: MANAGED
+      State: ENABLED
+      ComputeResources:
+        Type:
+          !If [UseSpot, "SPOT", "EC2"]
+        AllocationStrategy:
+          !If [UseSpot, "SPOT_CAPACITY_OPTIMIZED", "BEST_FIT_PROGRESSIVE"]
+        BidPercentage:
+          !If [UseSpot, 100, !Ref AWS::NoValue]
+        LaunchTemplate:
+          LaunchTemplateId: !Ref LaunchTemplate
+          Version: !GetAtt LaunchTemplate.LatestVersionNumber
+        InstanceRole: !Ref EcsInstanceProfile
+        InstanceTypes: !Ref InstanceTypes
+        MinvCpus: !Ref MinvCpus
+        MaxvCpus: !Ref MaxvCpus
+        SecurityGroupIds: !Ref SecurityGroupIds
+        Subnets: !Ref Subnets
+
+  BatchQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      Priority: !Ref QueuePriority
+      State: ENABLED
+      ComputeEnvironmentOrder:
+        - Order: 1
+          ComputeEnvironment: !Ref ComputeEnvironment
+      JobQueueName: !Sub ${AWS::StackName}-queue
+
+Outputs:
+  BatchQueueArn:
+    Value: !Ref BatchQueue
