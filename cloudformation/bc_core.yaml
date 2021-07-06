@@ -519,6 +519,8 @@ Resources:
     Type: AWS::Serverless::Application
     Properties:
       Location: bc_batch.yaml
+      Parameters:
+        AmiId: !Ref AmiId
         EFSVolumeId: !Ref EFSVolumeId
         # InstanceTypes: optimal
         MaxvCpus: !Ref MaxvCpus
