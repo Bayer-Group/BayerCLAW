@@ -496,7 +496,7 @@ Resources:
         - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
         - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
 
-  SpotQueue:
+  SpotQueueStack:
     Type: AWS::Serverless::Application
     Properties:
       Location: bc_batch.yaml
@@ -515,7 +515,7 @@ Resources:
           !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Split [",", !Ref SecurityGroups]]
         Subnets: !Ref Subnets
 
-  OnDemandQueue:
+  OnDemandQueueStack:
     Type: AWS::Serverless::Application
     Properties:
       Location: bc_batch.yaml
@@ -781,7 +781,7 @@ Outputs:
     Value: !Ref LogRetentionDays
 
   OnDemandQueueArn:
-    Value: !GetAtt OnDemandQueue.Outputs.BatchQueueArn
+    Value: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
 
   QCCheckerLambdaArn:
     Value: !GetAtt QCCheckerLambda.Arn
@@ -799,7 +799,7 @@ Outputs:
     Value: !Ref ScatterLambdaLogGroup
 
   SpotQueueArn:
-    Value: !GetAtt SpotQueue.Outputs.BatchQueueArn
+    Value: !GetAtt SpotQueueStack.Outputs.BatchQueueArn
 
   StatesExecutionRoleArn:
     Value: !GetAtt StatesExecutionRole.Arn
