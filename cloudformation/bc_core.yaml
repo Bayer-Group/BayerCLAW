@@ -513,7 +513,7 @@ Resources:
         ScratchVolumeSize: !Ref ScratchVolumeSize
         SecurityGroupIds:
           !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Split [",", !Ref SecurityGroups]]
-        Subnets: !Ref Subnets
+        Subnets: !Join [",", !Ref Subnets]
 
   OnDemandQueueStack:
     Type: AWS::Serverless::Application
@@ -532,7 +532,7 @@ Resources:
         ScratchVolumeSize: !Ref ScratchVolumeSize
         SecurityGroupIds:
           !If [MakeSecurityGroup, [!GetAtt SecurityGroup.GroupId], !Split [",", !Ref SecurityGroups]]
-        Subnets: !Ref Subnets
+        Subnets: !Join [",", !Ref Subnets]
 
 #  LaunchTemplate:
 #    Type: AWS::EC2::LaunchTemplate
