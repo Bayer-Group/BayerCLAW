@@ -134,10 +134,10 @@ def job_definition_rc(core_stack: CoreStack,
                         "Type": "MEMORY",
                         "Value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
                     },
-                    {
-                        "Type": "GPU",
-                        "Value": str(step.spec["compute"]["gpu"]),
-                    },
+                    # {
+                    #     "Type": "GPU",
+                    #     "Value": str(step.spec["compute"]["gpu"]),
+                    # },
                 ],
                 "JobRoleArn": task_role,
                 "MountPoints": [
@@ -169,6 +169,12 @@ def job_definition_rc(core_stack: CoreStack,
             },
         },
     }
+
+    if step.spec["compute"]["gpu"] > 0:
+        job_def["Properties"]["ContainerProperties"]["ResourceRequirements"].append({
+            "Type": "GPU",
+            "Value": str(step.spec["compute"]["gpu"])
+        })
 
     if core_stack.output("EFSVolumeId").startswith("fs-"):
         job_def["Properties"]["ContainerProperties"]["Environment"].append({

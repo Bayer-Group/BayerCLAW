@@ -86,54 +86,62 @@ def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack, mock_custom
 
 @pytest.fixture(scope="module")
 def sample_batch_step():
-    ret = yaml.safe_load(textwrap.dedent("""
-          commands: 
-            - ${FASTP0200}/fastp --in1 ${reads1} --in2 ${reads2} --out1 ${paired1} --outdir ${outdir} --out2 ${paired2} --unpaired1 ${unpaired1} --unpaired2 ${unpaired2} --adapter_fasta ${adapter_file} --length_required 25 --json ${trim_log}
-          compute:
-            cpus: 4
-            memory: 4 Gb
-            spot: true
-            type: memory
-            gpu: 1
-          image: skim3-fastp
-          inputs: 
-            adapter: ${adapter_path}${adapter_file}
-            reads1: ${job.READ_PATH1}
-            reads2: ${job.READ_PATH2}
-          outputs: 
-            paired1: paired_trim_1.fq
-            paired2: paired_trim_2.fq
-            unpaired1: unpaired_trim_1.fq
-            unpaired2: unpaired_trim_2.fq
-            trim_log: ${sample_id}-fastP.json
-          references:
-            reference1: s3://ref-bucket/path/to/reference.file
-          params:
-            outdir: outt
-            sample_id: ${job.SAMPLE_ID}
-            adapter_path: s3://bayer-skim-sequence-processing-696164428135/adapters/
-            adapter_file: ${job.ADAPTER_FILE}
-          qc_check: null
-          skip_on_rerun: false
-          timeout: 1h
-          retry:
-            attempts: 1
-            interval: 1s
-            backoff_rate: 1.0
-      """))
-    yield ret
+    def _impl(gpu: int = 0):
+        ret = yaml.safe_load(textwrap.dedent(f"""
+              commands: 
+                - ${{FASTP0200}}/fastp --in1 ${{reads1}} --in2 ${{reads2}} --out1 ${{paired1}} --outdir ${{outdir}} --out2 ${{paired2}} --unpaired1 ${{unpaired1}} --unpaired2 ${{unpaired2}} --adapter_fasta ${{adapter_file}} --length_required 25 --json ${{trim_log}}
+              compute:
+                cpus: 4
+                memory: 4 Gb
+                spot: true
+                type: memory
+                gpu: {gpu}
+              image: skim3-fastp
+              inputs: 
+                adapter: ${{adapter_path}}${{adapter_file}}
+                reads1: ${{job.READ_PATH1}}
+                reads2: ${{job.READ_PATH2}}
+              outputs: 
+                paired1: paired_trim_1.fq
+                paired2: paired_trim_2.fq
+                unpaired1: unpaired_trim_1.fq
+                unpaired2: unpaired_trim_2.fq
+                trim_log: ${{sample_id}}-fastP.json
+              references:
+                reference1: s3://ref-bucket/path/to/reference.file
+              params:
+                outdir: outt
+                sample_id: ${{job.SAMPLE_ID}}
+                adapter_path: s3://bayer-skim-sequence-processing-696164428135/adapters/
+                adapter_file: ${{job.ADAPTER_FILE}}
+              qc_check: null
+              skip_on_rerun: false
+              timeout: 1h
+              retry:
+                attempts: 1
+                interval: 1s
+                backoff_rate: 1.0
+          """))
+        return ret
+    yield _impl
 
 
 @pytest.mark.parametrize("task_role", [
     "arn:task:role",
     {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.EcsTaskRoleArn"]},
 ])
-def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch_step):
+@pytest.mark.parametrize("gpu, expected_gpu", [
+    (0, None),
+    (1, {"Type": "GPU", "Value": "1"})
+])
+def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, gpu, expected_gpu, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
     step_name = "skim3-fastp"
     expected_job_def_name = f"Skim3FastpJobDef"
+
+    step = Step(step_name, sample_batch_step(gpu), "next_step")
 
     expected_job_def = {
         "Type": "AWS::Batch::JobDefinition",
@@ -144,7 +152,7 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                 "repo": "rrr",
                 "inputs": "iii",
                 "references": "fff",
-                "command": json.dumps(sample_batch_step["commands"]),
+                "command": json.dumps(step.spec["commands"]),
                 "outputs": "ooo",
                 "skip": "sss",
             },
@@ -170,7 +178,7 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                 "ResourceRequirements": [
                     {"Type": "VCPU",   "Value": "4"},
                     {"Type": "MEMORY", "Value": "4096"},
-                    {"Type": "GPU",    "Value": "1"},
+                    # {"Type": "GPU",    "Value": "1"},
                 ],
                 "JobRoleArn": task_role,
                 "MountPoints": [
@@ -188,8 +196,10 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
         },
     }
 
+    if expected_gpu is not None:
+        expected_job_def["Properties"]["ContainerProperties"]["ResourceRequirements"].append(expected_gpu)
+
     def helper():
-        step = Step(step_name, sample_batch_step, "next_step")
         job_def_name1 = yield from job_definition_rc(core_stack, step, task_role)
         assert job_def_name1 == expected_job_def_name
 
@@ -216,6 +226,8 @@ def test_get_skip_behavior(spec, expect):
     ("", {"End": True}),
 ])
 def test_batch_step(next_step_name, next_or_end, monkeypatch, mock_core_stack, sample_batch_step):
+    step = Step("step_name", sample_batch_step(), next_step_name)
+
     expected_body = {
         "Type": "Task",
         "Resource": "arn:aws:states:::batch:submitJob.sync",
@@ -233,9 +245,9 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, mock_core_stack, s
             "JobQueue": "spot_queue_arn",
             "Parameters": {
                 "repo.$": "$.repo",
-                "references": json.dumps(sample_batch_step["references"]),
-                "inputs": json.dumps(sample_batch_step["inputs"]),
-                "outputs": json.dumps(sample_batch_step["outputs"]),
+                "references": json.dumps(step.spec["references"]),
+                "inputs": json.dumps(step.spec["inputs"]),
+                "outputs": json.dumps(step.spec["outputs"]),
                 "skip": "none",
             },
             "ContainerOverrides": {
@@ -267,7 +279,7 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, mock_core_stack, s
                 ],
             },
         },
-        "ResultSelector": sample_batch_step["outputs"],
+        "ResultSelector": step.spec["outputs"],
         "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
         **next_or_end
@@ -275,8 +287,7 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, mock_core_stack, s
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
-    spec = Step("step_name", sample_batch_step, next_step_name)
-    result = batch_step(core_stack, spec, "TestJobDef")
+    result = batch_step(core_stack, step, "TestJobDef")
     assert result == expected_body
 
 
@@ -300,7 +311,7 @@ def test_handle_batch(wf_params, step_task_role_request, monkeypatch, mock_core_
         expected_job_role_arn = "ecs_task_role_arn"
 
     def helper():
-        test_spec = {**sample_batch_step, **step_task_role_request}
+        test_spec = {**sample_batch_step(), **step_task_role_request}
         test_step = Step("step_name", test_spec, "next_step_name")
         states = yield from handle_batch(core_stack, test_step, wf_params)
         assert len(states) == 1
@@ -330,7 +341,9 @@ def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
-    sample_batch_step["qc_check"] = {
+    step = Step("step_name", sample_batch_step(), "next_step_name")
+
+    step.spec["qc_check"] = {
         "qc_result_file": "qc_file.json",
         "stop_early_if": "test_expression",
         "email_subject": "test subject",
@@ -341,7 +354,6 @@ def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
     }
 
     def helper():
-        step = Step("step_name", sample_batch_step, "next_step_name")
         states = yield from handle_batch(core_stack, step, {"wf": "params"})
         assert len(states) == 2
         assert all(isinstance(s, State) for s in states)
@@ -367,10 +379,10 @@ def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_ste
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
-    sample_batch_step["inputs"] = None
+    step = Step("step_name", sample_batch_step(), "next_step")
+    step.spec["inputs"] = None
 
     def helper():
-        step = Step("step_name", sample_batch_step, "next_step")
         states = yield from handle_batch(core_stack, step, {"wf": "params"})
         assert states[0].spec["Parameters"]["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 

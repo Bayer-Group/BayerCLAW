@@ -3,6 +3,7 @@ import textwrap
 
 import boto3
 import moto
+import moto.ec2
 import pytest
 
 
