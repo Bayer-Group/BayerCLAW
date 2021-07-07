@@ -123,8 +123,22 @@ def job_definition_rc(core_stack: CoreStack,
                         },
                     },
                 ],
-                "Vcpus": step.spec["compute"]["cpus"],
-                "Memory": get_memory_in_mibs(step.spec["compute"]["memory"]),
+                # "Vcpus": step.spec["compute"]["cpus"],
+                # "Memory": get_memory_in_mibs(step.spec["compute"]["memory"]),
+                "ResourceRequirements": [
+                    {
+                        "Type": "VCPU",
+                        "Value": str(step.spec["compute"]["cpus"]),
+                    },
+                    {
+                        "Type": "MEMORY",
+                        "Value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
+                    },
+                    {
+                        "Type": "GPU",
+                        "Value": str(step.spec["compute"]["gpu"]),
+                    },
+                ],
                 "JobRoleArn": task_role,
                 "MountPoints": [
                     {

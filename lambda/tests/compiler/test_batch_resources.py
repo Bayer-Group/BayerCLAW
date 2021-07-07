@@ -94,6 +94,7 @@ def sample_batch_step():
             memory: 4 Gb
             spot: true
             type: memory
+            gpu: 1
           image: skim3-fastp
           inputs: 
             adapter: ${adapter_path}${adapter_file}
@@ -164,10 +165,13 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                     {"Name": "BC_WORKFLOW_NAME",   "Value": {"Ref": "AWS::StackName"}},
                     {"Name": "BC_SCRATCH_PATH",    "Value": SCRATCH_PATH},
                     {"Name": "BC_STEP_NAME",       "Value": step_name},
-                    {"Name": "AWS_DEFAULT_REGION",   "Value": {"Ref": "AWS::Region"}},
+                    {"Name": "AWS_DEFAULT_REGION", "Value": {"Ref": "AWS::Region"}},
                 ],
-                "Vcpus": 4,
-                "Memory": 4096,
+                "ResourceRequirements": [
+                    {"Type": "VCPU",   "Value": "4"},
+                    {"Type": "MEMORY", "Value": "4096"},
+                    {"Type": "GPU",    "Value": "1"},
+                ],
                 "JobRoleArn": task_role,
                 "MountPoints": [
                     {"ContainerPath": "/scratch",        "SourceVolume": "docker_scratch", "ReadOnly": False},
