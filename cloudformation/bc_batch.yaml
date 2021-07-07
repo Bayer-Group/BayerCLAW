@@ -5,6 +5,12 @@ Metadata:
     ParameterGroups:
       -
         Label:
+          default: Batch
+        Parameters:
+          - QueueName
+          - QueuePriority
+      -
+        Label:
           default: Source
         Parameters:
           - ResourceBucketName
@@ -30,11 +36,6 @@ Metadata:
         Parameters:
           - SecurityGroupIds
           - Subnets
-      -
-        Label:
-          default: Batch
-        Parameters:
-          - QueuePriority
 
 Parameters:
   AmiId:
@@ -55,6 +56,9 @@ Parameters:
   MinvCpus:
     Type: Number
     Default: 0
+
+  QueueName:
+    Type: String
 
   QueuePriority:
     Type: Number
@@ -128,6 +132,7 @@ Resources:
   LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
+      LaunchTemplateName: !Sub "${QueueName}-lt"
       LaunchTemplateData:
         BlockDeviceMappings:
           - DeviceName: /dev/xvda
@@ -205,6 +210,7 @@ Resources:
   ComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
     Properties:
+      ComputeEnvironmentName: !Sub "${QueueName}-env"
       ServiceRole: !GetAtt BatchServiceRole.Arn
       Type: MANAGED
       State: ENABLED
@@ -228,12 +234,12 @@ Resources:
   BatchQueue:
     Type: AWS::Batch::JobQueue
     Properties:
+      JobQueueName: !Ref QueueName
       Priority: !Ref QueuePriority
       State: ENABLED
       ComputeEnvironmentOrder:
         - Order: 1
           ComputeEnvironment: !Ref ComputeEnvironment
-      JobQueueName: !Sub ${AWS::StackName}-queue
 
 Outputs:
   BatchQueueArn:
