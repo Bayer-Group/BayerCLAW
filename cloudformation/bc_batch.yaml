@@ -40,52 +40,82 @@ Metadata:
 Parameters:
   AmiId:
     Type: AWS::EC2::Image::Id
+    Description: >
+      The ID of an Amazon Machine Image (AMI) to create EC2 instances with. It is highly recommended that you
+      select an ECS-optimized Amazon Linux 2 image to use.
 
   EFSVolumeId:
     Type: String
+    Description: EFS volume to mount for your Batch jobs. Enter "None" for no volume.
     Default: "None"
 
   InstanceTypes:
     Type: CommaDelimitedList
+    Description: >
+      A comma-separated list of EC2 instance types to run your jobs on. Enter "optimal" to allow Batch to
+      choose a suitable instance type from the M4, C4, or R4 instance families.
     Default: "optimal"
 
   MaxvCpus:
     Type: Number
+    Description: >
+      Maximum number of CPUs that Batch will spin up simultaneously.
+      Actual maximum may be less depending on EC2 limits in the AWS account.
+      Once the maximum is reached, additional jobs will be queued until some jobs finish.
     Default: 256
 
   MinvCpus:
     Type: Number
+    Description: >
+      Minimum number of CPUs that Batch will maintain at all times, even when there are no jobs to process.
+      Setting this to something greater than zero (e.g. 2) will decrease the Batch cold-start time during testing,
+      at the expense of some always-on EC2 instances.
     Default: 0
 
   QueueName:
     Type: String
+    Description: The name of the Batch job queue to create.
 
   QueuePriority:
     Type: Number
+    Description: The priority of the job queue that will be produced.
     Default: 10
 
   RequestType:
     Type: String
+    Description: Request Spot or On-demand EC2 instances to run your jobs on.
     AllowedValues:
       - Spot
       - On-demand
+    Default: Spot
 
   ResourceBucketName:
     Type: String
+    Description: >
+      The name of the Resources bucket associated with your BayerCLAW installation. Should be something like
+      "<installation name>-resources-<account id>".
 
   RootVolumeSize:
     Type: Number
+    Description: Size (in GB) of the EBS root volume used by Batch jobs.
     Default: 50
 
   ScratchVolumeSize:
     Type: Number
+    Description: Size (in GB) of the EBS scratch volume used by Batch jobs.
     Default: 100
 
   SecurityGroupIds:
     Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: >
+      Comma-separated list of security group IDs for Batch jobs to run under. Must allow outbound HTTP
+      and HTTPS traffic.
 
   Subnets:
     Type: List<AWS::EC2::Subnet::Id>
+    Description: >
+      Comma-separated list of subnet IDs for Batch jobs to run in. Subnets must have outbound internet access
+      either through a direct Internet Gateway connection or through a NAT Gateway.
 
 Conditions:
   UseSpot: !Equals [!Ref RequestType, "Spot"]
