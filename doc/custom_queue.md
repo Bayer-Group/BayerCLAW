@@ -49,8 +49,8 @@ AWS CLI:
 aws cloudformation deploy \
 --stack-name my-custom-queue-stack \
 --template-file bc_batch.yaml \
---parameter-overrides QueueName=myCustomQueue QueuePriority=42 ... \
---capabilities CAPABILITY_NAMED_IAM
+--capabilities CAPABILITY_NAMED_IAM \
+--parameter-overrides QueueName=myCustomQueue QueuePriority=42 ...etc.
 ```
 
 ## Using your custom job queue
