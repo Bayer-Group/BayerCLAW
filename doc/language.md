@@ -112,6 +112,10 @@ The fields of the step specification objects are:
     the compute block. When `queue_name` is specified, `cpus` and `memory` should be specified so as to take full advantage
     of the custom resources. However, the `spot` field will have no effect when `queue_name` is specified: spot instance
     usage should be requested in your custom compute environment.
+  * `gpu`: Specify the number of GPUs that will be allocated to each batch job. Note that BayerCLAW does not
+    natively support the use of GPU resources: you will need to create a custom GPU-enabled job queue and use the
+    `queue_name` parameter to direct jobs to it. See [the custom queue documentation](custom_queue.md) for
+    details.
 * `retry`: An object defining how the workflow retries failed jobs. Optional.
   * `attempts` (optional): The number of times to retry a failed job. This does not include the initial execution, so
   for instance setting `attempts` to 3 will result in up to 4 total runs. Default is 3, set to 0 to disable retries.

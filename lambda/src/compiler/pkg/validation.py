@@ -63,6 +63,7 @@ batch_step_schema = Schema(All(
         Exclusive("skip_on_rerun", "skip_behavior", msg=skip_msg): bool,
         Optional("compute", default={}): {
             Optional("cpus", default=1): All(int, Range(min=1)),
+            Optional("gpu", default=0): All(int, Range(min=0)),
             Optional("memory", default="1 Gb"): Any(float, int, str, msg="memory must be a number or string"),
             Optional("spot", default=True): bool,
             Optional("queue_name", default=None): Maybe(str)
