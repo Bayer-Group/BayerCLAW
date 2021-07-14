@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.batch_resources import parse_uri, get_ecr_uri, get_custom_job_queue_arn, get_job_queue,\
-    get_memory_in_mibs, get_skip_behavior, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH
+    get_memory_in_mibs, get_skip_behavior, get_volume_info, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH
 from ...src.compiler.pkg.misc_resources import LAUNCHER_STACK_NAME
 from ...src.compiler.pkg.util import CoreStack, Step, Resource, State
 
@@ -82,6 +82,30 @@ def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack, mock_custom
     core_stack = CoreStack()
     result = get_job_queue(core_stack, spec)
     assert result == expected
+
+
+@pytest.mark.parametrize("global_efs_id", ["fs-12345", "None"])
+@pytest.mark.parametrize("step_efs_specs", [
+    [],
+    [{"efs_id": "fs-12345", "host_path": "/efs1", "root_dir": "/"}],
+    [{"efs_id": "fs-12345", "host_path": "/efs1", "root_dir": "/"},
+     {"efs_id": "fs-98765", "host_path": "/efs2", "root_dir": "/path/to/files"}],
+])
+def test_get_volume_info(global_efs_id, step_efs_specs):
+    step = Step("test_step", {"filesystems": step_efs_specs}, "next_step")
+    result = get_volume_info(step, global_efs_id)
+    assert "Volumes" in result
+    assert "MountPoints" in result
+    v_mp = list(zip(result["Volumes"], result["MountPoints"]))
+    print(str(result))
+
+    docker_scratch_vol, docker_scratch_mp = v_mp.pop(0)
+    scratch_vol, scratch_mp = v_mp.pop(0)
+
+    if global_efs_id is not None:
+        global_efs_vol, global_efs_mp = v_mp.pop(0)
+
+    assert len(v_mp) == len(step_efs_specs)
 
 
 @pytest.fixture(scope="module")

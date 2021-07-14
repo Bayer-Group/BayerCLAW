@@ -68,6 +68,69 @@ def get_memory_in_mibs(request: Union[str, float, int]) -> int:
     return ret
 
 
+def get_volume_info(step: Step, global_efs_id: str) -> dict:
+    volumes = [
+        {
+            "Name": "docker_scratch",
+            "Host": {
+                "SourcePath": "/docker_scratch",
+            },
+        },
+        {
+            "Name": "scratch",
+            "Host": {
+                "SourcePath": "/scratch",
+            },
+        }]
+    mount_points = [
+        {
+            "SourceVolume": "docker_scratch",
+            "ContainerPath": "/scratch",
+            "ReadOnly": False,
+        },
+        {
+            "SourceVolume": "scratch",
+            "ContainerPath": SCRATCH_PATH,
+            "ReadOnly": False,
+        }]
+
+    if global_efs_id.startswith("fs-"):
+        volumes.append({
+            "Name": "efs",
+            "Host": {
+                "SourcePath": EFS_PATH,
+            },
+        })
+        mount_points.append({
+            "SourceVolume": "efs",
+            "ContainerPath": EFS_PATH,
+            "ReadOnly": True,
+        })
+
+    for filesystem in step.spec["filesystems"]:
+        volume_name = f"{filesystem['efs_id']}-volume"
+        volumes.append({
+            "Name": volume_name,
+            "EfsVolumeConfiguration": {
+                "FileSystemId": filesystem["efs_id"],
+                "RootDirectory": filesystem["root_dir"],
+                "TransitEncryption": "ENABLED",
+            },
+        })
+        mount_points.append({
+            "SourceVolume": volume_name,
+            "ContainerPath": filesystem["host_path"],
+            "ReadOnly": True,
+        })
+
+    ret = {
+        "Volumes": volumes,
+        "MountPoints": mount_points,
+    }
+
+    return ret
+
+
 def job_definition_rc(core_stack: CoreStack,
                       step: Step,
                       task_role: Union[str, dict]) -> Generator[Resource, None, str]:
@@ -140,32 +203,33 @@ def job_definition_rc(core_stack: CoreStack,
                     # },
                 ],
                 "JobRoleArn": task_role,
-                "MountPoints": [
-                    {
-                        "ContainerPath": "/scratch",
-                        "ReadOnly": False,
-                        "SourceVolume": "docker_scratch",
-                    },
-                    {
-                        "ContainerPath": SCRATCH_PATH,
-                        "ReadOnly": False,
-                        "SourceVolume": "scratch"
-                    },
-                ],
-                "Volumes": [
-                    {
-                        "Name": "docker_scratch",
-                        "Host": {
-                            "SourcePath": "/docker_scratch",
-                        },
-                    },
-                    {
-                        "Name": "scratch",
-                        "Host": {
-                            "SourcePath": "/scratch",
-                        },
-                    },
-                ],
+                **get_volume_info(step, core_stack.output("EFSVolumeId")),
+                # "MountPoints": [
+                #     {
+                #         "ContainerPath": "/scratch",
+                #         "ReadOnly": False,
+                #         "SourceVolume": "docker_scratch",
+                #     },
+                #     {
+                #         "ContainerPath": SCRATCH_PATH,
+                #         "ReadOnly": False,
+                #         "SourceVolume": "scratch"
+                #     },
+                # ],
+                # "Volumes": [
+                #     {
+                #         "Name": "docker_scratch",
+                #         "Host": {
+                #             "SourcePath": "/docker_scratch",
+                #         },
+                #     },
+                #     {
+                #         "Name": "scratch",
+                #         "Host": {
+                #             "SourcePath": "/scratch",
+                #         },
+                #     },
+                # ],
             },
         },
     }
@@ -181,17 +245,17 @@ def job_definition_rc(core_stack: CoreStack,
             "Name": "BC_EFS_PATH",
             "Value": EFS_PATH,
         })
-        job_def["Properties"]["ContainerProperties"]["MountPoints"].append({
-            "ContainerPath": EFS_PATH,
-            "SourceVolume": "efs",
-            "ReadOnly": True,
-        })
-        job_def["Properties"]["ContainerProperties"]["Volumes"].append({
-            "Name": "efs",
-            "Host": {
-                "SourcePath": EFS_PATH,
-            },
-        })
+        # job_def["Properties"]["ContainerProperties"]["MountPoints"].append({
+        #     "ContainerPath": EFS_PATH,
+        #     "SourceVolume": "efs",
+        #     "ReadOnly": True,
+        # })
+        # job_def["Properties"]["ContainerProperties"]["Volumes"].append({
+        #     "Name": "efs",
+        #     "Host": {
+        #         "SourcePath": EFS_PATH,
+        #     },
+        # })
 
     if step.spec.get("timeout") is not None:
         job_def["Properties"]["Timeout"] = {

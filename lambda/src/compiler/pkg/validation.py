@@ -68,6 +68,13 @@ batch_step_schema = Schema(All(
             Optional("spot", default=True): bool,
             Optional("queue_name", default=None): Maybe(str)
         },
+        Optional("filesystems", default=[]): [
+            {
+                Required("efs_id", msg="EFS filesystem ID is required"): str,
+                Required("host_path", msg="host path for EFS mount is required"): str,
+                Optional("root_dir", default="/"): str,
+            },
+        ],
         Optional("qc_check", default=None): Any(None, {
             Optional("type", default="choice"): str,
             Required("qc_result_file"): str,
