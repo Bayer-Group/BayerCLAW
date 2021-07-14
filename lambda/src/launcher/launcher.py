@@ -40,6 +40,14 @@ def substitute_job_data(target: str, job_data: dict) -> str:
     return ret
 
 
+def check_recursive_launch(src_bucket: str, src_path: str, repo_bucket: str, repo_prefix: str) -> None:
+    if src_bucket == repo_bucket:
+        src_path_top_dir = src_path.split("/", 1)[0]
+        repo_path_top_dir = repo_prefix.split("/", 1)[0]
+        if src_path_top_dir == repo_path_top_dir:
+            raise RuntimeError("repo cannot be in the launcher folder")
+
+
 def copy_job_data_to_repo(src_bucket: str, src_key: str, src_version: str, dst_bucket: str, dst_prefix: str) -> None:
     filename = src_key.rsplit("/", 1)[-1]
     dst_key = f"{dst_prefix}/{filename}"
@@ -79,6 +87,8 @@ def handle_s3_launch(event: dict) -> dict:
 
     repo = substitute_job_data(event["repo_template"], job_data)
     repo_bucket, repo_prefix = repo.split("/", 3)[2:]
+
+    check_recursive_launch(src_bucket, src_key, repo_bucket, repo_prefix)
 
     copy_job_data_to_repo(src_bucket, src_key, src_version, repo_bucket, repo_prefix)
     write_extended_job_data_object(job_data, repo_bucket, repo_prefix)

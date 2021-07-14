@@ -22,8 +22,8 @@ sys.path.append(
 
 logging.basicConfig(level=logging.INFO)
 
-from ...src.launcher.launcher import read_s3_object, substitute_job_data, copy_job_data_to_repo, \
-    write_extended_job_data_object, write_execution_record, lambda_handler
+from ...src.launcher.launcher import read_s3_object, substitute_job_data, check_recursive_launch, \
+    copy_job_data_to_repo, write_extended_job_data_object, write_execution_record, lambda_handler
 
 
 @pytest.fixture(scope="function")
@@ -104,6 +104,23 @@ def test_write_extended_job_data_object():
         "parent": {},
     }
     assert result == expect
+
+
+@pytest.mark.parametrize("repo_bucket, repo_path, expect_fail", [
+    ("repo_bucket", "any/path", False),
+    ("launcher_bucket", "different/path", False),
+    ("launcher_bucket", "launcher_like/path", False),
+    ("launcher_bucket", "laun/cher_like/path", False),
+    ("launcher_bucket", "launcher", True),
+    ("launcher_bucket", "launcher/path", True),
+    ("launcher_bucket", "launcher/different/sub/path", True),
+])
+def test_check_recursive_launch(repo_bucket, repo_path, expect_fail):
+    if expect_fail:
+        with pytest.raises(RuntimeError, match="repo cannot be in the launcher folder"):
+            check_recursive_launch("launcher_bucket", "launcher/path", repo_bucket, repo_path)
+    else:
+        check_recursive_launch("launcher_bucket", "launcher/path", repo_bucket, repo_path)
 
 
 def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
