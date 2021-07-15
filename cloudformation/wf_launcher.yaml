@@ -33,6 +33,7 @@ Resources:
   wfEventRule:
     Type: AWS::Events::Rule
     Properties:
+      Name: !Ref WorkflowName
       EventBusName: default
       EventPattern:
         source:
