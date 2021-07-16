@@ -68,6 +68,58 @@ def get_memory_in_mibs(request: Union[str, float, int]) -> int:
     return ret
 
 
+def get_environment(step: Step, global_efs_id: str) -> dict:
+    vars = [
+        {
+            "Name": "BC_WORKFLOW_NAME",
+            "Value": {"Ref": "AWS::StackName"},
+        },
+        {
+            "Name": "BC_SCRATCH_PATH",
+            "Value": SCRATCH_PATH,
+        },
+        {
+            "Name": "BC_STEP_NAME",
+            "Value": step.name,
+        },
+        {
+            "Name": "AWS_DEFAULT_REGION",
+            "Value": {"Ref": "AWS::Region"},
+        },
+    ]
+
+    if global_efs_id.startswith("fs-"):
+        vars.append({
+            "Name": "BC_EFS_PATH",
+            "Value": EFS_PATH,
+        })
+
+    ret = {"Environment": vars}
+    return ret
+
+
+def get_resource_requirements(step: Step) -> dict:
+    rc = [
+        {
+            "Type": "VCPU",
+            "Value": str(step.spec["compute"]["cpus"]),
+        },
+        {
+            "Type": "MEMORY",
+            "Value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
+        },
+    ]
+
+    if step.spec["compute"]["gpu"] > 0:
+        rc.append({
+            "Type": "GPU",
+            "Value": str(step.spec["compute"]["gpu"])
+        })
+
+    ret = {"ResourceRequirements": rc}
+    return ret
+
+
 def get_volume_info(step: Step, global_efs_id: str) -> dict:
     volumes = [
         {
@@ -131,12 +183,22 @@ def get_volume_info(step: Step, global_efs_id: str) -> dict:
     return ret
 
 
+def get_timeout(step: Step) -> dict:
+    if step.spec.get("timeout") is None:
+        ret = {}
+    else:
+        ret = {"Timeout": {"AttemptDurationSeconds": max(time_string_to_seconds(step.spec["timeout"]), 60)}}
+    return ret
+
+
 def job_definition_rc(core_stack: CoreStack,
                       step: Step,
                       task_role: Union[str, dict]) -> Generator[Resource, None, str]:
     job_def_name = make_logical_name(f"{step.name}.job.def")
 
     registry, image_version, image, version = parse_uri(step.spec["image"])
+
+    global_efs_volume_id = core_stack.output("EFSVolumeId")
 
     job_def = {
         "Type": "AWS::Batch::JobDefinition",
@@ -164,103 +226,14 @@ def job_definition_rc(core_stack: CoreStack,
                     "--skip", "Ref::skip",
                 ],
                 "Image": get_ecr_uri(registry, image_version),
-                "Environment": [
-                    {
-                        "Name": "BC_WORKFLOW_NAME",
-                        "Value": {
-                            "Ref": "AWS::StackName"
-                        },
-                    },
-                    {
-                        "Name": "BC_SCRATCH_PATH",
-                        "Value": SCRATCH_PATH,
-                    },
-                    {
-                        "Name": "BC_STEP_NAME",
-                        "Value": step.name,
-                    },
-                    {
-                        "Name": "AWS_DEFAULT_REGION",
-                        "Value": {
-                            "Ref": "AWS::Region"
-                        },
-                    },
-                ],
-                # "Vcpus": step.spec["compute"]["cpus"],
-                # "Memory": get_memory_in_mibs(step.spec["compute"]["memory"]),
-                "ResourceRequirements": [
-                    {
-                        "Type": "VCPU",
-                        "Value": str(step.spec["compute"]["cpus"]),
-                    },
-                    {
-                        "Type": "MEMORY",
-                        "Value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
-                    },
-                    # {
-                    #     "Type": "GPU",
-                    #     "Value": str(step.spec["compute"]["gpu"]),
-                    # },
-                ],
                 "JobRoleArn": task_role,
-                **get_volume_info(step, core_stack.output("EFSVolumeId")),
-                # "MountPoints": [
-                #     {
-                #         "ContainerPath": "/scratch",
-                #         "ReadOnly": False,
-                #         "SourceVolume": "docker_scratch",
-                #     },
-                #     {
-                #         "ContainerPath": SCRATCH_PATH,
-                #         "ReadOnly": False,
-                #         "SourceVolume": "scratch"
-                #     },
-                # ],
-                # "Volumes": [
-                #     {
-                #         "Name": "docker_scratch",
-                #         "Host": {
-                #             "SourcePath": "/docker_scratch",
-                #         },
-                #     },
-                #     {
-                #         "Name": "scratch",
-                #         "Host": {
-                #             "SourcePath": "/scratch",
-                #         },
-                #     },
-                # ],
+                **get_environment(step, global_efs_volume_id),
+                **get_resource_requirements(step),
+                **get_volume_info(step, global_efs_volume_id),
             },
+            **get_timeout(step)
         },
     }
-
-    if step.spec["compute"]["gpu"] > 0:
-        job_def["Properties"]["ContainerProperties"]["ResourceRequirements"].append({
-            "Type": "GPU",
-            "Value": str(step.spec["compute"]["gpu"])
-        })
-
-    if core_stack.output("EFSVolumeId").startswith("fs-"):
-        job_def["Properties"]["ContainerProperties"]["Environment"].append({
-            "Name": "BC_EFS_PATH",
-            "Value": EFS_PATH,
-        })
-        # job_def["Properties"]["ContainerProperties"]["MountPoints"].append({
-        #     "ContainerPath": EFS_PATH,
-        #     "SourceVolume": "efs",
-        #     "ReadOnly": True,
-        # })
-        # job_def["Properties"]["ContainerProperties"]["Volumes"].append({
-        #     "Name": "efs",
-        #     "Host": {
-        #         "SourcePath": EFS_PATH,
-        #     },
-        # })
-
-    if step.spec.get("timeout") is not None:
-        job_def["Properties"]["Timeout"] = {
-            "AttemptDurationSeconds": max(time_string_to_seconds(step.spec["timeout"]), 60)
-        }
 
     yield Resource(job_def_name, job_def)
     return job_def_name

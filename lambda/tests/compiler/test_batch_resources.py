@@ -7,7 +7,8 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.batch_resources import parse_uri, get_ecr_uri, get_custom_job_queue_arn, get_job_queue,\
-    get_memory_in_mibs, get_skip_behavior, get_volume_info, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH
+    get_memory_in_mibs, get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout,\
+    batch_step, job_definition_rc, handle_batch, SCRATCH_PATH, EFS_PATH
 from ...src.compiler.pkg.misc_resources import LAUNCHER_STACK_NAME
 from ...src.compiler.pkg.util import CoreStack, Step, Resource, State
 
@@ -85,6 +86,59 @@ def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack, mock_custom
 
 
 @pytest.mark.parametrize("global_efs_id", ["fs-12345", "None"])
+def test_get_environment(global_efs_id):
+    step = Step("test_step", {}, "next_step")
+    result = get_environment(step, global_efs_id)
+
+    assert "Environment" in result
+    varz = result["Environment"]
+    assert isinstance(varz, list)
+
+    assert varz[0] == {"Name": "BC_WORKFLOW_NAME",
+                       "Value": {"Ref": "AWS::StackName"}}
+    assert varz[1] == {"Name": "BC_SCRATCH_PATH",
+                       "Value": SCRATCH_PATH}
+    assert varz[2] == {"Name": "BC_STEP_NAME",
+                       "Value": "test_step"}
+    assert varz[3] == {"Name": "AWS_DEFAULT_REGION",
+                       "Value": {"Ref": "AWS::Region"}}
+    if global_efs_id.startswith("fs-"):
+        assert varz[4] == {"Name": "BC_EFS_PATH",
+                           "Value": EFS_PATH}
+        assert len(varz) == 5
+    else:
+        assert len(varz) == 4
+
+
+@pytest.mark.parametrize("gpu", [0, 5])
+def test_get_resource_requirements(gpu):
+    spec = {
+        "compute": {
+            "cpus": 4,
+            "memory": "4 Gb",
+            "gpu": gpu,
+        }
+    }
+    step = Step("test_step", spec, "next_step")
+    result = get_resource_requirements(step)
+
+    assert "ResourceRequirements" in result
+    rr = result["ResourceRequirements"]
+    assert isinstance(rr, list)
+
+    assert rr[0] == {"Type": "VCPU",
+                     "Value": "4"}
+    assert rr[1] == {"Type": "MEMORY",
+                     "Value": "4096"}
+    if gpu > 0:
+        assert rr[2] == {"Type": "GPU",
+                         "Value": str(gpu)}
+        assert len(rr) == 3
+    else:
+        assert len(rr) == 2
+
+
+@pytest.mark.parametrize("global_efs_id", ["fs-12345", "None"])
 @pytest.mark.parametrize("step_efs_specs", [
     [],
     [{"efs_id": "fs-12345", "host_path": "/efs1", "root_dir": "/"}],
@@ -95,77 +149,119 @@ def test_get_volume_info(global_efs_id, step_efs_specs):
     step = Step("test_step", {"filesystems": step_efs_specs}, "next_step")
     result = get_volume_info(step, global_efs_id)
     assert "Volumes" in result
+    assert isinstance(result["Volumes"], list)
     assert "MountPoints" in result
+    assert isinstance(result["MountPoints"], list)
     v_mp = list(zip(result["Volumes"], result["MountPoints"]))
-    print(str(result))
 
     docker_scratch_vol, docker_scratch_mp = v_mp.pop(0)
-    scratch_vol, scratch_mp = v_mp.pop(0)
+    assert docker_scratch_vol == {"Name": "docker_scratch",
+                                  "Host": {"SourcePath": "/docker_scratch"},}
+    assert docker_scratch_mp == {"SourceVolume": docker_scratch_vol["Name"],
+                                 "ContainerPath": "/scratch",
+                                 "ReadOnly": False,}
 
-    if global_efs_id is not None:
+    scratch_vol, scratch_mp = v_mp.pop(0)
+    assert scratch_vol == {"Name": "scratch",
+                           "Host": {"SourcePath": "/scratch"},}
+    assert scratch_mp == {"SourceVolume": scratch_vol["Name"],
+                          "ContainerPath": SCRATCH_PATH,
+                          "ReadOnly": False,}
+
+    if global_efs_id != "None":
         global_efs_vol, global_efs_mp = v_mp.pop(0)
+        assert global_efs_vol == {"Name": "efs",
+                                  "Host": {"SourcePath": EFS_PATH},}
+        assert global_efs_mp == {"SourceVolume": global_efs_vol["Name"],
+                                 "ContainerPath": EFS_PATH,
+                                 "ReadOnly": True,}
 
     assert len(v_mp) == len(step_efs_specs)
+    for ((vol, mp), spec) in zip(v_mp, step_efs_specs):
+        assert vol == {"Name": f"{spec['efs_id']}-volume",
+                       "EfsVolumeConfiguration": {
+                           "FileSystemId": spec["efs_id"],
+                           "RootDirectory": spec["root_dir"],
+                           "TransitEncryption": "ENABLED",
+                       },}
+        assert mp == {"SourceVolume": vol["Name"],
+                      "ContainerPath": spec["host_path"],
+                      "ReadOnly": True,}
+
+
+@pytest.mark.parametrize("timeout, expect", [
+    (None, None),
+    ("10 s", 60),
+    ("100 s", 100),
+    ("1 h", 3600)
+])
+def test_get_timeout(timeout, expect):
+    step = Step("step_name", {"timeout": timeout}, "next_step")
+    result = {"Properties": {"stuff": "yada yada", **get_timeout(step)}}
+    if expect is None:
+        assert "Timeout" not in result["Properties"]
+    else:
+        assert "Timeout" in result["Properties"]
+        assert result["Properties"]["Timeout"]["AttemptDurationSeconds"] == expect
 
 
 @pytest.fixture(scope="module")
 def sample_batch_step():
-    def _impl(gpu: int = 0):
-        ret = yaml.safe_load(textwrap.dedent(f"""
-              commands: 
-                - ${{FASTP0200}}/fastp --in1 ${{reads1}} --in2 ${{reads2}} --out1 ${{paired1}} --outdir ${{outdir}} --out2 ${{paired2}} --unpaired1 ${{unpaired1}} --unpaired2 ${{unpaired2}} --adapter_fasta ${{adapter_file}} --length_required 25 --json ${{trim_log}}
-              compute:
-                cpus: 4
-                memory: 4 Gb
-                spot: true
-                type: memory
-                gpu: {gpu}
-              image: skim3-fastp
-              inputs: 
-                adapter: ${{adapter_path}}${{adapter_file}}
-                reads1: ${{job.READ_PATH1}}
-                reads2: ${{job.READ_PATH2}}
-              outputs: 
-                paired1: paired_trim_1.fq
-                paired2: paired_trim_2.fq
-                unpaired1: unpaired_trim_1.fq
-                unpaired2: unpaired_trim_2.fq
-                trim_log: ${{sample_id}}-fastP.json
-              references:
-                reference1: s3://ref-bucket/path/to/reference.file
-              params:
-                outdir: outt
-                sample_id: ${{job.SAMPLE_ID}}
-                adapter_path: s3://bayer-skim-sequence-processing-696164428135/adapters/
-                adapter_file: ${{job.ADAPTER_FILE}}
-              qc_check: null
-              skip_on_rerun: false
-              timeout: 1h
-              retry:
-                attempts: 1
-                interval: 1s
-                backoff_rate: 1.0
-          """))
-        return ret
-    yield _impl
+    ret = yaml.safe_load(textwrap.dedent("""
+          commands: 
+            - ${FASTP0200}/fastp --in1 ${reads1} --in2 ${reads2} --out1 ${paired1} --outdir ${outdir} --out2 ${paired2} --unpaired1 ${unpaired1} --unpaired2 ${unpaired2} --adapter_fasta ${adapter_file} --length_required 25 --json ${trim_log}
+          compute:
+            cpus: 4
+            memory: 4 Gb
+            spot: true
+            type: memory
+            gpu: 2
+          filesystems:
+            -
+              efs_id: fs-12345
+              host_path: /step_efs
+              root_dir: /path/to/my/data
+          image: skim3-fastp
+          inputs: 
+            adapter: ${adapter_path}${adapter_file}
+            reads1: ${job.READ_PATH1}
+            reads2: ${job.READ_PATH2}
+          outputs: 
+            paired1: paired_trim_1.fq
+            paired2: paired_trim_2.fq
+            unpaired1: unpaired_trim_1.fq
+            unpaired2: unpaired_trim_2.fq
+            trim_log: ${sample_id}-fastP.json
+          references:
+            reference1: s3://ref-bucket/path/to/reference.file
+          params:
+            outdir: outt
+            sample_id: ${job.SAMPLE_ID}
+            adapter_path: s3://bayer-skim-sequence-processing-696164428135/adapters/
+            adapter_file: ${job.ADAPTER_FILE}
+          qc_check: null
+          skip_on_rerun: false
+          timeout: 1h
+          retry:
+            attempts: 1
+            interval: 1s
+            backoff_rate: 1.0
+      """))
+    return ret
 
 
 @pytest.mark.parametrize("task_role", [
     "arn:task:role",
     {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.EcsTaskRoleArn"]},
 ])
-@pytest.mark.parametrize("gpu, expected_gpu", [
-    (0, None),
-    (1, {"Type": "GPU", "Value": "1"})
-])
-def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, gpu, expected_gpu, sample_batch_step):
+def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
     step_name = "skim3-fastp"
     expected_job_def_name = f"Skim3FastpJobDef"
 
-    step = Step(step_name, sample_batch_step(gpu), "next_step")
+    step = Step(step_name, sample_batch_step, "next_step")
 
     expected_job_def = {
         "Type": "AWS::Batch::JobDefinition",
@@ -198,20 +294,30 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, gpu, expecte
                     {"Name": "BC_SCRATCH_PATH",    "Value": SCRATCH_PATH},
                     {"Name": "BC_STEP_NAME",       "Value": step_name},
                     {"Name": "AWS_DEFAULT_REGION", "Value": {"Ref": "AWS::Region"}},
+                    {"Name": "BC_EFS_PATH",        "Value": "/mnt/efs"},
                 ],
                 "ResourceRequirements": [
                     {"Type": "VCPU",   "Value": "4"},
                     {"Type": "MEMORY", "Value": "4096"},
-                    # {"Type": "GPU",    "Value": "1"},
+                    {"Type": "GPU",    "Value": "2"},
                 ],
                 "JobRoleArn": task_role,
                 "MountPoints": [
-                    {"ContainerPath": "/scratch",        "SourceVolume": "docker_scratch", "ReadOnly": False},
-                    {"ContainerPath": "/_bclaw_scratch", "SourceVolume": "scratch",        "ReadOnly": False},
+                    {"ContainerPath": "/scratch",        "SourceVolume": "docker_scratch",  "ReadOnly": False},
+                    {"ContainerPath": "/_bclaw_scratch", "SourceVolume": "scratch",         "ReadOnly": False},
+                    {"ContainerPath": "/mnt/efs",        "SourceVolume": "efs",             "ReadOnly": True},
+                    {"ContainerPath": "/step_efs",       "SourceVolume": "fs-12345-volume", "ReadOnly": True},
                 ],
                 "Volumes": [
                     {"Name": "docker_scratch", "Host": {"SourcePath": "/docker_scratch"}},
                     {"Name": "scratch",        "Host": {"SourcePath": "/scratch"}},
+                    {"Name": "efs",            "Host": {"SourcePath": "/mnt/efs"}},
+                    {"Name": "fs-12345-volume",
+                     "EfsVolumeConfiguration": {
+                        "FileSystemId":      "fs-12345",
+                        "RootDirectory":     "/path/to/my/data",
+                        "TransitEncryption": "ENABLED",
+                     }}
                 ],
             },
             "Timeout": {
@@ -219,9 +325,6 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, gpu, expecte
             },
         },
     }
-
-    if expected_gpu is not None:
-        expected_job_def["Properties"]["ContainerProperties"]["ResourceRequirements"].append(expected_gpu)
 
     def helper():
         job_def_name1 = yield from job_definition_rc(core_stack, step, task_role)
@@ -250,7 +353,7 @@ def test_get_skip_behavior(spec, expect):
     ("", {"End": True}),
 ])
 def test_batch_step(next_step_name, next_or_end, monkeypatch, mock_core_stack, sample_batch_step):
-    step = Step("step_name", sample_batch_step(), next_step_name)
+    step = Step("step_name", sample_batch_step, next_step_name)
 
     expected_body = {
         "Type": "Task",
@@ -335,7 +438,7 @@ def test_handle_batch(wf_params, step_task_role_request, monkeypatch, mock_core_
         expected_job_role_arn = "ecs_task_role_arn"
 
     def helper():
-        test_spec = {**sample_batch_step(), **step_task_role_request}
+        test_spec = {**sample_batch_step, **step_task_role_request}
         test_step = Step("step_name", test_spec, "next_step_name")
         states = yield from handle_batch(core_stack, test_step, wf_params)
         assert len(states) == 1
@@ -365,7 +468,7 @@ def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
-    step = Step("step_name", sample_batch_step(), "next_step_name")
+    step = Step("step_name", sample_batch_step, "next_step_name")
 
     step.spec["qc_check"] = {
         "qc_result_file": "qc_file.json",
@@ -403,7 +506,7 @@ def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_ste
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
-    step = Step("step_name", sample_batch_step(), "next_step")
+    step = Step("step_name", sample_batch_step, "next_step")
     step.spec["inputs"] = None
 
     def helper():
