@@ -621,6 +621,9 @@ Outputs:
   ScatterLambdaLogGroupName:
     Value: !Ref ScatterLambdaLogGroup
 
+  SecurityGroupIds:
+    Value: !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
+
   SpotQueueArn:
     Value: !GetAtt SpotQueueStack.Outputs.BatchQueueArn
 
