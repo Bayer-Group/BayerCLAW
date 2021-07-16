@@ -126,6 +126,15 @@ Resources:
           CidrIp: 0.0.0.0/0
       VpcId: !Ref VpcId
 
+  SecurityGroupIngress:
+    Condition: MakeSecurityGroup
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref SecurityGroup
+    DependsOn: SecurityGroup
+
   # launcher bucket
   LauncherBucket:
     Type: AWS::S3::Bucket
