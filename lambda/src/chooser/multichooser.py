@@ -9,6 +9,7 @@ import boto3
 from dotted.collection import DottedCollection
 
 from lambda_logs import JSONFormatter, custom_lambda_logs
+from substitutions import substitute_job_data
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -42,7 +43,9 @@ def load_vals(inputs_json: str, repo: str) -> Generator[Tuple, None, None]:
     job_data = load_s3_object(repo, "_JOB_DATA_")
     yield "job", DottedCollection.factory(job_data["job"])
 
-    for name, input_file in inputs.items():
+    jobby_inputs = substitute_job_data(inputs, job_data)
+
+    for name, input_file in jobby_inputs.items():
         vals = load_s3_object(repo, input_file)
         yield name, DottedCollection.factory(vals)
 

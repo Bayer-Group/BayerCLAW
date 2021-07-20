@@ -31,7 +31,8 @@ job_data = {
         "bee": {
             "sea": ["dee", "ee", "eff"],
             "gee": {"aytch": "eye"},
-        }
+        },
+        "file_too": "file2",
     },
     "scatter": {"do not": "use"},
     "parent": {"do not": "use"},
@@ -107,7 +108,7 @@ def test_load_s3_object(input_file, mock_repo):
 def test_load_vals(mock_repo):
     inputs = json.dumps({
         "input1": "file1.json",
-        "input2": "file2.json",
+        "input2": "${job.file_too}.json",
         "input3": "file3.json",
     })
 
