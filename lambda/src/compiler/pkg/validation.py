@@ -39,6 +39,12 @@ def no_shared_keys(*field_names):
     return _impl
 
 
+def no_substitutions(s):
+    if re.search(r"\${.+}", s):
+        raise Invalid("string substitutions are not allowed")
+    return s
+
+
 skip_msg = "only one of 'skip_on_rerun' or 'skip_if_output_exists' is allowed"
 next_or_end_msg = "cannot specify both 'next' and 'end' in a step"
 
@@ -70,9 +76,13 @@ batch_step_schema = Schema(All(
         },
         Optional("filesystems", default=[]): [
             {
-                Required("efs_id", msg="EFS filesystem ID is required"): str,
-                Required("host_path", msg="host path for EFS mount is required"): str,
-                Optional("root_dir", default="/"): str,
+                Required("efs_id", msg="EFS filesystem ID is required"): All(str, Match(r"^fs-[0-9a-f]{8}$")),
+                Required("host_path", msg="host path for EFS mount is required"): All(str,
+                                                                                      Match(r"^/", msg="host_path must be fully qualified"),
+                                                                                      no_substitutions),
+                Optional("root_dir", default="/"): All(str,
+                                                       Match(r"^/", msg="root_dir mut be a fully qualified path"),
+                                                       no_substitutions),
             },
         ],
         Optional("qc_check", default=None): Any(None, {
