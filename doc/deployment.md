@@ -25,31 +25,11 @@
   
     If you're using the default VPC provided by AWS, any of the subnets should be suitable (it's best to use more 
     than one). For custom VPCs, be sure to choose a subnet with outbound internet access.
-
-- **EFS ID (optional):**  You'll need this only if you want an EFS filesystem mounted in your Batch jobs. You can
-    obtain the ID of your EFS filesystem (generally something like `fs-12345678`) on the AWS web console or with the
-    AWS CLI command:
-    ```bash
-    aws efs describe-file-systems
-    ```
   
-    Please make sure your EFS filesystem is in the same VPC as your BayerCLAW installation, and that it has a mount target
-    in each of the subnets where BayerCLAW will run. You can get information on the filesystem's mount targets with the
-    command:
-    ```bash
-    aws efs describe-mount-targets --file-system-id <filesystem id>
-    ```
 
-    See also the instructions on Security group IDs below.
-
-- **Security group IDs (optional):** If you intend to use an EFS filesystem in your workflows, you must provide the
-    BayerCLAW build process with the security groups of the filesystem's mount targets. You can obtain the security
-    groups for each mount target with the command:
-    ```bash
-    aws efs describe-mount-target-security-groups --mount-target-id <mount target id>
-    ```
-
-    If you do not need EFS, you can enter `Auto` to have BayerCLAW create a suitable security group.
+- **Security group IDs (optional):** If your jobs need network access to external resources, you can specify one
+  or more custom security groups that permit traffic to reach those resources. Otherwise, you can use the `Auto`
+  feature to have BayerCLAW create a suitable security group.
 
 ## Installation
 1. In the CloudFormation console for your AWS account, click on the `Create stack` button.
@@ -84,8 +64,10 @@
             Default is 100 Gb.
             - MinvCpus: The minimum number of CPUs that AWS Batch will maintain at all times.
             - MaxvCpus: Maximum number of CPUs that AWS Batch will spin up simultaneously.
-            - EFSVolumeId: ID of an EFS volume to mount on every Batch instance. Enter "None" if you do not want to
-            mount an EFS volume.
+            - EFSVolumeId: ‼️DEPRECATED. Use a "filesystems" block in your workflow for greater flexibility.
+              
+              ID of an EFS volume to mount on every Batch instance. Enter "None" if you do not want to
+              mount an EFS volume.
         - **Advanced parameters**
             - LauncherBucketName: By default BayerCLAW will construct a unique bucket name for the job launcher bucket.
             Use this field to enter a custom bucket name. It is your responsibility to make sure the custom bucket

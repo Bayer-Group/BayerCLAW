@@ -116,6 +116,14 @@ The fields of the step specification objects are:
     natively support the use of GPU resources: you will need to create a custom GPU-enabled job queue and use the
     `queue_name` parameter to direct jobs to it. See [the custom queue documentation](custom_queue.md) for
     details.
+* `filesystems`: A list of objects describing EFS filesystems that will be mounted for this job. Note that you may
+  have several entries in this list, but each `efs_id` must be unique. All filesystems are mounted read-only.
+  * `efs_id`: An EFS filesystem ID. Should be something like `fs-1234abcd`.
+  * `host_path`: A fully qualified path where the EFS filesystem will be mounted in your Docker container.
+  * `root_dir` (optional): Directory within the EFS filesystem that will become the `host_path` in your Docker container.
+  Default is `/`, i.e., the root of the EFS volume.
+  
+  Note that [string substitutions](#string-substitution) are not allowed in the `filesystems` block.
 * `retry`: An object defining how the workflow retries failed jobs. Optional.
   * `attempts` (optional): The number of times to retry a failed job. This does not include the initial execution, so
   for instance setting `attempts` to 3 will result in up to 4 total runs. Default is 3, set to 0 to disable retries.
@@ -178,13 +186,12 @@ steps:
       image: ncbi-blast
       inputs:
         prots: annot.faa
-      references:
-        uniprot: s3://my-huge-reference-files/uniprot.fasta
-        uniprot_phr: s3://my-huge-reference-files/uniprot.fasta.phr
-        uniprot_pin: s3://my-huge-reference-files/uniprot.fasta.pin
-        uniprot_psq: s3://my-huge-reference-files/uniprot.fasta.psq
+      filesystems:
+        -
+          efs_id: fs-12345678
+          host_path: /ref_data
       commands:
-        - blastp -query ${inputs} -db ${uniprot} -out ${blast_out} -evalue 1e-10
+        - blastp -query ${inputs} -db /ref_data/uniprot/uniprot.fasta -out ${blast_out} -evalue 1e-10
       outputs:
         blast_out: prots_v_uniprot.txt
       skip_on_rerun: false

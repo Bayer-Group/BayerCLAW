@@ -32,7 +32,8 @@ The following environment variables are available in BayerCLAW Batch jobs:
 
 - `BC_BRANCH_IDX`: For jobs running inside of a Scatter step, this will be a number corresponding to the map index
 assigned by Step Functions. Outside of a Scatter step, this will always be `main`.
-- `BC_EFS_PATH`: The local filesystem where EFS (if any) is mounted.
+- `BC_EFS_PATH`: The local filesystem where EFS (if any) is mounted. ‼️This applies only to the (now-deprecated)
+  global EFS mounts. There is no similar variable for EFS filesystems mounted via a workflow template. 
 - `BC_EXECUTION_ID`: The ID of the Step Functions execution that triggered this Batch job. You can use this to find
 the execution in the Step Functions console.
 - `BC_JOB_DATA_FILE`: This is a fully-qualified path to a JSON-formatted file containing the input job data.
@@ -44,7 +45,7 @@ the execution in the Step Functions console.
 These can be incorporated into commands just as one would normally use environment variables, e.g.:
 
 ```bash
-do_something --cfg ${BCLAW_JOB_DATA_FILE} ${input1} ${input2}
+do_something --cfg ${BC_JOB_DATA_FILE} ${input1} ${input2}
 ```
 
 # Docker guidelines

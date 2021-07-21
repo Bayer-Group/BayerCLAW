@@ -47,7 +47,7 @@ Parameters:
   EFSVolumeId:
     Type: String
     Description: >
-      DEPRECATED. The "filesystems" parameter of the workflow template offers greater flexibility.
+      DEPRECATED. The "filesystems" workflow template parameter offers greater flexibility.
       EFS volume to mount on all EC2 instances. Enter "None" for no volume.
     Default: "None"
 

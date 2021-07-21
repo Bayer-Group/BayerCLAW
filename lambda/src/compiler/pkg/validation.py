@@ -76,7 +76,7 @@ batch_step_schema = Schema(All(
         },
         Optional("filesystems", default=[]): [
             {
-                Required("efs_id", msg="EFS filesystem ID is required"): All(str, Match(r"^fs-[0-9a-f]{8}$")),
+                Required("efs_id", msg="EFS filesystem ID is required"): All(str, Match(r"^fs-[0-9a-fA-F]+$")),
                 Required("host_path", msg="host path for EFS mount is required"): All(str,
                                                                                       Match(r"^/", msg="host_path must be fully qualified"),
                                                                                       no_substitutions),
