@@ -24,7 +24,9 @@ Parameters:
 
   EFSVolumeId:
     Type: String
-    Description: EFS volume to mount, enter "None" for no volume.
+    Description: >
+      DEPRECATED. The "filesystems" workflow template parameter offers greater flexibility.
+      EFS volume to mount on all EC2 instances. Enter "None" for no volume.
     Default: "None"
 
   InstallationName:
@@ -125,6 +127,15 @@ Resources:
           IpProtocol: -1
           CidrIp: 0.0.0.0/0
       VpcId: !Ref VpcId
+
+  SecurityGroupIngress:
+    Condition: MakeSecurityGroup
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref SecurityGroup
+    DependsOn: SecurityGroup
 
   # launcher bucket
   LauncherBucket:
@@ -611,6 +622,9 @@ Outputs:
 
   ScatterLambdaLogGroupName:
     Value: !Ref ScatterLambdaLogGroup
+
+  SecurityGroupIds:
+    Value: !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
 
   SpotQueueArn:
     Value: !GetAtt SpotQueueStack.Outputs.BatchQueueArn

@@ -46,7 +46,9 @@ Parameters:
 
   EFSVolumeId:
     Type: String
-    Description: EFS volume to mount for your Batch jobs. Enter "None" for no volume.
+    Description: >
+      DEPRECATED. The "filesystems" workflow template parameter offers greater flexibility.
+      EFS volume to mount on all EC2 instances. Enter "None" for no volume.
     Default: "None"
 
   InstanceTypes:
