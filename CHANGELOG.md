@@ -1,5 +1,16 @@
 # Changelog for BayerCLAW
 
+## [v1.0.4] 2021-07-26 Feature release
+### Added
+- EFS volumes may now be mounted to your Batch jobs on a per-job basis. See 
+  [the language documentation](doc/language.md#the-steps-block) for details. The older global EFS mounts (which
+  required that EFS support be built in a install time) are deprecated.
+
+### Fixed
+- To avoid runaway executions, the launcher lambda now blocks jobs where the repository is in the launcher folder.
+- Variable substitution is multichooser inputs is fixed.
+- Fix string substitutions with falsy values.
+
 ## [v1.0.3] 2021-07-12 Feature release
 ### Added
 - You can now use [cloudformation/bc_batch.yaml](cloudformation/bc_batch.yaml) to create custom Batch queues for

@@ -116,7 +116,7 @@ The fields of the step specification objects are:
     natively support the use of GPU resources: you will need to create a custom GPU-enabled job queue and use the
     `queue_name` parameter to direct jobs to it. See [the custom queue documentation](custom_queue.md) for
     details.
-* `filesystems`: A list of objects describing EFS filesystems that will be mounted for this job. Note that you may
+* 🆕`filesystems`: A list of objects describing EFS filesystems that will be mounted for this job. Note that you may
   have several entries in this list, but each `efs_id` must be unique. All filesystems are mounted read-only.
   * `efs_id`: An EFS filesystem ID. Should be something like `fs-1234abcd`.
   * `host_path`: A fully qualified path where the EFS filesystem will be mounted in your Docker container.
