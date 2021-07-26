@@ -104,6 +104,14 @@ def test_expand_scatter_data(repo_bucket):
     assert result == expect
 
 
+def test_expand_scatter_data_not_list():
+    scatter_spec = {"unlist": "${job.unlist}"}
+    job_data = {"job": {"unlist": 99}, "parent": {}, "scatter": {}}
+
+    with pytest.raises(RuntimeError, match="'job.unlist' is not a JSON list"):
+        expand_scatter_data(scatter_spec=scatter_spec, repo="s3://bucket/whatever", job_data=job_data)
+
+
 def test_scatterator():
     scatter_data = {
         "one": ["a", "b"],

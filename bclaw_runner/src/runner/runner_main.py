@@ -121,11 +121,12 @@ def main(commands: List[str],
             local_outputs = subbed_outputs
 
             # substitute local filenames into commands
-            subbed_commands = substitute(jobby_commands, {**local_required_inputs,
-                                                          **local_optional_inputs,
-                                                          **local_outputs,
-                                                          **jobby_params,
-                                                          **local_references})
+            subbed_commands = substitute(jobby_commands,
+                                         {**local_required_inputs,
+                                          **local_optional_inputs,
+                                          **local_outputs,
+                                          **jobby_params,
+                                          **local_references})
 
             local_job_data = write_job_data_file(job_data_obj, wrk)
 

@@ -9,19 +9,27 @@ from ...src.common.python.substitutions import _lookup, substitute_job_data, sub
     ("string", "string_value"),
     ("number", "99"),
     ("list", [1,2,3]),
-    ("dict", {"a":1,"b":2}),
+    ("dict", {"a": 1,"b": 2}),
+    ("boolean_T", "True"),
+    ("boolean_F", "False"),
+    ("empty_string", ""),
+    ("zero", "0"),
 ])
 def test_lookup(target, expect):
     data = {
         "string": "string_value",
         "number": 99,
         "list": [1, 2, 3],
-        "dict": {"a": 1, "b": 2}
+        "dict": {"a": 1, "b": 2},
+        "boolean_T": True,
+        "boolean_F": False,
+        "empty_string": "",
+        "zero": 0,
     }
     result = _lookup(target, data)
     assert isinstance(result, str)
 
-    if target == "string" or target == "number":
+    if isinstance(expect, str):
         assert result == expect
     else:
         result2 = json.loads(json.loads(result))

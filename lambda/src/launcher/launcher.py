@@ -1,4 +1,5 @@
 from contextlib import closing
+from functools import partial
 import json
 import logging
 import re
@@ -31,12 +32,16 @@ def read_s3_object(bucket: str, key: str, version: str) -> dict:
 
 JOB_FINDER = re.compile(r"\${!?job.(.+?)}")
 
+def lookup(m: re.Match, job_data: dict) -> str:
+    ret = jmespath.search(m.group(1), job_data)
+    if ret is None:
+        raise KeyError(f"'{m.group(1)}' not found in job data")
+    return str(ret)
+
+
 def substitute_job_data(target: str, job_data: dict) -> str:
-    try:
-        # this is a hacky way to raise a KeyError when jmespath.search fails -------vvvvvvvvvvvvvv
-        ret = JOB_FINDER.sub(lambda m: str(jmespath.search(m.group(1), job_data) or {}[m.group(0)]), target)
-    except KeyError:
-        raise RuntimeError(f"unrecognized job data field in '{target}'")
+    _lookup = partial(lookup, job_data=job_data)
+    ret = JOB_FINDER.sub(_lookup, target)
     return ret
 
 

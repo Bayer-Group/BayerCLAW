@@ -2,6 +2,7 @@ from contextlib import closing
 import json
 import logging
 import os
+import re
 import sys
 
 import boto3
@@ -22,7 +23,7 @@ sys.path.append(
 
 logging.basicConfig(level=logging.INFO)
 
-from ...src.launcher.launcher import read_s3_object, substitute_job_data, check_recursive_launch, \
+from ...src.launcher.launcher import read_s3_object, lookup, substitute_job_data, check_recursive_launch, \
     copy_job_data_to_repo, write_extended_job_data_object, write_execution_record, lambda_handler
 
 
@@ -59,8 +60,33 @@ def test_read_s3_object(monkeypatch, launcher_bucket):
     assert (result2 == fake_s3_contents2)
 
 
+@pytest.mark.parametrize("pattern, string, expect", [
+    (r"(one)", "one", "wun"),
+    (r"(two)", "two", "2"),
+    (r"(three)", "three", ""),
+    (r"(four)", "four", "False"),
+])
+def test_lookup(pattern, string, expect):
+    spec = {
+        "one": "wun",
+        "two": 2,
+        "three": "",
+        "four": False,
+    }
+    match = re.match(pattern, string)
+    result = lookup(match, spec)
+    assert isinstance(result, str)
+    assert result == expect
+
+
+def test_lookup_fail():
+    match = re.match(r"(unfield)", "unfield")
+    with pytest.raises(KeyError, match="'unfield' not found"):
+        _ = lookup(match, {"nothing": "here"})
+
+
 def test_substitute_job_data():
-    target = "s3://${job.bucket}/${!job.path1}/${job.path2.path3}/${job.path4[0]}"
+    target = "s3://${job.bucket}/${!job.path1}/${job.path2.path3}/${job.path4[0]}/${job.path5}"
     job_data = {
         "bucket": "bucket-name",
         "path1": "path-one",
@@ -70,15 +96,16 @@ def test_substitute_job_data():
         },
         "path4": [
             "path-four",
-            "don't go here either"
-        ]
+            "don't go here either",
+        ],
+        "path5": False,
     }
     result = substitute_job_data(target, job_data)
-    expect = "s3://bucket-name/path-one/path-two-three/path-four"
+    expect = "s3://bucket-name/path-one/path-two-three/path-four/False"
     assert result == expect
 
     bad_target = "s3://${job.bucket}/${job.path99}/"
-    with pytest.raises(RuntimeError, match=r"unrecognized job data field in .*"):
+    with pytest.raises(KeyError, match=r"'path99' not found in job data"):
         substitute_job_data(bad_target, job_data)
 
 
