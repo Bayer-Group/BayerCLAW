@@ -3,7 +3,7 @@
 ## [v1.0.4] 2021-07-26 Feature release
 ### Added
 - EFS volumes may now be mounted to your Batch jobs on a per-job basis. See 
-  [the language documentation](doc/language.md#the-steps-block) for details. The older global EFS mounts (which
+  [the language documentation](doc/language.md) for details. The older global EFS mounts (which
   required that EFS support be built in a install time) are deprecated.
 
 ### Fixed
