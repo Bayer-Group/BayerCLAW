@@ -46,6 +46,8 @@ Resources:
           eventName:
             - PutObject
             - CopyObject
+            - PostObject
+            - CompleteMultipartUpload
           requestParameters:
             bucketName:
               - !Ref LauncherBucketName
@@ -94,6 +96,8 @@ Resources:
           eventName:
             - PutObject
             - CopyObject
+            - PostObject
+            - CompleteMultipartUpload
           requestParameters:
             bucketName:
               - !Ref LauncherBucketName
