@@ -8,6 +8,8 @@ from .version import VERSION
 class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord):
         obj = {
+            "level": record.levelname,
+            "message": record.getMessage(),
             "batch": {
                 "runner": f"bclaw_runner v{VERSION}",
                 "job_id": os.environ.get("AWS_BATCH_JOB_ID"),
@@ -20,8 +22,6 @@ class JSONFormatter(logging.Formatter):
                 "version": os.environ.get("BC_LAUNCH_VERSION"),
                 "s3_request_id": os.environ.get("BC_LAUNCH_S3_REQUEST_ID"),
             },
-            "level": record.levelname,
-            "message": record.getMessage(),
             "step_name": os.environ.get("BC_STEP_NAME"),
             "sfn_execution_id": os.environ.get("BC_EXECUTION_ID"),
             "workflow_name": os.environ.get("BC_WORKFLOW_NAME"),
