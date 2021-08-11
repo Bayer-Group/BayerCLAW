@@ -242,7 +242,7 @@ Resources:
   ComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
     Properties:
-      ComputeEnvironmentName: !Sub "${QueueName}-env"
+      ComputeEnvironmentName: !Sub "${QueueName}-env2"
       ServiceRole: !GetAtt BatchServiceRole.Arn
       Type: MANAGED
       State: ENABLED
