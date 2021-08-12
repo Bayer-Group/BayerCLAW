@@ -253,6 +253,8 @@ Resources:
       ServiceRole: !GetAtt BatchServiceRole.Arn
       Type: MANAGED
       State: ENABLED
+      Tags:
+        "bclaw:queue-name": !Ref QueueName
       ComputeResources:
         Type:
           !If [UseSpot, "SPOT", "EC2"]
@@ -269,8 +271,6 @@ Resources:
         MaxvCpus: !Ref MaxvCpus
         SecurityGroupIds: !Ref SecurityGroupIds
         Subnets: !Ref Subnets
-        Tags:
-          "bclaw:queue-name": !Ref QueueName
 
   BatchQueue:
     Type: AWS::Batch::JobQueue
