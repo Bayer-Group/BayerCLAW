@@ -161,7 +161,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
 
-  LaunchTemplate:
+  bcLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       # LaunchTemplateName: !Sub "${QueueName}-lt"
@@ -179,6 +179,13 @@ Resources:
               VolumeType: gp3
         ImageId: !Ref AmiId
         InstanceInitiatedShutdownBehavior: terminate
+        TagSpecifications:
+          -
+            ResourceType: launch-template
+            Tags:
+              -
+                Key: "bclaw:queue-name"
+                Value: !Ref QueueName
         UserData:
           "Fn::Base64":
             "Fn::Sub": |
@@ -239,7 +246,7 @@ Resources:
 
               --==BOUNDARY==--
 
-  ComputeEnvironment:
+  bcComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
     Properties:
       # ComputeEnvironmentName: !Sub "${QueueName}-env2"
@@ -254,14 +261,16 @@ Resources:
         BidPercentage:
           !If [UseSpot, 100, !Ref AWS::NoValue]
         LaunchTemplate:
-          LaunchTemplateId: !Ref LaunchTemplate
-          Version: !GetAtt LaunchTemplate.LatestVersionNumber
+          LaunchTemplateId: !Ref bcLaunchTemplate
+          Version: !GetAtt bcLaunchTemplate.LatestVersionNumber
         InstanceRole: !Ref EcsInstanceProfile
         InstanceTypes: !Ref InstanceTypes
         MinvCpus: !Ref MinvCpus
         MaxvCpus: !Ref MaxvCpus
         SecurityGroupIds: !Ref SecurityGroupIds
         Subnets: !Ref Subnets
+        Tags:
+          "bclaw:queue-name": !Ref QueueName
 
   BatchQueue:
     Type: AWS::Batch::JobQueue
@@ -271,7 +280,7 @@ Resources:
       State: ENABLED
       ComputeEnvironmentOrder:
         - Order: 1
-          ComputeEnvironment: !Ref ComputeEnvironment
+          ComputeEnvironment: !Ref bcComputeEnvironment
 
 Outputs:
   BatchQueueArn:
