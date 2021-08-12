@@ -164,7 +164,7 @@ Resources:
   LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      LaunchTemplateName: !Sub "${QueueName}-lt"
+      # LaunchTemplateName: !Sub "${QueueName}-lt"
       LaunchTemplateData:
         BlockDeviceMappings:
           - DeviceName: /dev/xvda
@@ -242,7 +242,7 @@ Resources:
   ComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
     Properties:
-      ComputeEnvironmentName: !Sub "${QueueName}-env2"
+      # ComputeEnvironmentName: !Sub "${QueueName}-env2"
       ServiceRole: !GetAtt BatchServiceRole.Arn
       Type: MANAGED
       State: ENABLED
