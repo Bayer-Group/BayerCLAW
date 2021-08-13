@@ -36,6 +36,11 @@ Metadata:
         Parameters:
           - SecurityGroupIds
           - Subnets
+      -
+        Label:
+          default: Advanced
+        Parameters:
+          - Uniqifier
 
 Parameters:
   AmiId:
@@ -119,8 +124,17 @@ Parameters:
       Comma-separated list of subnet IDs for Batch jobs to run in. Subnets must have outbound internet access
       either through a direct Internet Gateway connection or through a NAT Gateway.
 
+  Uniqifier:
+    Type: String
+    Description: >
+      This is a string that will be appended to certain resource names to make them unique. Intended for use
+      in automated deployments. Default is "None", which will not append anything to the resource names.
+    Default: "None"
+
 Conditions:
   UseSpot: !Equals [!Ref RequestType, "Spot"]
+  Uniqify: !Or [ !Not [!Equals [!Ref Uniqifier, "None"] ],
+                 !Not [!Equals [!Ref Uniqifier, "none"]] ]
 
 Resources:
   EcsInstanceRole:
@@ -164,7 +178,10 @@ Resources:
   bcLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-      # LaunchTemplateName: !Sub "${QueueName}-lt"
+#      LaunchTemplateName:
+#        !If [Uniqify, !Sub "${QueueName}-lt-{$Uniqifier}", !Sub "${QueueName}-lt"]
+      # launch templates are versioned, so it is probably not necessary to uniqify them
+      LaunchTemplateName: !Sub "${QueueName}-lt"
       LaunchTemplateData:
         BlockDeviceMappings:
           - DeviceName: /dev/xvda
@@ -249,6 +266,8 @@ Resources:
   bcComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
     Properties:
+      ComputeEnvironmentName:
+        !If [Uniqify, !Sub "${QueueName}-env-{$Uniqifier}", !Sub "${QueueName}-env"]
       # ComputeEnvironmentName: !Sub "${QueueName}-env2"
       ServiceRole: !GetAtt BatchServiceRole.Arn
       Type: MANAGED
