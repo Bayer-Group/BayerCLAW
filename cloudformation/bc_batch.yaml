@@ -130,6 +130,7 @@ Parameters:
       This is a string that will be appended to certain resource names to make them unique. Intended for use
       in automated deployments. Default is "None", which will not append anything to the resource names.
     Default: "None"
+    AllowedPattern : "^[a-zA-Z0-9_-]+$"
 
 Conditions:
   UseSpot: !Equals [!Ref RequestType, "Spot"]
