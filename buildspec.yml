@@ -49,7 +49,7 @@ phases:
         SecurityGroups=${SECURITY_GROUPS}
         Subnets=${SUBNETS}
         UseExistingCloudTrail=${USE_EXISTING_CLOUDTRAIL}
-        Uniqifier=${CODEBUILD_BUILD_NUMBER}
+        Uniqifier=$(date | md5sum | head -c 16)
         VpcId=${VPC_ID}
 
 artifacts:

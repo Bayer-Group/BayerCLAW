@@ -179,7 +179,7 @@ Resources:
     Type: AWS::EC2::LaunchTemplate
     Properties:
 #      LaunchTemplateName:
-#        !If [Uniqify, !Sub "${QueueName}-lt-{$Uniqifier}", !Sub "${QueueName}-lt"]
+#        !If [Uniqify, !Sub "${QueueName}-lt-${Uniqifier}", !Sub "${QueueName}-lt"]
       # launch templates are versioned, so it is probably not necessary to uniqify them
       LaunchTemplateName: !Sub "${QueueName}-lt"
       LaunchTemplateData:
@@ -267,7 +267,7 @@ Resources:
     Type: AWS::Batch::ComputeEnvironment
     Properties:
       ComputeEnvironmentName:
-        !If [Uniqify, !Sub "${QueueName}-env-{$Uniqifier}", !Sub "${QueueName}-env"]
+        !If [Uniqify, !Sub "${QueueName}-env-${Uniqifier}", !Sub "${QueueName}-env"]
       # ComputeEnvironmentName: !Sub "${QueueName}-env2"
       ServiceRole: !GetAtt BatchServiceRole.Arn
       Type: MANAGED
