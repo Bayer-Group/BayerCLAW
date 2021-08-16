@@ -127,14 +127,15 @@ Parameters:
   Uniqifier:
     Type: String
     Description: >
-      This is a string that will be appended to certain resource names to make them unique. Intended for use
-      in automated deployments. Default is "None", which will not append anything to the resource names.
+      This is a string that will be appended to certain resource names to make them unique. May be necessary
+      for stack updates in certain cases. Must consist of upper/lowercase letters, numbers, underscores and
+      dashes. Default is "None", which will not append any suffix to the resource names.
     Default: "None"
     AllowedPattern : "^[a-zA-Z0-9_-]+$"
 
 Conditions:
   UseSpot: !Equals [!Ref RequestType, "Spot"]
-  Uniqify: !And [ !Not [!Equals [!Ref Uniqifier, "None"] ],
+  Uniqify: !And [ !Not [!Equals [!Ref Uniqifier, "None"]],
                   !Not [!Equals [!Ref Uniqifier, "none"]] ]
 
 Resources:
@@ -176,12 +177,10 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
 
-  bcLaunchTemplate:
+  LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
-#      LaunchTemplateName:
-#        !If [Uniqify, !Sub "${QueueName}-lt-${Uniqifier}", !Sub "${QueueName}-lt"]
-      # launch templates are versioned, so it is probably not necessary to uniqify them
+      # launch templates are versioned, so it is probably not necessary to uniqify the name
       LaunchTemplateName: !Sub "${QueueName}-lt"
       LaunchTemplateData:
         BlockDeviceMappings:
@@ -197,13 +196,6 @@ Resources:
               VolumeType: gp3
         ImageId: !Ref AmiId
         InstanceInitiatedShutdownBehavior: terminate
-        TagSpecifications:
-          -
-            ResourceType: launch-template
-            Tags:
-              -
-                Key: "bclaw:queue-name"
-                Value: !Ref QueueName
         UserData:
           "Fn::Base64":
             "Fn::Sub": |
@@ -264,17 +256,14 @@ Resources:
 
               --==BOUNDARY==--
 
-  bcComputeEnvironment:
+  ComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
     Properties:
       ComputeEnvironmentName:
         !If [Uniqify, !Sub "${QueueName}-env-${Uniqifier}", !Sub "${QueueName}-env"]
-      # ComputeEnvironmentName: !Sub "${QueueName}-env2"
       ServiceRole: !GetAtt BatchServiceRole.Arn
       Type: MANAGED
       State: ENABLED
-      Tags:
-        "bclaw:queue-name": !Ref QueueName
       ComputeResources:
         Type:
           !If [UseSpot, "SPOT", "EC2"]
@@ -283,8 +272,8 @@ Resources:
         BidPercentage:
           !If [UseSpot, 100, !Ref AWS::NoValue]
         LaunchTemplate:
-          LaunchTemplateId: !Ref bcLaunchTemplate
-          Version: !GetAtt bcLaunchTemplate.LatestVersionNumber
+          LaunchTemplateId: !Ref LaunchTemplate
+          Version: !GetAtt LaunchTemplate.LatestVersionNumber
         InstanceRole: !Ref EcsInstanceProfile
         InstanceTypes: !Ref InstanceTypes
         MinvCpus: !Ref MinvCpus
@@ -300,7 +289,7 @@ Resources:
       State: ENABLED
       ComputeEnvironmentOrder:
         - Order: 1
-          ComputeEnvironment: !Ref bcComputeEnvironment
+          ComputeEnvironment: !Ref ComputeEnvironment
 
 Outputs:
   BatchQueueArn:
