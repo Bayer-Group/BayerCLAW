@@ -1,5 +1,12 @@
 # Changelog for BayerCLAW
 
+## [v1.0.5] 2021-08-16 Bug fixes
+### Fixed
+- Increased the default batch job EBS volume sizes to 100 Gb root drive and 1 Tb scratch drive.
+- Make multipart uploads to the launcher bucket trigger executions correctly.
+- Rearranged field order in CloudWatch log messages to improve readability.
+- Fixed update issues caused by custom ComputeEnvironment naming.
+
 ## [v1.0.4] 2021-07-26 Feature release
 ### Added
 - EFS volumes may now be mounted to your Batch jobs on a per-job basis. See 
