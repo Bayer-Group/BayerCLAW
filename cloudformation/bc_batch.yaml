@@ -134,8 +134,8 @@ Parameters:
 
 Conditions:
   UseSpot: !Equals [!Ref RequestType, "Spot"]
-  Uniqify: !Or [ !Not [!Equals [!Ref Uniqifier, "None"] ],
-                 !Not [!Equals [!Ref Uniqifier, "none"]] ]
+  Uniqify: !And [ !Not [!Equals [!Ref Uniqifier, "None"] ],
+                  !Not [!Equals [!Ref Uniqifier, "none"]] ]
 
 Resources:
   EcsInstanceRole:
