@@ -19,7 +19,6 @@ phases:
 
   build:
     commands:
-      - echo $CODEBUILD_BUILD_NUMBER
       - sam build -b ./build -s . -t cloudformation/bc_core.yaml
       - >
         sam package
