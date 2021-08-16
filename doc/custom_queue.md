@@ -43,6 +43,12 @@ The parameters for the `bc_batch` template are as follows:
 - Network parameters
     - SecurityGroupIds: Security groups for your Batch jobs to run under. [Required]
     - Subnets: Subnets where your Batch jobs will run. [Required]
+- Advanced parameters
+    - Uniqifier: Attempts to update a custom queue stack may fail with and error message that reads
+      `CloudFormation cannot update a stack when a custom-named resource requires replacing.` When
+      this happens, you may enter a Uniqifier string that will cause the resource to be renamed. The
+      Uniqifier string may contain only upper- and lowercase letters, numbers, underscores, and
+      dashes. [Optional, default=None]
 
 The CloudFormation template can be deployed either through the AWS console or using the
 AWS CLI:

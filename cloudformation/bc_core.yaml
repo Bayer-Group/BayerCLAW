@@ -100,6 +100,11 @@ Parameters:
       - "No"
     Default: "No"
 
+  Uniqifier:
+    Type: String
+    Description: >
+      This is a string that will be appended to certain resource names to make them unique.
+
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: ID of the VPC where BayerCLAW will live
@@ -486,6 +491,7 @@ Resources:
         SecurityGroupIds:
           !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
         Subnets: !Join [",", !Ref Subnets]
+        Uniqifier: !Ref Uniqifier
 
   OnDemandQueueStack:
     Type: AWS::Serverless::Application
@@ -504,6 +510,7 @@ Resources:
         SecurityGroupIds:
           !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
         Subnets: !Join [",", !Ref Subnets]
+        Uniqifier: !Ref Uniqifier
 
   # dynamodb
   JobStatusTable:
