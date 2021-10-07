@@ -19,8 +19,9 @@ The usual reason is to focus on a small number of failed jobs amid a large numbe
 
 Finally, you can focus down on a single job, or a group of jobs.
 If you choose a single job, it will display a summary of all steps, and then write their logs to disk.
-These files will be written in newline-delimited JSON (.ndjson) format. For readability, it is a good
-idea to filter the outputs through a JSON processing utility such as [jq](https://stedolan.github.io/jq/).
+By default, the logs are parsed and written in a tab-delimited format, each line containing a time stamp,
+logging level, and log message. By specifying the `--raw` (or `-r`) option on the command line, you can
+have the unparsed log objects written in newline-delimited JSON (.ndjson) format.
 
 If you have selected multiple jobs, it will allow you to choose either writing all logs, or just logs for failed steps.
 It will also write out metadata about the selected jobs if you like.

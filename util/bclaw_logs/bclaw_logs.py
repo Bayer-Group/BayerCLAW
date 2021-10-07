@@ -182,7 +182,7 @@ class ErrorStep(Step):
     def get_log_cmd(self):
         return self.cause
 
-    def write_logs(self, logs_client, out):
+    def write_logs(self, logs_client, out, raw=False):
         out.write(self.cause)
         out.write("\n")
 
@@ -193,12 +193,16 @@ class BatchStep(Step):
     def get_log_cmd(self):
         return f"aws logs get-log-events --log-group {self.log_group} --log-stream {self.log_stream}"
 
-    def write_logs(self, logs_client, out):
+    def write_logs(self, logs_client, out, raw=False):
         if not self.log_stream:
             return  # job in progress, no logs yet
 
         # For some reason, `get_log_events()` is missing a paginator...
         try:
+            # get local timezone
+            # https://stackoverflow.com/questions/2720319/python-figure-out-local-timezone
+            tz = dt.datetime.now(dt.timezone.utc).astimezone().tzinfo
+
             page = logs_client.get_log_events(logGroupName=self.log_group, logStreamName=self.log_stream, startFromHead=True)
             while page['events']:
                 for obj in page['events']:
@@ -206,8 +210,17 @@ class BatchStep(Step):
                         obj["message"] = json.loads(obj["message"])
                     except json.decoder.JSONDecodeError:
                         pass
-                    out.write(json.dumps(obj))
-                    out.write("\n")
+
+                    if raw:
+                        out.write(json.dumps(obj))
+                        out.write("\n")
+                    else:
+                        timestamp = dt.datetime.fromtimestamp(obj["timestamp"]/1000).replace(tzinfo=tz)
+                        message = obj["message"]
+                        if isinstance(message, dict):
+                            out.write(f"{timestamp.isoformat(timespec='milliseconds')}\t{message['level']}\t{message['message']}\n")
+                        else:
+                            out.write(f"{timestamp.isoformat(timespec='milliseconds')}\t----\t{str(message)}\n")
                 page = logs_client.get_log_events(logGroupName=self.log_group, logStreamName=self.log_stream, startFromHead=True, nextToken=page['nextForwardToken'])
         except Exception as ex:
             # Sometimes for failed job, log stream will not exist (exited before stream could be created)
@@ -224,9 +237,13 @@ class LambdaStep(Step):
         end = int(self.end_time.timestamp() * 1000) + 100  # gives enough time to get lambda resource usage!
         return f"aws logs filter-log-events --log-group {self.log_group} --start-time {start} --end-time {end}"
 
-    def write_logs(self, logs_client, out):
+    def write_logs(self, logs_client, out, raw=False):
         start = int(self.start_time.timestamp() * 1000)
         end = int(self.end_time.timestamp() * 1000) + 100  # gives enough time to get lambda resource usage!
+
+        # get local timezone
+        tz = dt.datetime.now(dt.timezone.utc).astimezone().tzinfo
+
         paginated_list = logs_client.get_paginator("filter_log_events").paginate(logGroupName=self.log_group, startTime=start, endTime=end)
         for page in paginated_list:
             for obj in page['events']:
@@ -234,8 +251,18 @@ class LambdaStep(Step):
                     obj["message"] = json.loads(obj["message"])
                 except json.decoder.JSONDecodeError:
                     pass
-                out.write(json.dumps(obj))
-                out.write("\n")
+
+                if raw:
+                    out.write(json.dumps(obj))
+                    out.write("\n")
+                else:
+                    timestamp = dt.datetime.fromtimestamp(obj["timestamp"] / 1000).replace(tzinfo=tz)
+                    message = obj["message"]
+                    if isinstance(message, dict):
+                        out.write(
+                            f"{timestamp.isoformat(timespec='milliseconds')}\t{message['level']}\t{message['message']}\n")
+                    else:
+                        out.write(f"{timestamp.isoformat(timespec='milliseconds')}\t----\t{str(message)}\n")
 
 
 def get_execution_steps(stepfunc, batch, execution_arn: str, name_prefix: str = "") -> list:
@@ -427,7 +454,7 @@ def normalize(name: str) -> str:
     return ret
 
 
-def write_one_execution(execution: dict, verbose: int) -> None:
+def write_one_execution(execution: dict, verbose: int, raw=False) -> None:
     all_steps = get_execution_steps(sfn, batch, execution['executionArn'])
     for step in all_steps:
         print(f"{step.name:40}    {color_status(step.status.ljust(10))}    {step.type:6}    {step.end_time.isoformat()}    {step.duration_hours():6.2f} hrs")
@@ -440,12 +467,13 @@ def write_one_execution(execution: dict, verbose: int) -> None:
     for step in steps:
         if verbose >= 1:
             print(f"{step.get_log_cmd()}")
-        outname = f"{normalize(execution['name'])}-{step.name}-{step.id}.ndjson"
+        ext = "ndjson" if raw else "txt"
+        outname = f"{normalize(execution['name'])}-{step.name}-{step.id}.{ext}"
         with open(outname, 'w') as outfile:
-            step.write_logs(cwlog, outfile)
+            step.write_logs(cwlog, outfile, raw)
 
 
-def write_many_executions(executions, verbose, exclude_statuses=None):
+def write_many_executions(executions, verbose, exclude_statuses=None, raw=False):
     if exclude_statuses is None:
         exclude_statuses = set()
 
@@ -467,9 +495,10 @@ def write_many_executions(executions, verbose, exclude_statuses=None):
             print()
 
         for step in steps:
-            outname = f"{normalize(execution['name'])}-{step.name}-{step.id}.ndjson"
+            ext = "ndjson" if raw else "txt"
+            outname = f"{normalize(execution['name'])}-{step.name}-{step.id}.{ext}"
             with open(outname, 'w') as outfile:
-                step.write_logs(cwlogs, outfile)
+                step.write_logs(cwlogs, outfile, raw)
 
         # This is little enough data that we want all steps, not just failed ones
         for step in all_steps:
@@ -506,6 +535,7 @@ def main(args: list):
 
     parser = argparse.ArgumentParser(description=main.__doc__)
     parser.add_argument('--verbose', '-v', default=0, action='count')
+    parser.add_argument('--raw', '-r', default=False, action='store_true')
     args = parser.parse_args(args)
 
     all_machines = list(get_state_machines())
@@ -566,23 +596,23 @@ def main(args: list):
 
         if len(executions) == 1:
             execution, = executions
-            write_one_execution(execution, args.verbose)
+            write_one_execution(execution, args.verbose, args.raw)
             break
 
         cmd = input(f"{len(executions)} matches.  Write [a]ll steps, [f]ailed steps only, [m]etadata only, [r]efine filter, or [q]uit?  [afmRq]    ").lower()
 
         if cmd == 'a':
-            write_many_executions(executions, args.verbose, exclude_statuses=set())
+            write_many_executions(executions, args.verbose, exclude_statuses=set(), raw=args.raw)
             break
 
         elif cmd == 'f':
-            write_many_executions(executions, args.verbose, exclude_statuses={'SUCCEEDED'})
+            write_many_executions(executions, args.verbose, exclude_statuses={'SUCCEEDED'}, raw=args.raw)
             break
 
         elif cmd == 'm':
             write_many_executions(executions, args.verbose, exclude_statuses={'SUBMITTED', 'PENDING', 'RUNNABLE',
                                                                               'STARTING', 'RUNNING', 'SUCCEEDED',
-                                                                              'FAILED', 'TIMED_OUT', 'ABORTED'})
+                                                                              'FAILED', 'TIMED_OUT', 'ABORTED'}, raw=args.raw)
             break
 
         elif cmd == 'q':
