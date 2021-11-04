@@ -27,7 +27,7 @@ phases:
     runtime-versions:
       python: 3.8
     commands:
-      - pip install -r bclaw_runner/requirements.txt pyinstaller
+      - pip install -r bclaw_runner/requirements.txt pyinstaller==4.5.1
 
   pre_build:
     commands:
