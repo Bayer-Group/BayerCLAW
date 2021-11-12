@@ -3,7 +3,7 @@ boto3
 cryptography < 3.4
 docopt
 jmespath
-moto
+moto==2.0.8
 pytest
 requests
 requests_mock
