@@ -2,6 +2,7 @@ from contextlib import closing
 import json
 import os
 import re
+import subprocess
 import textwrap
 import time
 
@@ -9,6 +10,7 @@ import boto3
 import moto
 import pytest
 
+from ..src import runner
 from ..src.runner.runner_main import split_inputs, main, cli
 
 
@@ -41,10 +43,14 @@ def mock_bucket():
         yield yld
 
 
-def mock_get_config(cfg: dict):
-    def _ret():
-        return cfg
-    return _ret
+# def mock_get_config(cfg: dict):
+#     def _ret():
+#         return cfg
+#     return _ret
+
+def fake_container(image_tag: str, command: str, work_dir: str, job_data_file: str):
+    response = subprocess.run(command, shell=True)
+    return response.returncode
 
 
 req_inputs = {
@@ -77,7 +83,8 @@ def test_split_inputs(all_inputs, expected_req, expected_opt):
 def test_main(monkeypatch, tmp_path, mock_bucket, read_config):
     monkeypatch.setenv("BC_STEP_NAME", "step1")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
-    monkeypatch.setattr("bclaw_runner.src.runner.runner_main.get_config", mock_get_config(read_config))
+    # monkeypatch.setattr("bclaw_runner.src.runner.runner_main.get_config", mock_get_config(read_config))
+    monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
 
     references = {
         "ref1": f"s3://{TEST_BUCKET}/references/reference_file",
@@ -113,7 +120,8 @@ def test_main(monkeypatch, tmp_path, mock_bucket, read_config):
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
 
-    response = main(commands=commands,
+    response = main(image="fake_image",
+                    commands=commands,
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
@@ -148,11 +156,15 @@ def test_main(monkeypatch, tmp_path, mock_bucket, read_config):
             assert re.fullmatch(pattern, name)
 
     expect_outfile2_contents = textwrap.dedent(fr"""
-        BC_JOB_DATA_FILE={tmp_path}/tmp\w+/job_data_\w+\.json
         BC_SCRATCH_PATH={tmp_path}
         BC_STEP_NAME=step1
-        BC_WORKSPACE={tmp_path}/\w+
     """)
+    # expect_outfile2_contents = textwrap.dedent(fr"""
+    #     BC_JOB_DATA_FILE={tmp_path}/tmp\w+/job_data_\w+\.json
+    #     BC_SCRATCH_PATH={tmp_path}
+    #     BC_STEP_NAME=step1
+    #     BC_WORKSPACE={tmp_path}/\w+
+    # """)
     outfile2 = mock_bucket.Object("repo/path/outfile2").get()
     with closing(outfile2["Body"]) as fp:
         outfile2_contents = sorted(next(fp).decode("utf-8").split())
@@ -184,7 +196,8 @@ def test_main(monkeypatch, tmp_path, mock_bucket, read_config):
 def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket, read_config):
     monkeypatch.setenv("BC_STEP_NAME", "step2")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
-    monkeypatch.setattr("bclaw_runner.src.runner.runner_main.get_config", mock_get_config(read_config))
+    # monkeypatch.setattr("bclaw_runner.src.runner.runner_main.get_config", mock_get_config(read_config))
+    monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
 
     references = {}
 
@@ -204,7 +217,8 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket, read_conf
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
 
-    response = main(commands=commands,
+    response = main(image="fake_image",
+                    commands=commands,
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
@@ -220,7 +234,8 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket, read_conf
 def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket, read_config):
     monkeypatch.setenv("BC_STEP_NAME", "step3")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
-    monkeypatch.setattr("bclaw_runner.src.runner.runner_main.get_config", mock_get_config(read_config))
+    # monkeypatch.setattr("bclaw_runner.src.runner.runner_main.get_config", mock_get_config(read_config))
+    monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
 
     references = {}
     inputs = {}
@@ -235,7 +250,8 @@ def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket, read_config):
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
 
-    response = main(commands=commands,
+    response = main(image="fake_image",
+                    commands=commands,
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
@@ -256,7 +272,8 @@ def failing_uploader(*args, **kwargs):
 def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket, read_config):
     monkeypatch.setenv("BC_STEP_NAME", "step4")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
-    monkeypatch.setattr("bclaw_runner.src.runner.runner_main.get_config", mock_get_config(read_config))
+    # monkeypatch.setattr("bclaw_runner.src.runner.runner_main.get_config", mock_get_config(read_config))
+    monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
     monkeypatch.setattr("bclaw_runner.src.runner.repo._upload_that", failing_uploader)
 
     references = {}
@@ -264,7 +281,8 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket, read_confi
     outputs = {"output6": "outfile6"}
     commands = ["echo wut > ${output6}"]
 
-    response = main(commands=commands,
+    response = main(image="fake_image",
+                    commands=commands,
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
@@ -284,14 +302,16 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket, read_confi
 def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect, read_config):
     monkeypatch.setenv("BC_STEP_NAME", "step0")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
-    monkeypatch.setattr("bclaw_runner.src.runner.runner_main.get_config", mock_get_config(read_config))
+    monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
+    # monkeypatch.setattr("bclaw_runner.src.runner.runner_main.get_config", mock_get_config(read_config))
 
     references = {}
     inputs = {}
     outputs = {}
     commands = ["false"]
 
-    response = main(commands=commands,
+    response = main(image="fake_image",
+                    commands=commands,
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
@@ -313,10 +333,10 @@ def fake_termination_checker_impl(*_):
 
 @moto.mock_logs
 @pytest.mark.parametrize("argv, expect", [
-    ("prog --cmd 2 --in 3 --out 4 --param 5 --ref 6 --repo 7 --skip 8",
-     [2, 3, 4, 5, 6, "7", "8"]),
-    ("prog --cmd 2 --in 3 --out 4 --ref 6 --repo 7 --skip 8",
-     [2, 3, 4, {}, 6, "7", "8"])
+    ("prog --cmd 2 --in 3 --out 4 --param 5 --ref 6 --repo 7 --skip 8 --image 9",
+     [2, "9", 3, 4, 5, 6, "7", "8"]),
+    ("prog --cmd 2 --in 3 --out 4 --ref 6 --repo 7 --skip 8 --image 9",
+     [2, "9", 3, 4, {}, 6, "7", "8"])
 ])
 def test_cli(capsys, requests_mock, monkeypatch, argv, expect):
     requests_mock.get("http://169.254.169.254/latest/meta-data/instance-life-cycle", text="spot")
