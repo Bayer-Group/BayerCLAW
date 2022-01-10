@@ -270,6 +270,9 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
             "Parameters": {
                 "workflow_name": {"Ref": "AWS::StackName"},
                 "repo": "rrr",
+                "image": {
+                    "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp",
+                },
                 "inputs": "iii",
                 "references": "fff",
                 "command": json.dumps(step.spec["commands"]),
@@ -280,15 +283,17 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                 "Command": [
                     f"{SCRATCH_PATH}/select_runner.sh",
                     "--repo", "Ref::repo",
+                    "--image", "Ref::image",
                     "--in", "Ref::inputs",
                     "--ref", "Ref::references",
                     "--cmd", "Ref::command",
                     "--out", "Ref::outputs",
                     "--skip", "Ref::skip",
                 ],
-                "Image": {
-                    "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp",
-                },
+                "Image": "runner_image_uri",
+                # "Image": {
+                    # "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp",
+                # },
                 "Environment": [
                     {"Name": "BC_WORKFLOW_NAME",   "Value": {"Ref": "AWS::StackName"}},
                     {"Name": "BC_SCRATCH_PATH",    "Value": SCRATCH_PATH},
