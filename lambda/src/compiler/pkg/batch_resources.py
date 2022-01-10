@@ -218,7 +218,7 @@ def job_definition_rc(core_stack: CoreStack,
             },
             "ContainerProperties": {
                 "Command": [
-                    f"{SCRATCH_PATH}/select_runner.sh",
+                    f"/bclaw_runner/src/runner_cli.py",
                     "--repo", "Ref::repo",
                     "--image", "Ref::image",
                     "--in", "Ref::inputs",

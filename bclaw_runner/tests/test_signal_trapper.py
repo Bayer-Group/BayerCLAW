@@ -9,7 +9,7 @@ from ..src.runner.signal_trapper import SignalTrapped, signal_handler, signal_tr
 def test_signal_handler():
     with pytest.raises(SignalTrapped) as st:
         signal_handler(1, "unused")
-    assert "received signal Hangup: 1" in str(st)
+    assert "received signal Hangup" in str(st)
 
 
 def test_signal_trapper():
@@ -28,5 +28,5 @@ def test_signal_trapper():
             time.sleep(5)
             print("yo")
 
-    assert "received signal Interrupt: 2" in str(st)
+    assert "received signal Interrupt" in str(st)
     assert signal.getsignal(1) == signal.SIG_DFL
