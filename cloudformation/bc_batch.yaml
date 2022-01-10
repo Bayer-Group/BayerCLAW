@@ -223,36 +223,10 @@ Resources:
               mount /dev/sdh /scratch
 
               # Mount EFS volume, if any
-              if [[ "${EFSVolumeId}" =~ ^fs- ]]; then
-                mkdir -p /mnt/efs
-                mount -t efs -o tls,ro ${EFSVolumeId}:/ /mnt/efs
-              fi
-
-              sudo yum install -y awscli.noarch
-
-              cd /scratch
-              cat > runner_installer.sh << EOF
-              aws s3 sync s3://${ResourceBucketName}/runner/ .
-
-              chmod +x select_runner.sh
-              chmod +x centos/bclaw_runner
-              chmod +x debian/bclaw_runner
-
-              EOF
-
-              source runner_installer.sh
-
-              # sanity checks
-              if [ ! -x select_runner.sh ]; then
-                terminate
-              fi
-
-              for d in centos debian
-              do
-                if [ ! -x $d/bclaw_runner ]; then
-                  terminate
-                fi
-              done
+              # if [[ "${EFSVolumeId}" =~ ^fs- ]]; then
+              #   mkdir -p /mnt/efs
+              #   mount -t efs -o tls,ro ${EFSVolumeId}:/ /mnt/efs
+              # fi
 
               --==BOUNDARY==--
 
