@@ -187,12 +187,13 @@ Resources:
       CompatibleRuntimes:
         - python3.7
         - python3.8
+        - python3.9
 
   ChooserLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: multichooser.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       CodeUri: lambda/src/chooser
       MemorySize: 128
       Timeout: 60
@@ -213,7 +214,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       CodeUri: lambda/src/compiler
       Environment:
         Variables:
@@ -246,7 +247,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: launcher.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       CodeUri: lambda/src/launcher
       MemorySize: 128
       Timeout: 900
@@ -267,7 +268,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: scatter.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       CodeUri: lambda/src/scatter
       MemorySize: 128
       Timeout: 900
@@ -288,7 +289,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: gather.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       CodeUri: lambda/src/gather
       MemorySize: 128
       Timeout: 900
@@ -309,7 +310,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: qc_checker.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       CodeUri: lambda/src/qc_checker
       MemorySize: 128
       Timeout: 60
@@ -338,7 +339,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: subpipes.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       CodeUri: lambda/src/subpipes
       MemorySize: 128
       Timeout: 900
@@ -359,7 +360,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: notifications.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       CodeUri: lambda/src/notifications
       MemorySize: 128
       Timeout: 60
@@ -380,7 +381,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: job_status.lambda_handler
-      Runtime: python3.8
+      Runtime: python3.9
       CodeUri: lambda/src/job_status
       Environment:
         Variables:
