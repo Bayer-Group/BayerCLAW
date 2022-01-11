@@ -22,7 +22,7 @@ phases:
       - >
         export ECR_REPO_URI=$(aws ecr describe_repositories
         --repository-name $ECR_REPO_NAME
-        --query "repositories[0].repositoryUri
+        --query "repositories[0].repositoryUri"
         --output text)
 
   build:
