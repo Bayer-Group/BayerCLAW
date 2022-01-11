@@ -1,0 +1,30 @@
+FROM python:3.9.9-alpine3.15 AS base
+
+LABEL maintainer="jack.tabaska@bayer.com"
+
+# https://www.cynnovative.com/simple-multi-stage-docker-builds/
+
+WORKDIR /bclaw_runner
+
+COPY requirements.txt ./
+RUN pip install -r requirements.txt
+
+COPY src src
+COPY __init__.py __init__.py
+
+FROM base AS test
+
+# https://github.com/pachisi456/alpine-pytest-docker
+
+RUN apk add --no-cache --virtual .build-deps \
+    build-base openssl-dev libffi-dev
+RUN pip install --upgrade pip
+RUN pip install pytest moto requests_mock
+
+COPY tests tests
+RUN pytest -s -vvv tests/
+
+FROM base AS build
+
+ENV PYTHONBUFFERED=1
+ENV PATH=/bclaw:$PATH
