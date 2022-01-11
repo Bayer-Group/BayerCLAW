@@ -281,7 +281,7 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
             },
             "ContainerProperties": {
                 "Command": [
-                    f"{SCRATCH_PATH}/select_runner.sh",
+                    "python", "/bclaw_runner/src/runner_cli.py",
                     "--repo", "Ref::repo",
                     "--image", "Ref::image",
                     "--in", "Ref::inputs",
