@@ -20,7 +20,7 @@ phases:
       - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
       - aws ecr create-repository --repository-name $ECR_REPO_NAME || true
       - >
-        export ECR_REPO_URI=$(aws ecr describe_repositories
+        export ECR_REPO_URI=$(aws ecr describe-repositories
         --repository-name $ECR_REPO_NAME
         --query "repositories[0].repositoryUri"
         --output text)
