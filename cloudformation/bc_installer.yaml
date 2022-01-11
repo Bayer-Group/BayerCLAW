@@ -290,6 +290,10 @@ Resources:
         -
           IpProtocol: -1
           CidrIp: 0.0.0.0/0
+      SecurityGroupIngress:
+        -
+          IpProtocol: -1
+          CidrIp: 0.0.0.0/0
       VpcId: !Ref VpcId
 
   CoreStackCodebuildProject:
