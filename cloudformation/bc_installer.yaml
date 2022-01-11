@@ -289,7 +289,7 @@ Resources:
         Type: LINUX_CONTAINER
         Image: "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
         ComputeType: BUILD_GENERAL1_SMALL
-        PrivilegedMode: false
+        PrivilegedMode: true
         EnvironmentVariables:
           - Name: COMPILER_MACRO_NAME
             Type: PLAINTEXT
