@@ -198,12 +198,12 @@ Resources:
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 1
             Status: Enabled
-          -
-            Prefix: "runner"
-            NoncurrentVersionExpirationInDays: 7
-            AbortIncompleteMultipartUpload:
-              DaysAfterInitiation: 1
-            Status: Enabled
+#          -
+#            Prefix: "runner"
+#            NoncurrentVersionExpirationInDays: 7
+#            AbortIncompleteMultipartUpload:
+#              DaysAfterInitiation: 1
+#            Status: Enabled
           -
             Prefix: "stepfunctions"
             ExpirationInDays: 2
@@ -340,27 +340,27 @@ Resources:
       Artifacts:
         Type: CODEPIPELINE
 
-  RunnerCodebuildProject:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Environment:
-        Type: LINUX_CONTAINER
-        Image: "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
-        ComputeType: BUILD_GENERAL1_SMALL
-        PrivilegedMode: false
-      ServiceRole: !GetAtt RunnerCodebuildRole.Arn
-      BuildBatchConfig:
-        CombineArtifacts: false
-        Restrictions:
-          ComputeTypesAllowed:
-            - BUILD_GENERAL1_SMALL
-          MaximumBuildsAllowed: 5
-        ServiceRole: !GetAtt RunnerCodebuildRole.Arn
-      Source:
-        Type: CODEPIPELINE
-        BuildSpec: bclaw_runner/buildspec.yml
-      Artifacts:
-        Type: CODEPIPELINE
+#  RunnerCodebuildProject:
+#    Type: AWS::CodeBuild::Project
+#    Properties:
+#      Environment:
+#        Type: LINUX_CONTAINER
+#        Image: "aws/codebuild/amazonlinux2-x86_64-standard:3.0"
+#        ComputeType: BUILD_GENERAL1_SMALL
+#        PrivilegedMode: false
+#      ServiceRole: !GetAtt RunnerCodebuildRole.Arn
+#      BuildBatchConfig:
+#        CombineArtifacts: false
+#        Restrictions:
+#          ComputeTypesAllowed:
+#            - BUILD_GENERAL1_SMALL
+#          MaximumBuildsAllowed: 5
+#        ServiceRole: !GetAtt RunnerCodebuildRole.Arn
+#      Source:
+#        Type: CODEPIPELINE
+#        BuildSpec: bclaw_runner/buildspec.yml
+#      Artifacts:
+#        Type: CODEPIPELINE
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -410,25 +410,25 @@ Resources:
                 - Name: coreStackArtifacts
               Namespace: BuildMainStackNS
               RunOrder: 1
-            -
-              Name: BuildRunners
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Provider: CodeBuild
-                Version: "1"
-              Configuration:
-                ProjectName: !Ref RunnerCodebuildProject
-                PrimarySource: coreSrc
-                BatchEnabled: true
-                CombineArtifacts: false
-              InputArtifacts:
-                - Name: coreSrc
-              OutputArtifacts:
-                - Name: debian
-                - Name: centos
-              Namespace: BuildRunnersNS
-              RunOrder: 1
+#            -
+#              Name: BuildRunners
+#              ActionTypeId:
+#                Category: Build
+#                Owner: AWS
+#                Provider: CodeBuild
+#                Version: "1"
+#              Configuration:
+#                ProjectName: !Ref RunnerCodebuildProject
+#                PrimarySource: coreSrc
+#                BatchEnabled: true
+#                CombineArtifacts: false
+#              InputArtifacts:
+#                - Name: coreSrc
+#              OutputArtifacts:
+#                - Name: debian
+#                - Name: centos
+#              Namespace: BuildRunnersNS
+#              RunOrder: 1
         -
           Name: Deploy
           Actions:
@@ -446,34 +446,34 @@ Resources:
               InputArtifacts:
                 - Name: coreStackArtifacts
               RunOrder: 1
-            -
-              Name: DeployCentosRunner
-              ActionTypeId:
-                Category: Deploy
-                Owner: AWS
-                Provider: S3
-                Version: "1"
-              Configuration:
-                 BucketName: !Ref ResourceBucket
-                 Extract: true
-                 ObjectKey: runner
-              InputArtifacts:
-                - Name: centos
-              RunOrder: 1
-            -
-              Name: DeployDebianRunner
-              ActionTypeId:
-                Category: Deploy
-                Owner: AWS
-                Provider: S3
-                Version: "1"
-              Configuration:
-                 BucketName: !Ref ResourceBucket
-                 Extract: true
-                 ObjectKey: runner
-              InputArtifacts:
-                - Name: debian
-              RunOrder: 1
+#            -
+#              Name: DeployCentosRunner
+#              ActionTypeId:
+#                Category: Deploy
+#                Owner: AWS
+#                Provider: S3
+#                Version: "1"
+#              Configuration:
+#                 BucketName: !Ref ResourceBucket
+#                 Extract: true
+#                 ObjectKey: runner
+#              InputArtifacts:
+#                - Name: centos
+#              RunOrder: 1
+#            -
+#              Name: DeployDebianRunner
+#              ActionTypeId:
+#                Category: Deploy
+#                Owner: AWS
+#                Provider: S3
+#                Version: "1"
+#              Configuration:
+#                 BucketName: !Ref ResourceBucket
+#                 Extract: true
+#                 ObjectKey: runner
+#              InputArtifacts:
+#                - Name: debian
+#              RunOrder: 1
 
   CodePipelineRole:
     Type: AWS::IAM::Role
@@ -537,6 +537,7 @@ Resources:
                 - "cloudformation:*"
                 - "lambda:*"
                 - "dynamodb:*"
+                - "ecr:*"
                 Effect: Allow
                 Resource: "*"
 #      ManagedPolicyArns:
@@ -551,22 +552,22 @@ Resources:
 #        - "arn:aws:iam::aws:policy/AWSCloudTrail_FullAccess"
 #        - "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
 
-  RunnerCodebuildRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - codebuild.amazonaws.com
-            Action:
-              - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
-        - "arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess"
+#  RunnerCodebuildRole:
+#    Type: AWS::IAM::Role
+#    Properties:
+#      AssumeRolePolicyDocument:
+#        Version: 2012-10-17
+#        Statement:
+#          - Effect: Allow
+#            Principal:
+#              Service:
+#                - codebuild.amazonaws.com
+#            Action:
+#              - "sts:AssumeRole"
+#      ManagedPolicyArns:
+#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+#        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+#        - "arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess"
 
 Outputs:
   AdminSNSTopicName:
