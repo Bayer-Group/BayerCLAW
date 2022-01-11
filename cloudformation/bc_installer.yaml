@@ -337,6 +337,10 @@ Resources:
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec.yml
+      VpcConfig:
+        VpcId: !Ref VpcId
+        Subnets: !Ref Subnets
+        SecurityGroupIds: !Ref SecurityGroups
       Artifacts:
         Type: CODEPIPELINE
 
