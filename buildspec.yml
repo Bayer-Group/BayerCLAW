@@ -27,11 +27,11 @@ phases:
 
   build:
     commands:
-      - pushd bclaw_runner
+      - cd bclaw_runner
       - docker build --target test -f Dockerfile.alpine .
       - docker build -t $ECR_REPO_URI -f Dockerfile.alpine .
-      - popd
 
+      - cd $CODEBUILD_SRC_DIR
       - sam build -b ./build -s . -t cloudformation/bc_core.yaml
       - >
         sam package
