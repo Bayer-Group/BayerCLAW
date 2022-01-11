@@ -1,4 +1,4 @@
-FROM python:3.9.9-slim-bullseye AS base
+FROM public.ecr.aws/docker/library/python:3.9.9-slim-bullseye AS base
 
 LABEL maintainer="jack.tabaska@bayer.com"
 
@@ -7,14 +7,15 @@ LABEL maintainer="jack.tabaska@bayer.com"
 WORKDIR /bclaw_runner
 
 COPY requirements.txt ./
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY src src
 COPY __init__.py __init__.py
 
 FROM base AS test
 
-RUN pip install pytest moto requests_mock
+RUN pip install --no-cache-dir pytest moto requests_mock
 
 COPY tests tests
 RUN pytest -s -vvv tests/
