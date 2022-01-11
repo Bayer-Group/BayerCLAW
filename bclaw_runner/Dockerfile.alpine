@@ -7,7 +7,8 @@ LABEL maintainer="jack.tabaska@bayer.com"
 WORKDIR /bclaw_runner
 
 COPY requirements.txt ./
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY src src
 COPY __init__.py __init__.py
@@ -17,9 +18,8 @@ FROM base AS test
 # https://github.com/pachisi456/alpine-pytest-docker
 
 RUN apk add --no-cache --virtual .build-deps \
-    build-base openssl-dev libffi-dev
-RUN pip install --upgrade pip
-RUN pip install pytest moto requests_mock
+    build-base openssl-dev libffi-dev && \
+    pip install --no-cache-dir pytest moto requests_mock
 
 COPY tests tests
 RUN pytest -s -vvv tests/
