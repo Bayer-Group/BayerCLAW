@@ -282,20 +282,6 @@ Resources:
       Topics:
         - !Ref AdminSNSTopic
 
-  SecurityGroupForCodebuild:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: security group for BayerCLAW codebuild
-      SecurityGroupEgress:
-        -
-          IpProtocol: -1
-          CidrIp: 0.0.0.0/0
-      SecurityGroupIngress:
-        -
-          IpProtocol: -1
-          CidrIp: 0.0.0.0/0
-      VpcId: !Ref VpcId
-
   CoreStackCodebuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
@@ -351,11 +337,6 @@ Resources:
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec.yml
-      VpcConfig:
-        VpcId: !Ref VpcId
-        Subnets: !Ref Subnets
-        SecurityGroupIds:
-          - !Ref SecurityGroupForCodebuild
       Artifacts:
         Type: CODEPIPELINE
 
@@ -559,6 +540,7 @@ Resources:
                 - "ecr:*"
                 Effect: Allow
                 Resource: "*"
+
 #      ManagedPolicyArns:
 #        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
 #        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
