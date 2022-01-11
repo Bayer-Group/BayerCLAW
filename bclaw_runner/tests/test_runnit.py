@@ -1,8 +1,10 @@
 import logging
+import pytest
 
 from ..src.runner.runnit import runnit
 
 
+@pytest.mark.skip(reason="unused")
 def test_runnit(caplog, read_config):
     shell = read_config["shell-exe"]
     cmd = [shell, "-c", "echo 'stdout'; >&2 echo 'stderr'; sleep 2; date +%s"]
@@ -19,6 +21,7 @@ def test_runnit(caplog, read_config):
         assert caplog.records[1].created < stop_time
 
 
+@pytest.mark.skip(reason="unused")
 def test_runnit_fail(caplog, read_config):
     shell = read_config["shell-exe"]
     cmd = [shell, "-c", "false"]
@@ -28,6 +31,7 @@ def test_runnit_fail(caplog, read_config):
         assert result > 0
 
 
+@pytest.mark.skip(reason="unused")
 def test_runnit_read_stream_error(caplog, read_config):
     shell = read_config["shell-exe"]
     cmd = [shell, "-c", "echo antidisestablishmentarianism"]

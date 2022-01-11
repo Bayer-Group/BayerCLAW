@@ -7,7 +7,7 @@ env:
 phases:
   install:
     runtime-versions:
-      python: 3.8
+      python: 3.9
     commands:
       - pip install aws-sam-cli
       - pip install -r lambda/tests/requirements.txt
@@ -16,9 +16,22 @@ phases:
     commands:
       - pytest -s -vvv lambda/tests/
       - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
+      - export ECR_REPO_NAME=${CORE_STACK_NAME}/bclaw_runner
+      - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
+      - aws ecr create-repository --repository-name $ECR_REPO_NAME || true
+      - >
+        export ECR_REPO_URI=$(aws ecr describe_repositories
+        --repository-name $ECR_REPO_NAME
+        --query "repositories[0].repositoryUri
+        --output text)
 
   build:
     commands:
+      - pushd bclaw_runner
+      - docker build --target test .
+      - docker build -t $ECR_REPO_URI .
+      - popd
+
       - sam build -b ./build -s . -t cloudformation/bc_core.yaml
       - >
         sam package
@@ -44,12 +57,20 @@ phases:
         MinvCpus=${MIN_VCPUS}
         ResourceBucketName=${RESOURCE_BUCKET_NAME}
         RootVolumeSize=${ROOT_VOLUME_SIZE}
+        RunnerImageURI=${ECR_REPO_URI}
         ScratchVolumeSize=${SCRATCH_VOLUME_SIZE}
         SecurityGroups=${SECURITY_GROUPS}
         Subnets=${SUBNETS}
         UseExistingCloudTrail=${USE_EXISTING_CLOUDTRAIL}
         Uniqifier=$(date | md5sum | head -c 16)
         VpcId=${VPC_ID}
+
+post_build:
+  commands:
+    - >
+      aws ecr get-login-password --region ${AWS_REGION} |
+      docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+    - docker push ${ECR_REPO_URI}
 
 artifacts:
   discard-paths: yes

@@ -40,6 +40,7 @@ def test_write_job_data_file(tmp_path):
 
 
 # todo: remove
+@pytest.mark.skip(reason="unused")
 def test_run_commands(tmp_path, read_config):
     f = tmp_path / "test_success.out"
 
@@ -85,6 +86,7 @@ def test_run_commands1(tmp_path, monkeypatch):
 
 
 # todo: remove
+@pytest.mark.skip(reason="unused")
 def test_environment_vars(tmp_path, read_config):
     job_data_file = f"{tmp_path}/fake_job_data.json"
 
@@ -102,6 +104,7 @@ def test_environment_vars(tmp_path, read_config):
 
 
 # todo: remove
+@pytest.mark.skip(reason="unused")
 def test_exit_on_command_fail(tmp_path, read_config):
     f = tmp_path / "test_exit_on_command_fail.out"
 
@@ -142,6 +145,7 @@ def test_exit_on_command_fail1(tmp_path, monkeypatch):
 
 
 #todo: remove
+@pytest.mark.skip(reason="unused")
 def test_exit_on_undef_var(tmp_path, read_config):
     f = tmp_path / "test_exit_on_undef_var.out"
 
@@ -182,7 +186,8 @@ def test_exit_on_undef_var1(tmp_path, monkeypatch):
 
 
 # todo: remove
-@pytest.mark.skipif(os.environ.get("SHELL_NAME", "") == "sh", reason="can't do this in Bourne shell")
+# @pytest.mark.skipif(os.environ.get("SHELL_NAME", "") == "sh", reason="can't do this in Bourne shell")
+@pytest.mark.skip(reason="unused")
 def test_pipefail(tmp_path, read_config):
     f = tmp_path / "test_pipefail.out"
 
@@ -203,7 +208,8 @@ def test_pipefail(tmp_path, read_config):
 
 
 # todo: remove
-@pytest.mark.skipif(os.environ.get("SHELL_NAME", "") == "sh", reason="can't do this in Bourne shell")
+# @pytest.mark.skipif(os.environ.get("SHELL_NAME", "") == "sh", reason="can't do this in Bourne shell")
+@pytest.mark.skip(reason="unused")
 def test_subshell_fail(tmp_path, read_config):
     f = tmp_path / "test_subshell_fail.out"
 

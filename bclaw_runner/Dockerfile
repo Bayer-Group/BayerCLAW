@@ -1,4 +1,4 @@
-FROM python:3.9.6-slim-bullseye AS base
+FROM python:3.9.9-slim-bullseye AS base
 
 LABEL maintainer="jack.tabaska@bayer.com"
 
@@ -21,4 +21,5 @@ RUN pytest -s -vvv tests/
 
 FROM base AS build
 
+ENV PYTHONBUFFERED=1
 ENV PATH=/bclaw:$PATH
