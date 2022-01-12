@@ -129,7 +129,7 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
                                                      version="auto",
                                                      working_dir=child_workspace)
             try:
-                with closing(container.log(stream=True)) as fp:
+                with closing(container.logs(stream=True)) as fp:
                     # todo: new logger for this
                     for line in fp:
                         logger.info(line.decode("utf-8"))
