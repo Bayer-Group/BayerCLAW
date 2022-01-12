@@ -116,7 +116,7 @@ class MockContainer:
         self.exit_code = 0
         self.removed = False
 
-    def log(self, *args, **kwargs) -> io.BytesIO:
+    def logs(self, *args, **kwargs) -> io.BytesIO:
         ret = io.BytesIO(b"line 1\nline 2\nline 3")
         return ret
 
@@ -135,7 +135,7 @@ class FailingContainer(MockContainer):
     def __init__(self):
         super().__init__()
 
-    def log(self, *args, **kwargs) -> io.BytesIO:
+    def logs(self, *args, **kwargs) -> io.BytesIO:
         raise RuntimeError("hey")
 
 
