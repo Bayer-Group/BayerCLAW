@@ -154,6 +154,13 @@ def test_get_volume_info(global_efs_id, step_efs_specs):
     assert isinstance(result["MountPoints"], list)
     v_mp = list(zip(result["Volumes"], result["MountPoints"]))
 
+    docker_socket_vol, docker_socket_mp = v_mp.pop(0)
+    assert docker_socket_vol == {"Name": "docker_socket",
+                                 "Host": {"SourcePath": "/var/run/docker.sock"}}
+    assert docker_socket_mp == {"SourceVolume": "docker_socket",
+                                "ContainerPath": "/var/run/docker.sock",
+                                "ReadOnly": False,}
+
     docker_scratch_vol, docker_scratch_mp = v_mp.pop(0)
     assert docker_scratch_vol == {"Name": "docker_scratch",
                                   "Host": {"SourcePath": "/docker_scratch"},}
@@ -291,9 +298,6 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                     "--skip", "Ref::skip",
                 ],
                 "Image": "runner_image_uri",
-                # "Image": {
-                    # "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp",
-                # },
                 "Environment": [
                     {"Name": "BC_WORKFLOW_NAME",   "Value": {"Ref": "AWS::StackName"}},
                     {"Name": "BC_SCRATCH_PATH",    "Value": SCRATCH_PATH},
@@ -308,12 +312,14 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                 ],
                 "JobRoleArn": task_role,
                 "MountPoints": [
-                    {"ContainerPath": "/scratch",        "SourceVolume": "docker_scratch",  "ReadOnly": False},
-                    {"ContainerPath": "/_bclaw_scratch", "SourceVolume": "scratch",         "ReadOnly": False},
-                    {"ContainerPath": "/mnt/efs",        "SourceVolume": "efs",             "ReadOnly": True},
-                    {"ContainerPath": "/step_efs",       "SourceVolume": "fs-12345-volume", "ReadOnly": True},
+                    {"ContainerPath": "/var/run/docker.sock", "SourceVolume": "docker_socket",   "ReadOnly": False},
+                    {"ContainerPath": "/scratch",             "SourceVolume": "docker_scratch",  "ReadOnly": False},
+                    {"ContainerPath": "/_bclaw_scratch",      "SourceVolume": "scratch",         "ReadOnly": False},
+                    {"ContainerPath": "/mnt/efs",             "SourceVolume": "efs",             "ReadOnly": True},
+                    {"ContainerPath": "/step_efs",            "SourceVolume": "fs-12345-volume", "ReadOnly": True},
                 ],
                 "Volumes": [
+                    {"Name": "docker_socket",  "Host": {"SourcePath": "/var/run/docker.sock"}},
                     {"Name": "docker_scratch", "Host": {"SourcePath": "/docker_scratch"}},
                     {"Name": "scratch",        "Host": {"SourcePath": "/scratch"}},
                     {"Name": "efs",            "Host": {"SourcePath": "/mnt/efs"}},
