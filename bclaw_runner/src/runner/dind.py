@@ -83,16 +83,19 @@ def pull_image(docker_client: docker.DockerClient, tag: str) -> Image:
     try:
         # check if the image already exists locally
         ret = docker_client.images.get(tag)
+        logger.info(f"found {tag} in local repository")
 
     except ImageNotFound:
         if m := re.match(r"(\d+)\.dkr\.ecr", tag):
             # pull from ECR
+            logger.info(f"pulling {tag} from ECR")
             ecr_client = boto3.client("ecr")
             token = ecr_client.get_authorization_token(registryIds=m.groups())
             u, p = b64decode(token["authorizationData"][0]["authorizationToken"]).decode("utf-8").split(":")
             auth_config = {"username": u, "password": p}
         else:
             # pull from public repository
+            logger.info(f"pulling {tag} from public repo")
             auth_config = None
 
         ret = docker_client.images.pull(tag, auth_config=auth_config)
@@ -114,6 +117,7 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
 
     device_requests = get_gpu_requests()
 
+    ret = 255
     with closing(docker.client.from_env()) as docker_client:
         child_image = pull_image(docker_client, image_tag)
         with signal_trapper():
@@ -130,20 +134,19 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
                                                      working_dir=child_workspace)
             try:
                 with closing(container.logs(stream=True)) as fp:
-                    # todo: new logger for this
                     for line in fp:
                         logger.info(line.decode("utf-8"))
 
-            except BaseException:
+            except (Exception, KeyboardInterrupt):
                 # stop the child container before crashing
                 logger.exception("failed: ")
                 logger.warning("stopping child container")
                 container.stop(timeout=5)
+                raise
 
             finally:
-                logger.info("waiting for child container")
+                logger.info("closing child container")
                 response = container.wait()
-                logger.info("cleaning up")
                 container.remove()
-                ret = response.get("StatusCode", 0)  # todo: default to 1?
-                return ret
+                ret = response.get("StatusCode", 1)
+    return ret

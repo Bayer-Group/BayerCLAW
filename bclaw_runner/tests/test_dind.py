@@ -110,10 +110,10 @@ class MockImages:
 
 
 class MockContainer:
-    def __init__(self):
+    def __init__(self, exit_code):
         self.args = None
         self.kwargs = None
-        self.exit_code = 0
+        self.exit_code = exit_code
         self.removed = False
 
     def logs(self, *args, **kwargs) -> io.BytesIO:
@@ -133,7 +133,7 @@ class MockContainer:
 
 class FailingContainer(MockContainer):
     def __init__(self):
-        super().__init__()
+        super().__init__(0)
 
     def logs(self, *args, **kwargs) -> io.BytesIO:
         raise RuntimeError("hey")
@@ -174,8 +174,9 @@ def test_pull_images(tag, expected_source, expected_auth, monkeypatch):
 
 
 @pytest.mark.parametrize("test_container, expected_result", [
-    (MockContainer(), 0),
-    (FailingContainer(), 99),
+    (MockContainer(0), 0),
+    (MockContainer(88), 88),
+    (FailingContainer(), None),
 ])
 def test_run_child_container(monkeypatch, requests_mock, test_container, expected_result):
     bc_scratch_path = "/_bclaw_scratch"
@@ -211,26 +212,32 @@ def test_run_child_container(monkeypatch, requests_mock, test_container, expecte
     job_data_file = f"{bc_scratch_path}/parent/workspace/job_data_12345.json"
 
     monkeypatch.setattr(docker.client, "from_env", mock_from_env)
-    result = run_child_container("local/image", "ls -l", f"{bc_scratch_path}/parent/workspace", job_data_file)
 
-    assert test_container.args == ("local/image", "ls -l")
-    assert test_container.kwargs == {
-        "cpu_shares": 1024,
-        "detach": True,
-        "device_requests": [DeviceRequest(count=-1, capabilities=[["compute", "utility"]])],
-        "entrypoint": [],
-        "environment": {
-            "AWS_DEFAULT_REGION": "us-east-1",
-            "BC_JOB_DATA_FILE": f"{bc_scratch_path}/job_data_12345.json",
-            "BC_SCRATCH_PATH": bc_scratch_path,
-            "BC_WORKSPACE": bc_scratch_path,
-            "ECS_CONTAINER_METADATA_URI_V4": fake_url,
-        },
-        "init": True,
-        "mem_limit": "2048m",
-        "mounts": [Mount(bc_scratch_path, "/host/volume/scratch/parent/workspace", type="bind", read_only=False)],
-        "version": "auto",
-        "working_dir": bc_scratch_path
-    }
-    assert test_container.removed == True
-    assert result == expected_result
+    if isinstance(test_container, FailingContainer):
+        with pytest.raises(RuntimeError):
+            _ = run_child_container("local/image", "ls -l", f"{bc_scratch_path}/parent/workspace", job_data_file)
+
+    else:
+        result = run_child_container("local/image", "ls -l", f"{bc_scratch_path}/parent/workspace", job_data_file)
+
+        assert test_container.args == ("local/image", "ls -l")
+        assert test_container.kwargs == {
+            "cpu_shares": 1024,
+            "detach": True,
+            "device_requests": [DeviceRequest(count=-1, capabilities=[["compute", "utility"]])],
+            "entrypoint": [],
+            "environment": {
+                "AWS_DEFAULT_REGION": "us-east-1",
+                "BC_JOB_DATA_FILE": f"{bc_scratch_path}/job_data_12345.json",
+                "BC_SCRATCH_PATH": bc_scratch_path,
+                "BC_WORKSPACE": bc_scratch_path,
+                "ECS_CONTAINER_METADATA_URI_V4": fake_url,
+            },
+            "init": True,
+            "mem_limit": "2048m",
+            "mounts": [Mount(bc_scratch_path, "/host/volume/scratch/parent/workspace", type="bind", read_only=False)],
+            "version": "auto",
+            "working_dir": bc_scratch_path
+        }
+        assert test_container.removed is True
+        assert result == expected_result
