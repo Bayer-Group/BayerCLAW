@@ -123,6 +123,12 @@ def get_resource_requirements(step: Step) -> dict:
 def get_volume_info(step: Step, global_efs_id: str) -> dict:
     volumes = [
         {
+            "Name": "docker_socket",
+            "Host": {
+                "SourcePath": "/var/run/docker.sock",
+            },
+        },
+        {
             "Name": "docker_scratch",
             "Host": {
                 "SourcePath": "/docker_scratch",
@@ -135,6 +141,11 @@ def get_volume_info(step: Step, global_efs_id: str) -> dict:
             },
         }]
     mount_points = [
+        {
+            "SourceVolume": "docker_socket",
+            "ContainerPath": "/var/run/docker.sock",
+            "ReadOnly": False,
+        },
         {
             "SourceVolume": "docker_scratch",
             "ContainerPath": "/scratch",
