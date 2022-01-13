@@ -469,9 +469,9 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: 2012-10-17
+        Version: "2012-10-17"
         Statement:
-          - Effect: Allow
+          - Effect: "Allow"
             Principal:
               Service:
                 - "ecs-tasks.amazonaws.com"
@@ -481,6 +481,16 @@ Resources:
         - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
         - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
         - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+      Policies:
+        -
+          PolicyName: "ECRAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action: "ecr:*"
+                Resource: "*"
+
 
   SpotQueueStack:
     Type: AWS::Serverless::Application

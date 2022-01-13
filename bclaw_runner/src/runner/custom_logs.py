@@ -10,21 +10,21 @@ class JSONFormatter(logging.Formatter):
         obj = {
             "level": record.levelname,
             "message": record.getMessage(),
-            "batch": {
-                "runner": f"bclaw_runner v{VERSION}",
-                "job_id": os.environ.get("AWS_BATCH_JOB_ID"),
-            },
-            "branch": os.environ.get("BC_BRANCH_IDX"),
             "function": f"{record.module}.{record.funcName}",
+            "workflow_name": os.environ.get("BC_WORKFLOW_NAME"),
+            "step_name": os.environ.get("BC_STEP_NAME"),
             "job_file": {
                 "bucket": os.environ.get("BC_LAUNCH_BUCKET"),
                 "key": os.environ.get("BC_LAUNCH_KEY"),
                 "version": os.environ.get("BC_LAUNCH_VERSION"),
                 "s3_request_id": os.environ.get("BC_LAUNCH_S3_REQUEST_ID"),
             },
-            "step_name": os.environ.get("BC_STEP_NAME"),
             "sfn_execution_id": os.environ.get("BC_EXECUTION_ID"),
-            "workflow_name": os.environ.get("BC_WORKFLOW_NAME"),
+            "branch": os.environ.get("BC_BRANCH_IDX"),
+            "batch": {
+                "runner": f"bclaw_runner v{VERSION}",
+                "job_id": os.environ.get("AWS_BATCH_JOB_ID"),
+            },
         }
         if record.exc_info is not None:
             obj["exception"] = self.formatException(record.exc_info)
