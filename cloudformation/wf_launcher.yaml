@@ -62,7 +62,7 @@ Resources:
             InputPathsMap:
               bucket: "$.detail.bucket.name"
               key: "$.detail.object.key"
-              requestIdD: "$.detail.request-id"
+              requestID: "$.detail.request-id"
               version: "$.detail.object.version-id"
             InputTemplate: >-
               {
