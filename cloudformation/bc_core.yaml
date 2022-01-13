@@ -158,6 +158,9 @@ Resources:
           -
             ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
       VersioningConfiguration:
         Status: Enabled
 
