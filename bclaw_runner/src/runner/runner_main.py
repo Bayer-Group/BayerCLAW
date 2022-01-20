@@ -152,6 +152,7 @@ def main(commands: List[str],
 
         except Exception as e:
             logger.exception("runner failed")
+            # todo: raise?
             status = 255
 
         else:

@@ -46,6 +46,8 @@ def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> G
                 # prevent docker in docker in docker in docker...
                 continue
 
+            # todo: don't mount docker_scratch
+
             elif volume_spec["Destination"] == os.environ["BC_SCRATCH_PATH"]:
                 # make only the workspace dir available to the child container, not the whole scratch volume
 
@@ -75,6 +77,7 @@ def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> G
 
 def get_environment_vars() -> dict:
     # copy all environment variables starting with AWS_, BC_, or ECS_ to the child container
+    # todo: drop ECS
     ret = {k: v for k, v in os.environ.items() if re.match(r"^(?:AWS|BC|ECS)_.*", k)}
     return ret
 
