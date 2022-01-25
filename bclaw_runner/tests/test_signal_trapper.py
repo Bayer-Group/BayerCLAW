@@ -1,15 +1,8 @@
 import os
-import pytest
-import signal
 import threading
 import time
 
 from ..src.runner.signal_trapper import signal_trapper
-
-# def test_signal_handler():
-#     with pytest.raises(SignalTrapped) as st:
-#         signal_handler(1, "unused")
-#     assert "received signal Hangup" in str(st)
 
 
 def test_signal_trapper(mock_container_factory):

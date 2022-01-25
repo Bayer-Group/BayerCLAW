@@ -1,4 +1,0 @@
-{
-  "shell-opts": "set -veuo pipefail -o posix",
-  "shell-exe": "bash"
-}

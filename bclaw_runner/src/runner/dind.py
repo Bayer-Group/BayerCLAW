@@ -12,7 +12,7 @@ from docker.models.images import Image
 from docker.types import DeviceRequest, DriverConfig, Mount
 import requests
 
-from .signal_trapper import signal_trapper #, SignalTrapped
+from .signal_trapper import signal_trapper
 
 logger = logging.getLogger(__name__)
 
@@ -104,55 +104,6 @@ def pull_image(docker_client: docker.DockerClient, tag: str) -> Image:
         ret = docker_client.images.pull(tag, auth_config=auth_config)
 
     return ret
-
-
-# def run_child_container0(image_tag: str, command: str, parent_workspace: str, parent_job_data_file: str) -> int:
-#     child_workspace = os.environ["BC_SCRATCH_PATH"]
-#
-#     parent_metadata = get_container_metadata()
-#     mounts = list(get_mounts(parent_metadata, parent_workspace, child_workspace))
-#     cpu_shares = parent_metadata["Limits"]["CPU"]
-#     mem_limit = f"{parent_metadata['Limits']['Memory']}m"
-#
-#     environment = get_environment_vars()
-#     environment["BC_WORKSPACE"] = child_workspace
-#     environment["BC_JOB_DATA_FILE"] = os.path.join(child_workspace, os.path.basename(parent_job_data_file))
-#
-#     device_requests = get_gpu_requests()
-#
-#     ret = 255
-#     with closing(docker.client.from_env()) as docker_client:
-#         child_image = pull_image(docker_client, image_tag)
-#         with signal_trapper():
-#             container = docker_client.containers.run(child_image.tags[0], command,
-#                                                      cpu_shares=cpu_shares,
-#                                                      detach=True,
-#                                                      device_requests=device_requests,
-#                                                      entrypoint=[],
-#                                                      environment=environment,
-#                                                      init=True,
-#                                                      mem_limit=mem_limit,
-#                                                      mounts=mounts,
-#                                                      version="auto",
-#                                                      working_dir=child_workspace)
-#             try:
-#                 with closing(container.logs(stream=True)) as fp:
-#                     for line in fp:
-#                         logger.info(line.decode("utf-8"))
-#
-#             except (Exception, KeyboardInterrupt):
-#                 # stop the child container before crashing
-#                 logger.exception("failed: ")
-#                 logger.warning("stopping child container")
-#                 container.stop(timeout=5)
-#                 raise
-#
-#             finally:
-#                 logger.info("closing child container")
-#                 response = container.wait()
-#                 container.remove()
-#                 ret = response.get("StatusCode", 1)
-#     return ret
 
 
 def run_child_container(image_tag: str, command: str, parent_workspace: str, parent_job_data_file: str) -> int:

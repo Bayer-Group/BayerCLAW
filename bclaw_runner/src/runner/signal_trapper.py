@@ -7,17 +7,6 @@ from docker.models.containers import Container
 logger = logging.getLogger(__name__)
 
 
-# class SignalTrapped(Exception):
-#     def __init__(self, signal_number: int):
-#         msg = f"received signal {signal.strsignal(signal_number)}; exiting"
-#         super().__init__(msg)
-#
-#
-# def signal_handler(signal_number: int, _) -> None:
-#     logger.debug(f"trapped signal {signal_number}")
-#     raise SignalTrapped(signal_number)
-
-
 # https://stackoverflow.com/questions/2148888/python-trap-all-signals
 @contextmanager
 def signal_trapper(container: Container):
