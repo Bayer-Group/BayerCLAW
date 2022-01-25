@@ -4,15 +4,15 @@ import signal
 import threading
 import time
 
-from ..src.runner.signal_trapper import SignalTrapped, signal_handler, signal_trapper
+from ..src.runner.signal_trapper import signal_trapper
 
-def test_signal_handler():
-    with pytest.raises(SignalTrapped) as st:
-        signal_handler(1, "unused")
-    assert "received signal Hangup" in str(st)
+# def test_signal_handler():
+#     with pytest.raises(SignalTrapped) as st:
+#         signal_handler(1, "unused")
+#     assert "received signal Hangup" in str(st)
 
 
-def test_signal_trapper():
+def test_signal_trapper(mock_container_factory):
     pid = os.getpid()
 
     def trigger_signal():
@@ -23,10 +23,10 @@ def test_signal_trapper():
     thread.daemon = True
     thread.start()
 
-    with pytest.raises(SignalTrapped) as st:
-        with signal_trapper():
-            time.sleep(5)
-            print("yo")
+    test_container = mock_container_factory(0, False)
 
-    assert "received signal Interrupt" in str(st)
-    assert signal.getsignal(1) == signal.SIG_DFL
+    with signal_trapper(test_container):
+        time.sleep(3)
+        print("yo")
+
+    assert test_container.exit_code == 99  # test_container.stop() was called

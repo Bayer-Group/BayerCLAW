@@ -1,10 +1,7 @@
-import io
 import json
 import pytest
-from typing import Optional
 
 import docker
-from docker.errors import ImageNotFound
 from docker.types import DeviceRequest, DriverConfig, Mount
 import moto
 
@@ -86,76 +83,76 @@ def test_get_environment_vars(monkeypatch):
     assert result == expect
 
 
-class MockImage:
-    def __init__(self, tag: str, source: str, auth: Optional[dict] = None):
-        self.tags = [tag]
-        self.source = source
-        self.auth = auth
+# class MockImage:
+#     def __init__(self, tag: str, source: str, auth: Optional[dict] = None):
+#         self.tags = [tag]
+#         self.source = source
+#         self.auth = auth
 
 
-class MockImages:
-    @staticmethod
-    def get(tag: str) -> MockImage:
-        if tag == "local/image":
-            return MockImage(tag, "local repo")
-        else:
-            raise ImageNotFound("not found message")
-
-    @staticmethod
-    def pull(tag: str, auth_config: dict) -> MockImage:
-        if auth_config:
-            return MockImage(tag, "ecr", auth_config)
-        else:
-            return MockImage(tag, "public repo")
-
-
-class MockContainer:
-    def __init__(self, exit_code):
-        self.args = None
-        self.kwargs = None
-        self.exit_code = exit_code
-        self.removed = False
-
-    def logs(self, *args, **kwargs) -> io.BytesIO:
-        ret = io.BytesIO(b"line 1\nline 2\nline 3")
-        return ret
-
-    def stop(self, *args, **kwargs) -> None:
-        self.exit_code = 99
-
-    def wait(self, *args, **kwargs) -> dict:
-        ret = {"StatusCode": self.exit_code}
-        return ret
-
-    def remove(self, *args, **kwargs) -> None:
-        self.removed = True
+# class MockImages:
+#     @staticmethod
+#     def get(tag: str) -> MockImage:
+#         if tag == "local/image":
+#             return MockImage(tag, "local repo")
+#         else:
+#             raise ImageNotFound("not found message")
+#
+#     @staticmethod
+#     def pull(tag: str, auth_config: dict) -> MockImage:
+#         if auth_config:
+#             return MockImage(tag, "ecr", auth_config)
+#         else:
+#             return MockImage(tag, "public repo")
 
 
-class FailingContainer(MockContainer):
-    def __init__(self):
-        super().__init__(0)
+# class MockContainer:
+#     def __init__(self, exit_code):
+#         self.args = None
+#         self.kwargs = None
+#         self.exit_code = exit_code
+#         self.removed = False
+#
+#     def logs(self, *args, **kwargs) -> io.BytesIO:
+#         ret = io.BytesIO(b"line 1\nline 2\nline 3")
+#         return ret
+#
+#     def stop(self, *args, **kwargs) -> None:
+#         self.exit_code = 99
+#
+#     def wait(self, *args, **kwargs) -> dict:
+#         ret = {"StatusCode": self.exit_code}
+#         return ret
+#
+#     def remove(self, *args, **kwargs) -> None:
+#         self.removed = True
 
-    def logs(self, *args, **kwargs) -> io.BytesIO:
-        raise RuntimeError("hey")
+
+# class FailingContainer(MockContainer):
+#     def __init__(self):
+#         super().__init__(0)
+#
+#     def logs(self, *args, **kwargs) -> io.BytesIO:
+#         raise RuntimeError("hey")
 
 
-class MockContainers:
-    def __init__(self, ret: MockContainer):
-        self.ret = ret
+# class MockContainers:
+#     def __init__(self, ret: MockContainer):
+#         self.ret = ret
+#
+#     def run(self, *args, **kwargs) -> MockContainer:
+#         self.ret.args = args
+#         self.ret.kwargs = kwargs
+#         return self.ret
 
-    def run(self, *args, **kwargs) -> MockContainer:
-        self.ret.args = args
-        self.ret.kwargs = kwargs
-        return self.ret
 
-
-class MockDockerClient():
-    def __init__(self, container: Optional[MockContainer] = None):
-        self.images = MockImages()
-        self.containers = MockContainers(container)
-
-    def close(self):
-        pass
+# class MockDockerClient():
+#     def __init__(self, container: Optional[MockContainer] = None):
+#         self.images = MockImages()
+#         self.containers = MockContainers(container)
+#
+#     def close(self):
+#         pass
 
 
 @pytest.mark.parametrize("tag, expected_source, expected_auth", [
@@ -163,22 +160,21 @@ class MockDockerClient():
     ("public/image", "public repo", None),
     ("987654321.dkr.ecr.us-east-1.amazonaws.com/ecr-image", "ecr", {"username": "AWS", "password": "987654321-auth-token"}),
 ])
-def test_pull_images(tag, expected_source, expected_auth, monkeypatch):
+def test_pull_images(tag, expected_source, expected_auth, monkeypatch, mock_docker_client_factory):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     with moto.mock_ecr():
-        client = MockDockerClient()
+        # client = MockDockerClient()
+        # container = mock_container_factory(0)
+        client = mock_docker_client_factory()
         result = pull_image(client, tag)
         assert result.tags == [tag]
         assert result.source == expected_source
         assert result.auth == expected_auth
 
 
-@pytest.mark.parametrize("test_container, expected_result", [
-    (MockContainer(0), 0),
-    (MockContainer(88), 88),
-    (FailingContainer(), None),
-])
-def test_run_child_container(monkeypatch, requests_mock, test_container, expected_result):
+@pytest.mark.parametrize("exit_code", [0, 88])
+@pytest.mark.parametrize("logging_crash", [False, True])
+def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logging_crash, mock_container_factory, mock_docker_client_factory):
     bc_scratch_path = "/_bclaw_scratch"
     monkeypatch.setenv("BC_SCRATCH_PATH", bc_scratch_path)
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
@@ -206,38 +202,39 @@ def test_run_child_container(monkeypatch, requests_mock, test_container, expecte
     monkeypatch.setenv("ECS_CONTAINER_METADATA_URI_V4", fake_url)
     requests_mock.get(fake_url, text=json.dumps(metadata))
 
+    test_container = mock_container_factory(exit_code, logging_crash)
+
     def mock_from_env():
-        return MockDockerClient(test_container)
+        return mock_docker_client_factory(test_container)
+    monkeypatch.setattr(docker.client, "from_env", mock_from_env)
 
     job_data_file = f"{bc_scratch_path}/parent/workspace/job_data_12345.json"
 
-    monkeypatch.setattr(docker.client, "from_env", mock_from_env)
+    result = run_child_container("local/image", "ls -l", f"{bc_scratch_path}/parent/workspace", job_data_file)
 
-    if isinstance(test_container, FailingContainer):
-        with pytest.raises(RuntimeError):
-            _ = run_child_container("local/image", "ls -l", f"{bc_scratch_path}/parent/workspace", job_data_file)
+    assert test_container.args == ("local/image", "ls -l")
+    assert test_container.kwargs == {
+        "cpu_shares": 1024,
+        "detach": True,
+        "device_requests": [DeviceRequest(count=-1, capabilities=[["compute", "utility"]])],
+        "entrypoint": [],
+        "environment": {
+            "AWS_DEFAULT_REGION": "us-east-1",
+            "BC_JOB_DATA_FILE": f"{bc_scratch_path}/job_data_12345.json",
+            "BC_SCRATCH_PATH": bc_scratch_path,
+            "BC_WORKSPACE": bc_scratch_path,
+            "ECS_CONTAINER_METADATA_URI_V4": fake_url,
+        },
+        "init": True,
+        "mem_limit": "2048m",
+        "mounts": [Mount(bc_scratch_path, "/host/volume/scratch/parent/workspace", type="bind", read_only=False)],
+        "version": "auto",
+        "working_dir": bc_scratch_path
+    }
+    assert test_container.removed is True
+    assert result == exit_code
 
+    if logging_crash:
+        assert "continuing without subprocess logging" in caplog.text
     else:
-        result = run_child_container("local/image", "ls -l", f"{bc_scratch_path}/parent/workspace", job_data_file)
-
-        assert test_container.args == ("local/image", "ls -l")
-        assert test_container.kwargs == {
-            "cpu_shares": 1024,
-            "detach": True,
-            "device_requests": [DeviceRequest(count=-1, capabilities=[["compute", "utility"]])],
-            "entrypoint": [],
-            "environment": {
-                "AWS_DEFAULT_REGION": "us-east-1",
-                "BC_JOB_DATA_FILE": f"{bc_scratch_path}/job_data_12345.json",
-                "BC_SCRATCH_PATH": bc_scratch_path,
-                "BC_WORKSPACE": bc_scratch_path,
-                "ECS_CONTAINER_METADATA_URI_V4": fake_url,
-            },
-            "init": True,
-            "mem_limit": "2048m",
-            "mounts": [Mount(bc_scratch_path, "/host/volume/scratch/parent/workspace", type="bind", read_only=False)],
-            "version": "auto",
-            "working_dir": bc_scratch_path
-        }
-        assert test_container.removed is True
-        assert result == expected_result
+        assert "subprocess exited" in caplog.text
