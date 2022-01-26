@@ -104,7 +104,7 @@ def test_get_environment():
                        "Value": {"Ref": "AWS::Region"}}
 
 
-@pytest.mark.parametrize("gpu", [0, 5])
+@pytest.mark.parametrize("gpu", [0, 5, "all"])
 def test_get_resource_requirements(gpu):
     spec = {
         "compute": {
@@ -124,7 +124,7 @@ def test_get_resource_requirements(gpu):
                      "Value": "4"}
     assert rr[1] == {"Type": "MEMORY",
                      "Value": "4096"}
-    if gpu > 0:
+    if str(gpu) != "0":
         assert rr[2] == {"Type": "GPU",
                          "Value": str(gpu)}
         assert len(rr) == 3
@@ -154,27 +154,12 @@ def test_get_volume_info(step_efs_specs):
                                 "ContainerPath": "/var/run/docker.sock",
                                 "ReadOnly": False,}
 
-    # docker_scratch_vol, docker_scratch_mp = v_mp.pop(0)
-    # assert docker_scratch_vol == {"Name": "docker_scratch",
-    #                               "Host": {"SourcePath": "/docker_scratch"},}
-    # assert docker_scratch_mp == {"SourceVolume": docker_scratch_vol["Name"],
-    #                              "ContainerPath": "/scratch",
-    #                              "ReadOnly": False,}
-
     scratch_vol, scratch_mp = v_mp.pop(0)
     assert scratch_vol == {"Name": "scratch",
                            "Host": {"SourcePath": "/scratch"},}
     assert scratch_mp == {"SourceVolume": scratch_vol["Name"],
                           "ContainerPath": SCRATCH_PATH,
                           "ReadOnly": False,}
-
-    # if global_efs_id != "None":
-    #     global_efs_vol, global_efs_mp = v_mp.pop(0)
-    #     assert global_efs_vol == {"Name": "efs",
-    #                               "Host": {"SourcePath": EFS_PATH},}
-    #     assert global_efs_mp == {"SourceVolume": global_efs_vol["Name"],
-    #                              "ContainerPath": EFS_PATH,
-    #                              "ReadOnly": True,}
 
     assert len(v_mp) == len(step_efs_specs)
     for ((vol, mp), spec) in zip(v_mp, step_efs_specs):
@@ -306,16 +291,12 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                 "JobRoleArn": task_role,
                 "MountPoints": [
                     {"ContainerPath": "/var/run/docker.sock", "SourceVolume": "docker_socket",   "ReadOnly": False},
-                    # {"ContainerPath": "/scratch",             "SourceVolume": "docker_scratch",  "ReadOnly": False},
                     {"ContainerPath": "/_bclaw_scratch",      "SourceVolume": "scratch",         "ReadOnly": False},
-                    # {"ContainerPath": "/mnt/efs",             "SourceVolume": "efs",             "ReadOnly": True},
                     {"ContainerPath": "/step_efs",            "SourceVolume": "fs-12345-volume", "ReadOnly": True},
                 ],
                 "Volumes": [
                     {"Name": "docker_socket",  "Host": {"SourcePath": "/var/run/docker.sock"}},
-                    # {"Name": "docker_scratch", "Host": {"SourcePath": "/docker_scratch"}},
                     {"Name": "scratch",        "Host": {"SourcePath": "/scratch"}},
-                    # {"Name": "efs",            "Host": {"SourcePath": "/mnt/efs"}},
                     {"Name": "fs-12345-volume",
                      "EfsVolumeConfiguration": {
                         "FileSystemId":      "fs-12345",
@@ -356,7 +337,7 @@ def test_get_skip_behavior(spec, expect):
     ("next_step", {"Next": "next_step"}),
     ("", {"End": True}),
 ])
-def test_batch_step(next_step_name, next_or_end, monkeypatch, mock_core_stack, sample_batch_step):
+def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step):
     step = Step("step_name", sample_batch_step, next_step_name)
 
     expected_body = {
@@ -430,7 +411,7 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, mock_core_stack, s
     {},
     {"task_role": "arn:from:step:spec"}
 ])
-def test_handle_batch(wf_params, step_task_role_request, monkeypatch, mock_core_stack, sample_batch_step):
+def test_handle_batch(wf_params, step_task_role_request, monkeypatch, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
@@ -468,7 +449,7 @@ def test_handle_batch(wf_params, step_task_role_request, monkeypatch, mock_core_
         assert " --outdir outt " in resource.spec["Properties"]["Parameters"]["command"]
 
 
-def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
+def test_handle_batch_with_qc(monkeypatch, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
@@ -506,7 +487,7 @@ def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
     assert resource_dict["StepNameJobDef"]["Type"] == "AWS::Batch::JobDefinition"
 
 
-def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_step):
+def test_handle_batch_auto_inputs(monkeypatch, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 

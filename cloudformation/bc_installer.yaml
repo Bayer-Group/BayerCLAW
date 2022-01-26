@@ -182,30 +182,6 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
-#  ResourceBucketPolicy:
-#    Type: AWS::S3::BucketPolicy
-#    Properties:
-#      Bucket: !Ref ResourceBucket
-#      PolicyDocument:
-#        Statement:
-#          -
-#            Effect: Allow
-#            Principal:
-#              Service: "cloudtrail.amazonaws.com"
-#            Action: s3:GetBucketAcl
-#            Resource:
-#              !GetAtt ResourceBucket.Arn
-#          -
-#            Effect: Allow
-#            Principal:
-#              Service: "cloudtrail.amazonaws.com"
-#            Action: s3:PutObject
-#            Resource:
-#              !Sub "arn:aws:s3:::${ResourceBucket}/cloudtrail/*"
-#            Condition:
-#              StringEquals:
-#                "s3:x-amz-acl": "bucket-owner-full-control"
-
   AdminSNSTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -350,25 +326,6 @@ Resources:
                 - Name: coreStackArtifacts
               Namespace: BuildMainStackNS
               RunOrder: 1
-#            -
-#              Name: BuildRunners
-#              ActionTypeId:
-#                Category: Build
-#                Owner: AWS
-#                Provider: CodeBuild
-#                Version: "1"
-#              Configuration:
-#                ProjectName: !Ref RunnerCodebuildProject
-#                PrimarySource: coreSrc
-#                BatchEnabled: true
-#                CombineArtifacts: false
-#              InputArtifacts:
-#                - Name: coreSrc
-#              OutputArtifacts:
-#                - Name: debian
-#                - Name: centos
-#              Namespace: BuildRunnersNS
-#              RunOrder: 1
         -
           Name: Deploy
           Actions:
@@ -386,34 +343,6 @@ Resources:
               InputArtifacts:
                 - Name: coreStackArtifacts
               RunOrder: 1
-#            -
-#              Name: DeployCentosRunner
-#              ActionTypeId:
-#                Category: Deploy
-#                Owner: AWS
-#                Provider: S3
-#                Version: "1"
-#              Configuration:
-#                 BucketName: !Ref ResourceBucket
-#                 Extract: true
-#                 ObjectKey: runner
-#              InputArtifacts:
-#                - Name: centos
-#              RunOrder: 1
-#            -
-#              Name: DeployDebianRunner
-#              ActionTypeId:
-#                Category: Deploy
-#                Owner: AWS
-#                Provider: S3
-#                Version: "1"
-#              Configuration:
-#                 BucketName: !Ref ResourceBucket
-#                 Extract: true
-#                 ObjectKey: runner
-#              InputArtifacts:
-#                - Name: debian
-#              RunOrder: 1
 
   CodePipelineRole:
     Type: AWS::IAM::Role

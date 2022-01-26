@@ -47,13 +47,13 @@ Resources:
                   "detail": <detail>
                 }
 
-  wfEventPermissionToInvokeLambda:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref HandlerLambdaArn
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt wfSFNtoLambdaRule.Arn
+#  wfEventPermissionToInvokeLambda:
+#    Type: AWS::Lambda::Permission
+#    Properties:
+#      FunctionName: !Ref HandlerLambdaArn
+#      Action: lambda:InvokeFunction
+#      Principal: events.amazonaws.com
+#      SourceArn: !GetAtt wfSFNtoLambdaRule.Arn
 
   wfJobStatusSubscription:
     Type: AWS::SNS::Subscription
