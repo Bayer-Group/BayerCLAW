@@ -49,7 +49,6 @@ phases:
         --parameter-overrides
         AmiId=${AMI_ID_SSM}
         CompilerMacroName=${COMPILER_MACRO_NAME}
-        EFSVolumeId=${EFS_VOLUME_ID}
         InstallationName=${INSTALLATION_NAME}
         LauncherBucketName=${LAUNCHER_BUCKET_NAME}
         LogRetentionDays=${LOG_RETENTION_DAYS}
@@ -61,7 +60,6 @@ phases:
         ScratchVolumeSize=${SCRATCH_VOLUME_SIZE}
         SecurityGroups=${SECURITY_GROUPS}
         Subnets=${SUBNETS}
-        UseExistingCloudTrail=${USE_EXISTING_CLOUDTRAIL}
         Uniqifier=$(date | md5sum | head -c 16)
         VpcId=${VPC_ID}
 
