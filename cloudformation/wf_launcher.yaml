@@ -33,8 +33,7 @@ Resources:
   wfEventRule:
     Type: AWS::Events::Rule
     Properties:
-      # todo: remove -2 from Name
-      Name: !Sub "${WorkflowName}-2"
+      Name: !Sub "${WorkflowName}"
       EventBusName: default
       EventPattern:
         source:
@@ -75,58 +74,6 @@ Resources:
                 "index": "main"
               }
 
-
-#  wfEventRule:
-#    Type: AWS::Events::Rule
-#    Properties:
-#      Name: !Ref WorkflowName
-#      EventBusName: default
-#      EventPattern:
-#        source:
-#          - aws.s3
-#        detail-type:
-#          - "AWS API Call via CloudTrail"
-#        detail:
-#          eventSource:
-#            - s3.amazonaws.com
-#          eventName:
-#            - PutObject
-#            - CopyObject
-#            - PostObject
-#            - CompleteMultipartUpload
-#          requestParameters:
-#            bucketName:
-#              - !Ref LauncherBucketName
-#            key:
-#              -
-#                prefix: !Ref WorkflowName
-#      State: DISABLED
-#      RoleArn: !GetAtt wfEventRuleRole.Arn
-#      Targets:
-#        -
-#          Arn: !Ref StateMachineArn
-#          DeadLetterConfig:
-#            Arn: !GetAtt wfDeadLetterQueue.Arn
-#          Id: state-machine-target
-#          RoleArn: !GetAtt wfEventRuleRole.Arn
-#          InputTransformer:
-#            InputPathsMap:
-#              bucket: "$.detail.requestParameters.bucketName"
-#              key: "$.detail.requestParameters.key"
-#              requestID: "$.detail.requestID"
-#              version: "$.detail.responseElements.x-amz-version-id"
-#            InputTemplate: >-
-#              {
-#                "job_file": {
-#                  "bucket": <bucket>,
-#                  "key": <key>,
-#                  "version": <version>,
-#                  "s3_request_id": <requestID>
-#                },
-#                "index": "main"
-#              }
-
-  # todo: change this one too
   wfEventArchive:
     Type: AWS::Events::Archive
     Properties:
@@ -134,20 +81,14 @@ Resources:
       SourceArn: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default
       EventPattern:
         source:
-          - aws.s3
+          - "aws.s3"
         detail-type:
-          - "AWS API Call via CloudTrail"
+          - "Object Created"
         detail:
-          eventSource:
-            - s3.amazonaws.com
-          eventName:
-            - PutObject
-            - CopyObject
-            - PostObject
-            - CompleteMultipartUpload
-          requestParameters:
-            bucketName:
+          bucket:
+            name:
               - !Ref LauncherBucketName
+          object:
             key:
               -
                 prefix: !Sub "${WorkflowName}/"
