@@ -68,7 +68,8 @@ def get_memory_in_mibs(request: Union[str, float, int]) -> int:
     return ret
 
 
-def get_environment(step: Step, global_efs_id: str) -> dict:
+# def get_environment(step: Step, global_efs_id: str) -> dict:
+def get_environment(step: Step) -> dict:
     vars = [
         {
             "Name": "BC_WORKFLOW_NAME",
@@ -88,11 +89,11 @@ def get_environment(step: Step, global_efs_id: str) -> dict:
         },
     ]
 
-    if global_efs_id.startswith("fs-"):
-        vars.append({
-            "Name": "BC_EFS_PATH",
-            "Value": EFS_PATH,
-        })
+    # if global_efs_id.startswith("fs-"):
+    #     vars.append({
+    #         "Name": "BC_EFS_PATH",
+    #         "Value": EFS_PATH,
+    #     })
 
     ret = {"Environment": vars}
     return ret
@@ -120,7 +121,8 @@ def get_resource_requirements(step: Step) -> dict:
     return ret
 
 
-def get_volume_info(step: Step, global_efs_id: str) -> dict:
+# def get_volume_info(step: Step, global_efs_id: str) -> dict:
+def get_volume_info(step: Step) -> dict:
     volumes = [
         {
             "Name": "docker_socket",
@@ -128,47 +130,49 @@ def get_volume_info(step: Step, global_efs_id: str) -> dict:
                 "SourcePath": "/var/run/docker.sock",
             },
         },
-        {
-            "Name": "docker_scratch",
-            "Host": {
-                "SourcePath": "/docker_scratch",
-            },
-        },
+        # {
+        #     "Name": "docker_scratch",
+        #     "Host": {
+        #         "SourcePath": "/docker_scratch",
+        #     },
+        # },
         {
             "Name": "scratch",
             "Host": {
                 "SourcePath": "/scratch",
             },
-        }]
+        },
+    ]
     mount_points = [
         {
             "SourceVolume": "docker_socket",
             "ContainerPath": "/var/run/docker.sock",
             "ReadOnly": False,
         },
-        {
-            "SourceVolume": "docker_scratch",
-            "ContainerPath": "/scratch",
-            "ReadOnly": False,
-        },
+        # {
+        #     "SourceVolume": "docker_scratch",
+        #     "ContainerPath": "/scratch",
+        #     "ReadOnly": False,
+        # },
         {
             "SourceVolume": "scratch",
             "ContainerPath": SCRATCH_PATH,
             "ReadOnly": False,
-        }]
+        },
+    ]
 
-    if global_efs_id.startswith("fs-"):
-        volumes.append({
-            "Name": "efs",
-            "Host": {
-                "SourcePath": EFS_PATH,
-            },
-        })
-        mount_points.append({
-            "SourceVolume": "efs",
-            "ContainerPath": EFS_PATH,
-            "ReadOnly": True,
-        })
+    # if global_efs_id.startswith("fs-"):
+    #     volumes.append({
+    #         "Name": "efs",
+    #         "Host": {
+    #             "SourcePath": EFS_PATH,
+    #         },
+    #     })
+    #     mount_points.append({
+    #         "SourceVolume": "efs",
+    #         "ContainerPath": EFS_PATH,
+    #         "ReadOnly": True,
+    #     })
 
     for filesystem in step.spec["filesystems"]:
         volume_name = f"{filesystem['efs_id']}-volume"
@@ -209,7 +213,7 @@ def job_definition_rc(core_stack: CoreStack,
 
     registry, image_version, image, version = parse_uri(step.spec["image"])
 
-    global_efs_volume_id = core_stack.output("EFSVolumeId")
+    # global_efs_volume_id = core_stack.output("EFSVolumeId")
 
     job_def = {
         "Type": "AWS::Batch::JobDefinition",
@@ -240,9 +244,11 @@ def job_definition_rc(core_stack: CoreStack,
                 ],
                 "Image": core_stack.output("RunnerImageURI"),
                 "JobRoleArn": task_role,
-                **get_environment(step, global_efs_volume_id),
+                # **get_environment(step, global_efs_volume_id),
+                **get_environment(step),
                 **get_resource_requirements(step),
-                **get_volume_info(step, global_efs_volume_id),
+                # **get_volume_info(step, global_efs_volume_id),
+                **get_volume_info(step),
             },
             **get_timeout(step)
         },

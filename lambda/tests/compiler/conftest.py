@@ -34,8 +34,6 @@ def mock_core_stack(aws_credentials):
           Value: chooser_lambda_arn
         ECSTaskRoleArn:
           Value: ecs_task_role_arn
-        EFSVolumeId:
-          Value: fs-efs_volume_id
         EventHandlerLambdaArn:
           Value: event_handler_lambda_arn
         GatherLambdaArn:

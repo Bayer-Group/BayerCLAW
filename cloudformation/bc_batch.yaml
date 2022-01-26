@@ -29,7 +29,6 @@ Metadata:
         Parameters:
           - RootVolumeSize
           - ScratchVolumeSize
-          - EFSVolumeId
       -
         Label:
           default: Network
@@ -48,13 +47,6 @@ Parameters:
     Description: >
       The ID of an Amazon Machine Image (AMI) to create EC2 instances with. It is highly recommended that you
       select an ECS-optimized Amazon Linux 2 image to use.
-
-  EFSVolumeId:
-    Type: String
-    Description: >
-      DEPRECATED. The "filesystems" workflow template parameter offers greater flexibility.
-      EFS volume to mount on all EC2 instances. Enter "None" for no volume.
-    Default: "None"
 
   InstanceTypes:
     Type: CommaDelimitedList
@@ -221,12 +213,6 @@ Resources:
               fi
               mkdir -p /scratch
               mount /dev/sdh /scratch
-
-              # Mount EFS volume, if any
-              # if [[ "${EFSVolumeId}" =~ ^fs- ]]; then
-              #   mkdir -p /mnt/efs
-              #   mount -t efs -o tls,ro ${EFSVolumeId}:/ /mnt/efs
-              # fi
 
               --==BOUNDARY==--
 

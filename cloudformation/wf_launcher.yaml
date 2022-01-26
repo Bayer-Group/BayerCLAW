@@ -30,7 +30,7 @@ Resources:
         - "arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess"
         - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
 
-  wfEventRule2:
+  wfEventRule:
     Type: AWS::Events::Rule
     Properties:
       # todo: remove -2 from Name
@@ -76,55 +76,55 @@ Resources:
               }
 
 
-  wfEventRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: !Ref WorkflowName
-      EventBusName: default
-      EventPattern:
-        source:
-          - aws.s3
-        detail-type:
-          - "AWS API Call via CloudTrail"
-        detail:
-          eventSource:
-            - s3.amazonaws.com
-          eventName:
-            - PutObject
-            - CopyObject
-            - PostObject
-            - CompleteMultipartUpload
-          requestParameters:
-            bucketName:
-              - !Ref LauncherBucketName
-            key:
-              -
-                prefix: !Ref WorkflowName
-      State: DISABLED
-      RoleArn: !GetAtt wfEventRuleRole.Arn
-      Targets:
-        -
-          Arn: !Ref StateMachineArn
-          DeadLetterConfig:
-            Arn: !GetAtt wfDeadLetterQueue.Arn
-          Id: state-machine-target
-          RoleArn: !GetAtt wfEventRuleRole.Arn
-          InputTransformer:
-            InputPathsMap:
-              bucket: "$.detail.requestParameters.bucketName"
-              key: "$.detail.requestParameters.key"
-              requestID: "$.detail.requestID"
-              version: "$.detail.responseElements.x-amz-version-id"
-            InputTemplate: >-
-              {
-                "job_file": {
-                  "bucket": <bucket>,
-                  "key": <key>,
-                  "version": <version>,
-                  "s3_request_id": <requestID>
-                },
-                "index": "main"
-              }
+#  wfEventRule:
+#    Type: AWS::Events::Rule
+#    Properties:
+#      Name: !Ref WorkflowName
+#      EventBusName: default
+#      EventPattern:
+#        source:
+#          - aws.s3
+#        detail-type:
+#          - "AWS API Call via CloudTrail"
+#        detail:
+#          eventSource:
+#            - s3.amazonaws.com
+#          eventName:
+#            - PutObject
+#            - CopyObject
+#            - PostObject
+#            - CompleteMultipartUpload
+#          requestParameters:
+#            bucketName:
+#              - !Ref LauncherBucketName
+#            key:
+#              -
+#                prefix: !Ref WorkflowName
+#      State: DISABLED
+#      RoleArn: !GetAtt wfEventRuleRole.Arn
+#      Targets:
+#        -
+#          Arn: !Ref StateMachineArn
+#          DeadLetterConfig:
+#            Arn: !GetAtt wfDeadLetterQueue.Arn
+#          Id: state-machine-target
+#          RoleArn: !GetAtt wfEventRuleRole.Arn
+#          InputTransformer:
+#            InputPathsMap:
+#              bucket: "$.detail.requestParameters.bucketName"
+#              key: "$.detail.requestParameters.key"
+#              requestID: "$.detail.requestID"
+#              version: "$.detail.responseElements.x-amz-version-id"
+#            InputTemplate: >-
+#              {
+#                "job_file": {
+#                  "bucket": <bucket>,
+#                  "key": <key>,
+#                  "version": <version>,
+#                  "s3_request_id": <requestID>
+#                },
+#                "index": "main"
+#              }
 
   # todo: change this one too
   wfEventArchive:

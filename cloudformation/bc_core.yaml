@@ -10,24 +10,10 @@ Parameters:
       location of the latest Amazon Linux 2 ECS image ID.
     Default: "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
 
-  CloudTrailS3KeyPrefix:
-    Type: String
-    Description: Location of CloudTrail logs in the resources bucket.
-    Default: "cloudtrail"
-    AllowedValues:
-      - "cloudtrail"
-
   CompilerMacroName:
     Type: String
     Description: Compiler macro name, change this only for testing and development instances
     Default: "BC_Compiler"
-
-  EFSVolumeId:
-    Type: String
-    Description: >
-      DEPRECATED. The "filesystems" workflow template parameter offers greater flexibility.
-      EFS volume to mount on all EC2 instances. Enter "None" for no volume.
-    Default: "None"
 
   InstallationName:
     Type: String
@@ -94,16 +80,6 @@ Parameters:
       Comma-separated list of subnet IDs for Batch jobs to run in. Subnets must have internet access
        either through a direct Internet Gateway connection or through a NAT Gateway.
 
-  UseExistingCloudTrail:
-    Type: String
-    Description: >
-      Select "Yes" if your account has a CloudTrail trail monitoring all S3 buckets. This would be
-      useful if you intend to use multiple main stacks. Otherwise, choose "No".
-    AllowedValues:
-      - "Yes"
-      - "No"
-    Default: "No"
-
   Uniqifier:
     Type: String
     Description: >
@@ -115,8 +91,6 @@ Parameters:
 
 
 Conditions:
-  MakeNewTrail: !Equals [!Ref UseExistingCloudTrail, "No"]
-
   MakeLauncherBucketName: !Or [ !Equals [!Ref LauncherBucketName, "Default"],
                                 !Equals [!Ref LauncherBucketName, "default"] ]
 
@@ -163,23 +137,6 @@ Resources:
           EventBridgeEnabled: true
       VersioningConfiguration:
         Status: Enabled
-
-  CloudTrail:
-    Type: AWS::CloudTrail::Trail
-    Condition: MakeNewTrail
-    Properties:
-      EventSelectors:
-        -
-          DataResources:
-            -
-              Type: AWS::S3::Object
-              Values:
-                - !Sub arn:aws:s3:::${LauncherBucket}/
-          IncludeManagementEvents: false
-          ReadWriteType: WriteOnly
-      IsLogging: true
-      S3BucketName: !Ref ResourceBucketName
-      S3KeyPrefix: !Ref CloudTrailS3KeyPrefix
 
   # lambdas
   CommonLayer:
@@ -498,7 +455,6 @@ Resources:
       Location: bc_batch.yaml
       Parameters:
         AmiId: !Ref AmiId
-        EFSVolumeId: !Ref EFSVolumeId
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
         QueueName: !Sub ${AWS::StackName}-spot-queue
@@ -517,7 +473,6 @@ Resources:
       Location: bc_batch.yaml
       Parameters:
         AmiId: !Ref AmiId
-        EFSVolumeId: !Ref EFSVolumeId
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
         QueueName: !Sub ${AWS::StackName}-on-demand-queue
@@ -599,9 +554,6 @@ Outputs:
 
   ECSTaskRoleArn:
     Value: !GetAtt EcsTaskRole.Arn
-
-  EFSVolumeId:
-    Value: !Ref EFSVolumeId
 
   EventHandlerLambdaArn:
     Value: !GetAtt EventHandlerLambda.Arn

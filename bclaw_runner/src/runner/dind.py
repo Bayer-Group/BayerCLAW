@@ -46,8 +46,6 @@ def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> G
                 # prevent docker in docker in docker in docker...
                 continue
 
-            # todo: don't mount docker_scratch
-
             elif volume_spec["Destination"] == os.environ["BC_SCRATCH_PATH"]:
                 # make only the workspace dir available to the child container, not the whole scratch volume
 

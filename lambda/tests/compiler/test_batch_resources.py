@@ -85,15 +85,15 @@ def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack, mock_custom
     assert result == expected
 
 
-@pytest.mark.parametrize("global_efs_id", ["fs-12345", "None"])
-def test_get_environment(global_efs_id):
+def test_get_environment():
     step = Step("test_step", {}, "next_step")
-    result = get_environment(step, global_efs_id)
+    result = get_environment(step)
 
     assert "Environment" in result
     varz = result["Environment"]
     assert isinstance(varz, list)
 
+    assert len(varz) == 4
     assert varz[0] == {"Name": "BC_WORKFLOW_NAME",
                        "Value": {"Ref": "AWS::StackName"}}
     assert varz[1] == {"Name": "BC_SCRATCH_PATH",
@@ -102,12 +102,6 @@ def test_get_environment(global_efs_id):
                        "Value": "test_step"}
     assert varz[3] == {"Name": "AWS_DEFAULT_REGION",
                        "Value": {"Ref": "AWS::Region"}}
-    if global_efs_id.startswith("fs-"):
-        assert varz[4] == {"Name": "BC_EFS_PATH",
-                           "Value": EFS_PATH}
-        assert len(varz) == 5
-    else:
-        assert len(varz) == 4
 
 
 @pytest.mark.parametrize("gpu", [0, 5])
@@ -138,16 +132,15 @@ def test_get_resource_requirements(gpu):
         assert len(rr) == 2
 
 
-@pytest.mark.parametrize("global_efs_id", ["fs-12345", "None"])
 @pytest.mark.parametrize("step_efs_specs", [
     [],
     [{"efs_id": "fs-12345", "host_path": "/efs1", "root_dir": "/"}],
     [{"efs_id": "fs-12345", "host_path": "/efs1", "root_dir": "/"},
      {"efs_id": "fs-98765", "host_path": "/efs2", "root_dir": "/path/to/files"}],
 ])
-def test_get_volume_info(global_efs_id, step_efs_specs):
+def test_get_volume_info(step_efs_specs):
     step = Step("test_step", {"filesystems": step_efs_specs}, "next_step")
-    result = get_volume_info(step, global_efs_id)
+    result = get_volume_info(step)
     assert "Volumes" in result
     assert isinstance(result["Volumes"], list)
     assert "MountPoints" in result
@@ -161,12 +154,12 @@ def test_get_volume_info(global_efs_id, step_efs_specs):
                                 "ContainerPath": "/var/run/docker.sock",
                                 "ReadOnly": False,}
 
-    docker_scratch_vol, docker_scratch_mp = v_mp.pop(0)
-    assert docker_scratch_vol == {"Name": "docker_scratch",
-                                  "Host": {"SourcePath": "/docker_scratch"},}
-    assert docker_scratch_mp == {"SourceVolume": docker_scratch_vol["Name"],
-                                 "ContainerPath": "/scratch",
-                                 "ReadOnly": False,}
+    # docker_scratch_vol, docker_scratch_mp = v_mp.pop(0)
+    # assert docker_scratch_vol == {"Name": "docker_scratch",
+    #                               "Host": {"SourcePath": "/docker_scratch"},}
+    # assert docker_scratch_mp == {"SourceVolume": docker_scratch_vol["Name"],
+    #                              "ContainerPath": "/scratch",
+    #                              "ReadOnly": False,}
 
     scratch_vol, scratch_mp = v_mp.pop(0)
     assert scratch_vol == {"Name": "scratch",
@@ -175,13 +168,13 @@ def test_get_volume_info(global_efs_id, step_efs_specs):
                           "ContainerPath": SCRATCH_PATH,
                           "ReadOnly": False,}
 
-    if global_efs_id != "None":
-        global_efs_vol, global_efs_mp = v_mp.pop(0)
-        assert global_efs_vol == {"Name": "efs",
-                                  "Host": {"SourcePath": EFS_PATH},}
-        assert global_efs_mp == {"SourceVolume": global_efs_vol["Name"],
-                                 "ContainerPath": EFS_PATH,
-                                 "ReadOnly": True,}
+    # if global_efs_id != "None":
+    #     global_efs_vol, global_efs_mp = v_mp.pop(0)
+    #     assert global_efs_vol == {"Name": "efs",
+    #                               "Host": {"SourcePath": EFS_PATH},}
+    #     assert global_efs_mp == {"SourceVolume": global_efs_vol["Name"],
+    #                              "ContainerPath": EFS_PATH,
+    #                              "ReadOnly": True,}
 
     assert len(v_mp) == len(step_efs_specs)
     for ((vol, mp), spec) in zip(v_mp, step_efs_specs):
@@ -303,7 +296,7 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                     {"Name": "BC_SCRATCH_PATH",    "Value": SCRATCH_PATH},
                     {"Name": "BC_STEP_NAME",       "Value": step_name},
                     {"Name": "AWS_DEFAULT_REGION", "Value": {"Ref": "AWS::Region"}},
-                    {"Name": "BC_EFS_PATH",        "Value": "/mnt/efs"},
+                    # {"Name": "BC_EFS_PATH",        "Value": "/mnt/efs"},
                 ],
                 "ResourceRequirements": [
                     {"Type": "VCPU",   "Value": "4"},
@@ -313,16 +306,16 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                 "JobRoleArn": task_role,
                 "MountPoints": [
                     {"ContainerPath": "/var/run/docker.sock", "SourceVolume": "docker_socket",   "ReadOnly": False},
-                    {"ContainerPath": "/scratch",             "SourceVolume": "docker_scratch",  "ReadOnly": False},
+                    # {"ContainerPath": "/scratch",             "SourceVolume": "docker_scratch",  "ReadOnly": False},
                     {"ContainerPath": "/_bclaw_scratch",      "SourceVolume": "scratch",         "ReadOnly": False},
-                    {"ContainerPath": "/mnt/efs",             "SourceVolume": "efs",             "ReadOnly": True},
+                    # {"ContainerPath": "/mnt/efs",             "SourceVolume": "efs",             "ReadOnly": True},
                     {"ContainerPath": "/step_efs",            "SourceVolume": "fs-12345-volume", "ReadOnly": True},
                 ],
                 "Volumes": [
                     {"Name": "docker_socket",  "Host": {"SourcePath": "/var/run/docker.sock"}},
-                    {"Name": "docker_scratch", "Host": {"SourcePath": "/docker_scratch"}},
+                    # {"Name": "docker_scratch", "Host": {"SourcePath": "/docker_scratch"}},
                     {"Name": "scratch",        "Host": {"SourcePath": "/scratch"}},
-                    {"Name": "efs",            "Host": {"SourcePath": "/mnt/efs"}},
+                    # {"Name": "efs",            "Host": {"SourcePath": "/mnt/efs"}},
                     {"Name": "fs-12345-volume",
                      "EfsVolumeConfiguration": {
                         "FileSystemId":      "fs-12345",
