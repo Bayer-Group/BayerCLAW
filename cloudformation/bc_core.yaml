@@ -362,6 +362,14 @@ Resources:
       DeploymentPreference:
         Enabled: False
 
+  PermissionToInvokeJobStatusLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref JobStatusLambda
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+
   JobStatusLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
