@@ -366,6 +366,14 @@ Resources:
       DeploymentPreference:
         Enabled: False
 
+  PermissionToInvokeEventHandler:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref EventHandlerLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+
   EventHandlerLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -388,6 +396,14 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
       DeploymentPreference:
         Enabled: False
+
+  PermissionToInvokeJobStatusLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref JobStatusLambda
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
 
   JobStatusLambdaLogGroup:
     Type: AWS::Logs::LogGroup
