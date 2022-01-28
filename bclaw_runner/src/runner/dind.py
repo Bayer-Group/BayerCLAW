@@ -74,9 +74,8 @@ def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> G
 
 
 def get_environment_vars() -> dict:
-    # copy all environment variables starting with AWS_, BC_, or ECS_ to the child container
-    # todo: drop ECS
-    ret = {k: v for k, v in os.environ.items() if re.match(r"^(?:AWS|BC|ECS)_.*", k)}
+    # copy all environment variables starting with AWS_ or BC_ to the child container
+    ret = {k: v for k, v in os.environ.items() if re.match(r"^(?:AWS|BC)_.*", k)}
     return ret
 
 

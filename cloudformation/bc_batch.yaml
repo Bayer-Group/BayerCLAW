@@ -97,12 +97,12 @@ Parameters:
   RootVolumeSize:
     Type: Number
     Description: Size (in GB) of the EBS root volume used by Batch jobs.
-    Default: 50
+    Default: 100
 
   ScratchVolumeSize:
     Type: Number
     Description: Size (in GB) of the EBS scratch volume used by Batch jobs.
-    Default: 100
+    Default: 1000
 
   SecurityGroupIds:
     Type: List<AWS::EC2::SecurityGroup::Id>

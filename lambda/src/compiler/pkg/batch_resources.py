@@ -13,7 +13,6 @@ from .util import CoreStack, Step, Resource, State, make_logical_name, do_param_
     time_string_to_seconds
 
 SCRATCH_PATH = "/_bclaw_scratch"
-EFS_PATH = "/mnt/efs"
 
 # "registry/path/image_name:version" -> ("registry/path", "image_name:version", "image_name", "version")
 # "registry/path/image_name"         -> ("registry/path", "image_name", "image_name", None)
@@ -128,6 +127,12 @@ def get_volume_info(step: Step) -> dict:
                 "SourcePath": "/scratch",
             },
         },
+        {
+            "Name": "docker_scratch",
+            "Host": {
+                "SourcePath": "/docker_scratch"
+            },
+        }
     ]
     mount_points = [
         {
@@ -140,6 +145,11 @@ def get_volume_info(step: Step) -> dict:
             "ContainerPath": SCRATCH_PATH,
             "ReadOnly": False,
         },
+        {
+            "SourceVolume": "docker_scratch",
+            "ContainerPath": "/.scratch",
+            "ReadOnly": False,
+        }
     ]
 
     for filesystem in step.spec["filesystems"]:

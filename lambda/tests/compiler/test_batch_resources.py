@@ -8,7 +8,7 @@ import yaml
 
 from ...src.compiler.pkg.batch_resources import parse_uri, get_ecr_uri, get_custom_job_queue_arn, get_job_queue,\
     get_memory_in_mibs, get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout,\
-    batch_step, job_definition_rc, handle_batch, SCRATCH_PATH, EFS_PATH
+    batch_step, job_definition_rc, handle_batch, SCRATCH_PATH
 from ...src.compiler.pkg.misc_resources import LAUNCHER_STACK_NAME
 from ...src.compiler.pkg.util import CoreStack, Step, Resource, State
 
@@ -161,6 +161,13 @@ def test_get_volume_info(step_efs_specs):
                           "ContainerPath": SCRATCH_PATH,
                           "ReadOnly": False,}
 
+    docker_scratch_vol, docker_scratch_mp = v_mp.pop(0)
+    assert docker_scratch_vol == {"Name": "docker_scratch",
+                                  "Host": {"SourcePath": "/docker_scratch"},}
+    assert docker_scratch_mp == {"SourceVolume": docker_scratch_vol["Name"],
+                                 "ContainerPath": "/.scratch",
+                                 "ReadOnly": False}
+
     assert len(v_mp) == len(step_efs_specs)
     for ((vol, mp), spec) in zip(v_mp, step_efs_specs):
         assert vol == {"Name": f"{spec['efs_id']}-volume",
@@ -292,11 +299,13 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                 "MountPoints": [
                     {"ContainerPath": "/var/run/docker.sock", "SourceVolume": "docker_socket",   "ReadOnly": False},
                     {"ContainerPath": "/_bclaw_scratch",      "SourceVolume": "scratch",         "ReadOnly": False},
+                    {"ContainerPath": "/.scratch",            "SourceVolume": "docker_scratch",  "ReadOnly": False},
                     {"ContainerPath": "/step_efs",            "SourceVolume": "fs-12345-volume", "ReadOnly": True},
                 ],
                 "Volumes": [
                     {"Name": "docker_socket",  "Host": {"SourcePath": "/var/run/docker.sock"}},
                     {"Name": "scratch",        "Host": {"SourcePath": "/scratch"}},
+                    {"Name": "docker_scratch", "Host": {"SourcePath": "/docker_scratch"}},
                     {"Name": "fs-12345-volume",
                      "EfsVolumeConfiguration": {
                         "FileSystemId":      "fs-12345",

@@ -77,7 +77,6 @@ def test_get_environment_vars(monkeypatch):
     expect = {
         "AWS_VARIABLE": "aws_value",
         "BC_VARIABLE": "bc_value",
-        "ECS_VARIABLE": "ecs_value",
     }
 
     assert result == expect
@@ -151,7 +150,6 @@ def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logg
             "BC_JOB_DATA_FILE": f"{bc_scratch_path}/job_data_12345.json",
             "BC_SCRATCH_PATH": bc_scratch_path,
             "BC_WORKSPACE": bc_scratch_path,
-            "ECS_CONTAINER_METADATA_URI_V4": fake_url,
         },
         "init": True,
         "mem_limit": "2048m",
