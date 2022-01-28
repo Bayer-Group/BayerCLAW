@@ -25,8 +25,8 @@ already [installed BayerCLAW](deployment.md) in the account. This only needs to 
 The account should also have at least one S3 bucket you can use to store data.
 BayerCLAW does not create this bucket, because workflows are temporary, but data is forever.
 
-Finally, you need an environment in which you can run [AWS CLI](https://aws.amazon.com/cli/) commands and build Docker images.
-This might be a Mac laptop, or a Windows machine with WSL2 (?), or SSH access to a Linux box.
+Finally, you need an environment in which you can run [AWS CLI](https://aws.amazon.com/cli/) commands and build Docker
+images. This might be a Mac laptop, or a Windows machine with WSL2 (?), or SSH access to a Linux box.
 
 # A "hello world" template
 

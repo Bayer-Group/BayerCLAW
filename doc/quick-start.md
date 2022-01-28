@@ -3,8 +3,8 @@
 ## 1. Containerize your tools
 
 Because BayerCLAW runs jobs on AWS Batch, all the software for your pipeline must be built into Docker containers.
-These can be stored in any Docker repository, but the default is the AWS Elastic Container Registry (ECR) in your AWS account.
-If you just specify a simple image name, like `ubuntu`, BayerCLAW will assume it is in ECR.
+These can be stored in any Docker repository, but the default is the AWS Elastic Container Registry (ECR) in your AWS
+account. If you just specify a simple image name, like `ubuntu`, BayerCLAW will assume it is in ECR.
 To reference an image in the public DockerHub repo, you should specify `docker.io/library/ubuntu` (or whatever).
 
 ## 2. Choose an S3 repository location
