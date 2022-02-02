@@ -59,23 +59,17 @@
             - SecurityGroups: Comma-separated list of security group IDs that Batch jobs will run under. Security groups
             must allow all outbound HTTP and HTTPS traffic. Enter `Auto` to create a suitable security group.
         - **Batch parameters**
-            - RootVolumeSize: Size (in Gb) of the EBS volumes that host Docker images in Batch jobs. Default is 50 Gb
+            - RootVolumeSize: Size (in Gb) of the EBS volume that hosts Docker images in Batch jobs. Default is 100 Gb.
             - ScratchVolumeSize: Size (in Gb) of the EBS volumes that hold the working directories for Batch jobs.
-            Default is 100 Gb.
+            Default is 1 Tb.
             - MinvCpus: The minimum number of CPUs that AWS Batch will maintain at all times.
             - MaxvCpus: Maximum number of CPUs that AWS Batch will spin up simultaneously.
-            - EFSVolumeId: ‼️DEPRECATED. Use a "filesystems" block in your workflow for greater flexibility.
-              
-              ID of an EFS volume to mount on every Batch instance. Enter "None" if you do not want to
-              mount an EFS volume.
         - **Advanced parameters**
             - LauncherBucketName: By default BayerCLAW will construct a unique bucket name for the job launcher bucket.
             Use this field to enter a custom bucket name. It is your responsibility to make sure the custom bucket
             name is globally unique. Note that this does **not** allow you to use an existing bucket as the launcher
             bucket, it only lets you choose the name of the launcher bucket.            
             - LogRetentionDays: Number of days to keep CloudWatch log entries before deleting them. Default is 30 days.
-            - UseExistingCloudTrail: Most users should enter `No`. However, if your account already has a CloudTrail trail
-            monitoring all S3 buckets, enter `Yes`.
 4. On the `Configure stack options` page, keep the default options.
 5. Check all of the "I acknowledge..." statements at the bottom of the Review page, then click `Create stack`.
 
@@ -93,7 +87,7 @@ run CodePipeline as described [below](#updating-bayerclaw).
 #### The installer stack
 This CloudFormation stack contains resources used to create and update a BayerCLAW installation. 
 - A `resources` S3 bucket, which is used for store items BayerCLAW needs.
-- CodeBuild projects that build various pieces of BayerClaw.
+- A CodeBuild project that constructs pieces of BayerCLAW.
 - The CodePipeline that builds everything.
 - An `admin` SNS topic that users can subscribe to to get notifications about BayerCLAW builds and updates.
 
@@ -102,10 +96,6 @@ The core stack contains the major functional components of BayerCLAW, including:
 - The `launcher` bucket, where users deposit data files to run through workflows.
 - Lambda functions that perform various processing duties during an execution.
 - Batch components, including compute environments and queues.
-
-#### The bclaw_runner executables
-These are PyInstaller-packaged executables that are injected into each Batch job to handle S3 object downloads
-and uploads as well as other functions.
 
 ## Updating BayerCLAW
 
@@ -124,20 +114,10 @@ Some updates may require a full refresh of everything including the installer st
 ## Deploying multiple BayerCLAW installations to an account
 
 It can occasionally be useful to install multiple BayerCLAW instances in an account -- for instance, to create production
-and test environments.
-
-If you plan on deploying more than 5 BayerCLAW installations, you MUST set up a CloudTrail trail that monitors all of the
-S3 buckets in your account. Even with a smaller number of installations, it is a good idea to set up monitoring on all
-buckets to avoid exhausing your account's quota of CloudTrail trails. Instructions for setting up CloudTrail trails
-may be found [here](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-and-update-a-trail.html).
-
-After CloudTrail is set up, for each installation, follow the [installation instructions](#installation) above
-except:
+and test environments. To do so, For each installation follow the [installation instructions](#installation) above except:
 - Each installer stack must have a unique name. It's a good idea to base it on the `InstallationName` you will use.
 - In the `Identifiers` parameter section, give each installation a unique `InstallationName` and `CompilerMacroName`.
 Again, it's a good idea to make these names similar.
-- If you have set up a CloudTrail trail to monitor all S3 buckets, enter `Yes` for `UseExistingCloudTrail` in the
-`Advanced` parameter section
 
 To deploy a workflow using a particular installation, change the compiler name in workflow spec's `Template` line to
 that installation's `CompilerMacroName`, and submit the template to CloudFormation as usual. Note that each

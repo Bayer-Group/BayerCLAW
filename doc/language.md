@@ -41,8 +41,8 @@ us to deploy the template directly using CloudFormation.
 ## The params block
 The params block of the workflow template contains the following key-value pairs:
 
-* `repository`: The S3 location that will be used to store intermediate and output files. This should also generally be
-parameterized with one or more unique identifiers from the job data file.
+* `repository`(required): The S3 location that will be used to store intermediate and output files. Usually, this should
+be parameterized with one or more unique identifiers from the job data file.
 * `job_name` (optional): An name used to help identify individual executions. Should refer to one or more fields in the
 job data file (see [String Substitution](#string-substitution)). After string substitution, the job name should only
 contain alphanumeric characters, underscores, dashes, and periods. 
@@ -78,7 +78,7 @@ The fields of the step specification objects are:
   cached on the host. Subsequent executions of this step will then use the cached reference files. Files listed in the
   `references` section must be full S3 paths. Shell-style wildcards are not allowed.
 * `commands` (required): A list of commands to run.
-  Commands are run in the Bash shell (`/bin/bash`). All commands are run in the same shell, so communication between
+  Commands are run in the Bourne shell (`/bin/sh`). All commands are run in the same shell, so communication between
   commands is possible, e.g. assigning a computed value to a variable with one command and then using that variable in
   subsequent commands.
   If any command returns a non-zero exit code, the BayerCLAW command runner terminates the Docker container and returns an error to Batch.
@@ -87,15 +87,16 @@ The fields of the step specification objects are:
   If all commands return success (exit code 0), the step will be considered a success and the workflow execution will proceed.
 * `outputs`: Output files to save to S3.
   The value specifies the local path to the file relative to the working directory inside the Docker container.
-  Even if the local path contains several directory names, only the base name of the file will be appended to the workflow `repository` path to determine its destination in S3.
-  Shell-style wildcards (globs) are accepted in place of single file names, and will expand to all matching local files (e.g. `outdir[0-9]/*.txt`).
+  Even if the local path contains several directory names, only the base name of the file will be appended to the workflow
+  `repository` path to determine its destination in S3. Shell-style wildcards (globs) are accepted in place of single
+  file names, and will expand to all matching local files (e.g. `outdir[0-9]/*.txt`).
 * `skip_on_rerun` (optional): When rerunning a job, set this to `true` to bypass a step if has already been run successfully.
   Defaults to `false`
 * `skip_if_output_exists` (optional): Similar to `skip_on_rerun`,
   when set to `true`, this causes a step to be skipped if its output files already exist in the job's repository. This is
   not as reliable as `skip_on_rerun`, so it is deprecated for most purposes. However, there is still a legitimate use
   case for `skip_if_output_exists` in [subpipes](subpipes.md#running-a-subpipe-independently).
-* `compute`: An object specifying the compute environment that will be used. Optional.
+* `coampute`: An object specifying the compute environment that will be used. Optional.
   * `cpus`:  Specify the number of vCPUs to reserve. Optional. Defaults to 1.
   * `memory`: Specify the amount of memory to reserve. This may be provided as a number (in which case
    it specifies the number of megabytes to reserve), or as a string containing units such as Gb or Mb.
@@ -104,8 +105,10 @@ The fields of the step specification objects are:
     Spot instances cost roughly 1/3 of what on-demand instances do.
     In the unlikely event your spot instance is interrupted, Batch will automatically retry your job.
     No additional logic or effort is required on your part.
-    You should always use spot instances unless there is a compelling reason a job cannot be safely retried, e.g. it loads data into a database in multiple transactions, sends an email, charges someone's credit card, or launches a missile.
-    Even so, jobs may be retried due to other failure modes, so your code should include special provisions for any action that is not idempotent (must happen exactly once / cannot safely be repeated).
+    You should always use spot instances unless there is a compelling reason a job cannot be safely retried, e.g.
+    it loads data into a database in multiple transactions, sends an email, charges someone's credit card, or launches
+    a missile. Even so, jobs may be retried due to other failure modes, so your code should include special provisions
+    for any action that is not idempotent (must happen exactly once / cannot safely be repeated).
   * `queue_name`: Under most circumstances, AWS Batch can be trusted to choose the best EC2 instance types to run your
     jobs on. However, some workflows may require specialized compute resources. In such cases, a custom Batch compute environment
     and job queue can be constructed manually, and the name of the custom job queue provided by adding a `queue_name` field to
@@ -116,7 +119,7 @@ The fields of the step specification objects are:
     natively support the use of GPU resources: you will need to create a custom GPU-enabled job queue and use the
     `queue_name` parameter to direct jobs to it. See [the custom queue documentation](custom_queue.md) for
     details.
-* 🆕`filesystems`: A list of objects describing EFS filesystems that will be mounted for this job. Note that you may
+* `filesystems`: A list of objects describing EFS filesystems that will be mounted for this job. Note that you may
   have several entries in this list, but each `efs_id` must be unique. All filesystems are mounted read-only.
   * `efs_id`: An EFS filesystem ID. Should be something like `fs-1234abcd`.
   * `host_path`: A fully qualified path where the EFS filesystem will be mounted in your Docker container.
@@ -133,11 +136,11 @@ The fields of the step specification objects are:
   * `backoff_rate` (optional): An exponential backoff multiplier. Must be greater than 1.0. Default is 1.5
 * `timeout` (optional): Amount of time to allow batch jobs to run before terminating them. Expressed as a time string
 as described under `retry/interval` above. Default is to impose no timeout on batch jobs.
-* 🆕`next` (optional): Name of the next step to execute after the current step completes. Default behavior is to
+* `next` (optional): Name of the next step to execute after the current step completes. Default behavior is to
 go to the next step in the steps list. Using a `next` field, you can make your workflow skip over steps or even return
 to an earlier step in the process. `next` cannot, however, be used to jump into or out of the steps block of a
  Parallel or scatter-gather type step. `next` is useful in conjunction with [chooser steps](#chooser-steps).
-* 🆕`end` (optional): Causes the workflow (or current steps block) to terminate in a SUCCESS state immediately after
+* `end` (optional): Causes the workflow (or current steps block) to terminate in a SUCCESS state immediately after
 the current step finishes. Also useful in conjunction with [chooser steps](#chooser-steps).
 
 ### Sample workflow template

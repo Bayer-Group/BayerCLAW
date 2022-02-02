@@ -5,7 +5,7 @@ import os
 import shutil
 from tempfile import mkdtemp, NamedTemporaryFile
 
-from .runnit import runnit
+from .dind import run_child_container
 
 logger = logging.getLogger(__name__)
 
@@ -32,30 +32,16 @@ def write_job_data_file(job_data: dict, dest_dir: str) -> str:
     return fp.name
 
 
-def run_commands(commands: list, cfg: dict, work_dir: str, job_data_file: str) -> int:
+def run_commands(image_tag: str, commands: list, work_dir: str, job_data_file: str) -> int:
     script_file = "_commands.sh"
 
     with open(script_file, "w") as fp:
-        print(cfg["shell-opts"], file=fp)
         for command in commands:
             print(command, file=fp)
 
     os.chmod(script_file, 0o700)
+    command = f"sh -veu {script_file}"
 
-    # https://pyinstaller.readthedocs.io/en/stable/runtime-information.html#ld-library-path-libpath-considerations
-    env = dict(os.environ)
-    lp_key = "LD_LIBRARY_PATH"
-    lp_orig = env.get(lp_key + "_ORIG")
-    if lp_orig is not None:
-        env[lp_key] = lp_orig
-    else:
-        # this happens when LD_LIBRARY_PATH was not set
-        # remove the env var set by pyinstaller
-        env.pop(lp_key, None)
-
-    env["BC_WORKSPACE"] = work_dir
-    env["BC_JOB_DATA_FILE"] = job_data_file
-
-    ret = runnit([cfg["shell-exe"], script_file], env=env)
+    ret = run_child_container(image_tag, command, work_dir, job_data_file)
 
     return ret

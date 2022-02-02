@@ -31,15 +31,9 @@ The parameters for the `bc_batch` template are as follows:
       [Optional, default=256]
 - Storage parameters
     - RootVolumeSize: The size (in GB) of the EBS root volume to be used by Batch jobs.
-      [Optional, default=50]
-    - ScratchVolumeSize: The size (in GB) of the EBS scratch volume to be used by Batch jobs.
       [Optional, default=100]
-    - EFSVolumeId: ‼️DEPRECATED. Use a "filesystems" block in your workflow for greater flexibility.
-      
-      ID of an EFS volume to mount on each EC2 instance. Note that any EFS mount
-      you intend to use must have a mount point in each subnet where your Batch jobs will run, and
-      the security group on those mount points must allow inbound traffic from your jobs.
-      [Optional, default=None]
+    - ScratchVolumeSize: The size (in GB) of the EBS scratch volume to be used by Batch jobs.
+      [Optional, default=1000]
 - Network parameters
     - SecurityGroupIds: Security groups for your Batch jobs to run under. [Required]
     - Subnets: Subnets where your Batch jobs will run. [Required]

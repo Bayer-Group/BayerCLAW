@@ -6,6 +6,7 @@ Usage:
 
 Options:
     --cmd COMMAND        command
+    --image STRING       Docker image tag
     --in JSON_STRING     input files
     --out JSON_STRING    output files
     --param JSON_STRING  parameter substitution [default: {}]
@@ -18,8 +19,6 @@ Options:
 
 import json
 import logging.config
-import os
-import sys
 from typing import Dict, List, Tuple
 
 from docopt import docopt
@@ -38,32 +37,6 @@ logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 
 
-def get_config() -> dict:
-    # figure out where this code lives. Config file location will be relative to this directory.
-    #   see https://pyinstaller.readthedocs.io/en/stable/runtime-information.html#using-file
-    home_dir = getattr(sys, "_MEIPASS", os.path.abspath(os.path.dirname(__file__)))
-
-    # check whether this is running from a PyInstaller bundle or as a normal Python script
-    #   see https://pyinstaller.readthedocs.io/en/stable/runtime-information.html
-    if hasattr(sys, "frozen") and hasattr(sys, "_MEIPASS"):
-        logger.debug("running in a PyInstaller bundle")
-
-        # PyInstaller build command should be set up to put the appropriate cfg.json in the same
-        # directory as this file
-        cfg_path = os.path.join(home_dir, "cfg.json")
-
-    else:
-        logger.debug("running in a normal Python process")
-
-        # default to using the bash config file. Use the CONFIG environment variable to override
-        cfg_path = os.path.join(home_dir, "cfg", os.environ.get("CONFIG", "bash"), "cfg.json")
-
-    with open(cfg_path) as fp:
-        cfg = json.load(fp)
-
-    return cfg
-
-
 def split_inputs(all_inputs: dict) -> Tuple[Dict, Dict]:
     required_keys, optional_keys = partition(lambda k: k.endswith("?"), all_inputs)
 
@@ -74,13 +47,13 @@ def split_inputs(all_inputs: dict) -> Tuple[Dict, Dict]:
 
 
 def main(commands: List[str],
+         image: str,
          inputs: Dict[str, str],
          outputs: Dict[str, str],
          params: Dict[str, str],
          references: Dict[str, str],
          repo_path: str,
          skip: str) -> int:
-    shell_config = get_config()
 
     repo = Repository(repo_path)
 
@@ -131,7 +104,7 @@ def main(commands: List[str],
             local_job_data = write_job_data_file(job_data_obj, wrk)
 
             # run commands
-            status = run_commands(subbed_commands, shell_config, wrk, local_job_data)
+            status = run_commands(image, subbed_commands, wrk, local_job_data)
             if status == 0:
                 logger.info("command block succeeded")
             else:
@@ -163,6 +136,7 @@ def cli() -> int:
         logger.info(json.dumps(args, indent=4))
 
         commands = json.loads(args["--cmd"])
+        image    = args["--image"]
         inputs   = json.loads(args["--in"])
         outputs  = json.loads(args["--out"])
         params   = json.loads(args["--param"])
@@ -170,5 +144,5 @@ def cli() -> int:
         repo     = args["--repo"]
         skip     = args["--skip"]
 
-        ret = main(commands, inputs, outputs, params, refs, repo, skip)
+        ret = main(commands, image, inputs, outputs, params, refs, repo, skip)
         return ret

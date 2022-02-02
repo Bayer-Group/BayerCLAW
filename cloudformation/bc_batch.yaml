@@ -29,7 +29,6 @@ Metadata:
         Parameters:
           - RootVolumeSize
           - ScratchVolumeSize
-          - EFSVolumeId
       -
         Label:
           default: Network
@@ -48,13 +47,6 @@ Parameters:
     Description: >
       The ID of an Amazon Machine Image (AMI) to create EC2 instances with. It is highly recommended that you
       select an ECS-optimized Amazon Linux 2 image to use.
-
-  EFSVolumeId:
-    Type: String
-    Description: >
-      DEPRECATED. The "filesystems" workflow template parameter offers greater flexibility.
-      EFS volume to mount on all EC2 instances. Enter "None" for no volume.
-    Default: "None"
 
   InstanceTypes:
     Type: CommaDelimitedList
@@ -105,12 +97,12 @@ Parameters:
   RootVolumeSize:
     Type: Number
     Description: Size (in GB) of the EBS root volume used by Batch jobs.
-    Default: 50
+    Default: 100
 
   ScratchVolumeSize:
     Type: Number
     Description: Size (in GB) of the EBS scratch volume used by Batch jobs.
-    Default: 100
+    Default: 1000
 
   SecurityGroupIds:
     Type: List<AWS::EC2::SecurityGroup::Id>
@@ -221,38 +213,6 @@ Resources:
               fi
               mkdir -p /scratch
               mount /dev/sdh /scratch
-
-              # Mount EFS volume, if any
-              if [[ "${EFSVolumeId}" =~ ^fs- ]]; then
-                mkdir -p /mnt/efs
-                mount -t efs -o tls,ro ${EFSVolumeId}:/ /mnt/efs
-              fi
-
-              sudo yum install -y awscli.noarch
-
-              cd /scratch
-              cat > runner_installer.sh << EOF
-              aws s3 sync s3://${ResourceBucketName}/runner/ .
-
-              chmod +x select_runner.sh
-              chmod +x centos/bclaw_runner
-              chmod +x debian/bclaw_runner
-
-              EOF
-
-              source runner_installer.sh
-
-              # sanity checks
-              if [ ! -x select_runner.sh ]; then
-                terminate
-              fi
-
-              for d in centos debian
-              do
-                if [ ! -x $d/bclaw_runner ]; then
-                  terminate
-                fi
-              done
 
               --==BOUNDARY==--
 

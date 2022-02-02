@@ -35,16 +35,16 @@ def custom_lambda_logs(branch: str = "unknown",
         record = old_factory(*args, **kwargs)
 
         record.custom = {
-            "branch": branch,
+            "workflow_name": workflow_name,
+            "step_name": step_name,
             "job_file": {
                 "bucket": job_file_bucket,
                 "key": job_file_key,
                 "version": job_file_version,
                 "s3_request_id": job_file_s3_request_id,
             },
-            "step_name": step_name,
             "sfn_execution_id": sfn_execution_id,
-            "workflow_name": workflow_name,
+            "branch": branch,
         }
 
         return record

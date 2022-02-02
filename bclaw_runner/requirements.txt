@@ -1,9 +1,8 @@
 backoff
 boto3
-cryptography < 3.4
+docker
 docopt
 jmespath
-moto==2.0.8
+more_itertools
 pytest
 requests
-requests_mock

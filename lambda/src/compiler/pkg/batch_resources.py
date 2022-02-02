@@ -13,7 +13,6 @@ from .util import CoreStack, Step, Resource, State, make_logical_name, do_param_
     time_string_to_seconds
 
 SCRATCH_PATH = "/_bclaw_scratch"
-EFS_PATH = "/mnt/efs"
 
 # "registry/path/image_name:version" -> ("registry/path", "image_name:version", "image_name", "version")
 # "registry/path/image_name"         -> ("registry/path", "image_name", "image_name", None)
@@ -68,7 +67,7 @@ def get_memory_in_mibs(request: Union[str, float, int]) -> int:
     return ret
 
 
-def get_environment(step: Step, global_efs_id: str) -> dict:
+def get_environment(step: Step) -> dict:
     vars = [
         {
             "Name": "BC_WORKFLOW_NAME",
@@ -88,12 +87,6 @@ def get_environment(step: Step, global_efs_id: str) -> dict:
         },
     ]
 
-    if global_efs_id.startswith("fs-"):
-        vars.append({
-            "Name": "BC_EFS_PATH",
-            "Value": EFS_PATH,
-        })
-
     ret = {"Environment": vars}
     return ret
 
@@ -110,22 +103,22 @@ def get_resource_requirements(step: Step) -> dict:
         },
     ]
 
-    if step.spec["compute"]["gpu"] > 0:
+    if (gpu_str := str(step.spec["compute"]["gpu"])) != "0":
         rc.append({
             "Type": "GPU",
-            "Value": str(step.spec["compute"]["gpu"])
+            "Value": gpu_str,
         })
 
     ret = {"ResourceRequirements": rc}
     return ret
 
 
-def get_volume_info(step: Step, global_efs_id: str) -> dict:
+def get_volume_info(step: Step) -> dict:
     volumes = [
         {
-            "Name": "docker_scratch",
+            "Name": "docker_socket",
             "Host": {
-                "SourcePath": "/docker_scratch",
+                "SourcePath": "/var/run/docker.sock",
             },
         },
         {
@@ -133,31 +126,31 @@ def get_volume_info(step: Step, global_efs_id: str) -> dict:
             "Host": {
                 "SourcePath": "/scratch",
             },
-        }]
+        },
+        {
+            "Name": "docker_scratch",
+            "Host": {
+                "SourcePath": "/docker_scratch"
+            },
+        }
+    ]
     mount_points = [
         {
-            "SourceVolume": "docker_scratch",
-            "ContainerPath": "/scratch",
+            "SourceVolume": "docker_socket",
+            "ContainerPath": "/var/run/docker.sock",
             "ReadOnly": False,
         },
         {
             "SourceVolume": "scratch",
             "ContainerPath": SCRATCH_PATH,
             "ReadOnly": False,
-        }]
-
-    if global_efs_id.startswith("fs-"):
-        volumes.append({
-            "Name": "efs",
-            "Host": {
-                "SourcePath": EFS_PATH,
-            },
-        })
-        mount_points.append({
-            "SourceVolume": "efs",
-            "ContainerPath": EFS_PATH,
-            "ReadOnly": True,
-        })
+        },
+        {
+            "SourceVolume": "docker_scratch",
+            "ContainerPath": "/.scratch",
+            "ReadOnly": False,
+        }
+    ]
 
     for filesystem in step.spec["filesystems"]:
         volume_name = f"{filesystem['efs_id']}-volume"
@@ -198,8 +191,6 @@ def job_definition_rc(core_stack: CoreStack,
 
     registry, image_version, image, version = parse_uri(step.spec["image"])
 
-    global_efs_volume_id = core_stack.output("EFSVolumeId")
-
     job_def = {
         "Type": "AWS::Batch::JobDefinition",
         "Properties": {
@@ -209,6 +200,7 @@ def job_definition_rc(core_stack: CoreStack,
                     "Ref": "AWS::StackName",
                 },
                 "repo": "rrr",
+                "image": get_ecr_uri(registry, image_version),
                 "inputs": "iii",
                 "references": "fff",
                 "command": json.dumps(step.spec["commands"]),
@@ -217,19 +209,20 @@ def job_definition_rc(core_stack: CoreStack,
             },
             "ContainerProperties": {
                 "Command": [
-                    f"{SCRATCH_PATH}/select_runner.sh",
+                    "python", "/bclaw_runner/src/runner_cli.py",
                     "--repo", "Ref::repo",
+                    "--image", "Ref::image",
                     "--in", "Ref::inputs",
                     "--ref", "Ref::references",
                     "--cmd", "Ref::command",
                     "--out", "Ref::outputs",
                     "--skip", "Ref::skip",
                 ],
-                "Image": get_ecr_uri(registry, image_version),
+                "Image": core_stack.output("RunnerImageURI"),
                 "JobRoleArn": task_role,
-                **get_environment(step, global_efs_volume_id),
+                **get_environment(step),
                 **get_resource_requirements(step),
-                **get_volume_info(step, global_efs_volume_id),
+                **get_volume_info(step),
             },
             **get_timeout(step)
         },
