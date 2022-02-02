@@ -1,5 +1,9 @@
 # Changelog for BayerCLAW
 
+## [v1.0.6] 2022-01-27 Bug fix
+### Fixed
+- Fixed a permissions handling issue that limits the number of workflows that can be deployed in an account.
+
 ## [v1.0.5] 2021-08-16 Bug fixes
 ### Fixed
 - Increased the default batch job EBS volume sizes to 100 Gb root drive and 1 Tb scratch drive.

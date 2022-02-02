@@ -47,28 +47,12 @@ Resources:
                   "detail": <detail>
                 }
 
-#  wfEventPermissionToInvokeLambda:
-#    Type: AWS::Lambda::Permission
-#    Properties:
-#      FunctionName: !Ref HandlerLambdaArn
-#      Action: lambda:InvokeFunction
-#      Principal: events.amazonaws.com
-#      SourceArn: !GetAtt wfSFNtoLambdaRule.Arn
-
   wfJobStatusSubscription:
     Type: AWS::SNS::Subscription
     Properties:
       Endpoint: !Ref JobStatusLambdaArn
       Protocol: lambda
       TopicArn: !Ref wfOutputSNSTopic
-
-#  wfSNSPermissionToInvokeLambda:
-#    Type: AWS::Lambda::Permission
-#    Properties:
-#      FunctionName: !Ref JobStatusLambdaArn
-#      Action: lambda:InvokeFunction
-#      Principal: sns.amazonaws.com
-#      SourceArn: !Ref wfOutputSNSTopic
 
 Outputs:
   wfOutputTopicArn:
