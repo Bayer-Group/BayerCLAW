@@ -1,5 +1,20 @@
 # Changelog for BayerCLAW
 
+## [v1.1.0] 2021-02-02 Feature release
+
+**IMPORTANT:** If you are upgrading from a previous version of BayerCLAW, you will need to update the installer
+stack before running CodePipeline (instructions [here](doc/deployment.md#updating-bayerclaw)). 
+You will also need to recompile any workflows created by the previous installation, and rebuild any custom Batch
+queues you've built.
+
+### Added
+- New _bclaw_runner_ executable can utilize any Unix-based Docker image that supports Bourne shell (`/bin/sh`).
+It can also run Docker images with built-in ENTRYPOINTs, but the ENTRYPOINT will be overriden.
+- Batch jobs running concurrently on the same EC2 instance can no longer access each others' working directories.
+- Global EFS mounts have been removed. These have been deprecated since v1.0.4, and are easily replaced with 
+[per-job EFS mounts](doc/language.md#the-steps-block). 
+- CloudTrail dependencies have been removed.
+
 ## [v1.0.6] 2022-01-27 Bug fix
 ### Fixed
 - Fixed a permissions handling issue that limits the number of workflows that can be deployed in an account.
