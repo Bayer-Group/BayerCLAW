@@ -328,6 +328,7 @@ Resources:
         - !Ref CommonLayer
       Policies:
         - arn:aws:iam::aws:policy/AmazonSNSFullAccess
+        - arn:aws:iam::aws:policy/AmazonTimestreamFullAccess
       DeploymentPreference:
         Enabled: False
 
