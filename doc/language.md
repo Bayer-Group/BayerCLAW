@@ -27,7 +27,7 @@ params:
 steps:
   -
     hello:
-      image: ubuntu
+      image: docker.io/library/ubuntu
       commands:
         - echo "Hello world! This is job ${job.SAMPLE_ID}!"
 ```
