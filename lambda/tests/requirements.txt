@@ -3,7 +3,7 @@ dotted
 humanfriendly
 jmespath
 jsonpath
-moto==2.0.8
+moto==3.0.4
 pytest
 pyyaml
 voluptuous
