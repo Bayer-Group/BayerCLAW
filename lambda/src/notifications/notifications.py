@@ -106,8 +106,61 @@ def make_sns_payload(message: str, event: dict) -> dict:
     return ret
 
 
+def submit_timestream_record(event: dict) -> None:
+    status = event["detail"]["status"]
+
+    if status == "RUNNING":
+        version = 1
+    elif status == "SUCCEEDED":
+        version = 3
+    else:
+        version = 2
+
+    input_obj = json.loads(event["detail"]["input"])
+
+    records = [
+        {
+            "Dimensions": [
+                {
+                    "Name": "workflow_name",
+                    "Value": event["workflow_name"],
+                    "DimensionValueType": "VARCHAR",
+                },
+                {
+                    "Name": "job_file",
+                    "Value": input_obj["job_file"]["key"],
+                    "DimensionValueType": "VARCHAR",
+                },
+                {
+                    "Name": "job_file_version",
+                    "Value": input_obj["job_file"]["version"],
+                    "DimensionValueType": "VARCHAR",
+                },
+                {
+                    "Name": "execution_arn",
+                    "Value": event["detail"]["executionArn"],
+                    "DimensionValueType": "VARCHAR",
+                },
+            ],
+            "MeasureName": "status",
+            "MeasureValue": status,
+            "MeasureValueType": "VARCHAR",
+            "Time": str(event["detail"]["startDate"]),
+            "TimeUnit": "MILLISECONDS",
+            "Version": version,
+        },
+    ]
+
+    ts_client = boto3.client("timestream-write")
+    response = ts_client.write_records(DatabaseName="bclawTest",
+                                       TableName="bclawTable",
+                                       Records=records)
+
+
 def lambda_handler(event: dict, context: object) -> dict:
     print(str(event))
+
+    submit_timestream_record(event)
 
     message = make_state_change_message(event)
     payload = make_sns_payload(message, event)
