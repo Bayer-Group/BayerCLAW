@@ -14,7 +14,7 @@ phases:
 
   pre_build:
     commands:
-      - pytest -s -vvv lambda/tests/
+#      - pytest -s -vvv lambda/tests/
       - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
       - export ECR_REPO_NAME=${CORE_STACK_NAME}/bclaw_runner
       - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
