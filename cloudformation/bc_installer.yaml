@@ -186,6 +186,7 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: !Sub "${InstallationName}-admin-notifs"
+      KmsMasterKeyId: "alias/aws/sns"
 
   AdminSNSTopicPolicy:
     Type: AWS::SNS::TopicPolicy

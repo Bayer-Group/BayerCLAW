@@ -14,6 +14,8 @@ Parameters:
 Resources:
   wfDeadLetterQueue:
     Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: "alias/aws/sqs"
 
   wfEventRuleRole:
     Type: AWS::IAM::Role
@@ -102,12 +104,25 @@ Resources:
         Version: 2012-10-17
         Id: wfDLQPolicyID
         Statement:
-          Sid: wfEventRuleToDLQ
-          Effect: Allow
-          Principal:
-            AWS: "*"
-          Action: "SQS:SendMessage"
-          Resource: !GetAtt wfDeadLetterQueue.Arn
-          Condition:
-            ArnEquals:
-              "aws:SourceArn": !GetAtt wfEventRule.Arn
+          -
+            Sid: "wfEventRuleToDLQ"
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action: "SQS:SendMessage"
+            Resource:
+              - !GetAtt wfDeadLetterQueue.Arn
+            Condition:
+              ArnEquals:
+                "aws:SourceArn": !GetAtt wfEventRule.Arn
+#          -
+#            Sid: "AcceptSecureTransportOnly"
+#            Action: "SQS:SendMessage"
+#            Effect: Deny
+#            Resource:
+#              - !GetAtt wfDeadLetterQueue.Arn
+#            Condition:
+#              Bool:
+#                "aws:SecureTransport": "false"
+#            Principal: "*"
+

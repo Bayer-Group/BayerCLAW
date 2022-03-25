@@ -18,45 +18,46 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: !Sub "${WorkflowName}-notifications"
+      KmsMasterKeyId: "alias/aws/sns"
 
-  wfOutputSNSTopicPolicy:
-    Type: AWS::SNS::TopicPolicy
-    Properties:
-      PolicyDocument:
-        Version: "2008-10-17"
-        Id: !Sub "${WorkflowName}-notifications-policy"
-        Statement:
-          -
-            Sid: "OwnerAccessOnly"
-            Effect: Allow
-            Principal:
-              AWS: "*"
-            Action:
-              - "SNS:GetTopicAttributes"
-              - "SNS:SetTopicAttributes"
-              - "SNS:AddPermission"
-              - "SNS:RemovePermission"
-              - "SNS:DeleteTopic"
-              - "SNS:Subscribe"
-              - "SNS:ListSubscriptionsByTopic"
-              - "SNS:Publish"
-              - "SNS:Receive"
-            Resource: !Ref wfOutputSNSTopic
-            Condition:
-              StringEquals:
-                "AWS:SourceOwner": !Ref AWS::AccountId
-          -
-            Sid: "PublishThruSSLOnly"
-            Action: "SNS:Publish"
-            Effect: Deny
-            Resource:
-              - !Ref wfOutputSNSTopic
-            Condition:
-              Bool:
-                "aws:SecureTransport": "false"
-            Principal: "*"
-      Topics:
-        - !Ref wfOutputSNSTopic
+#  wfOutputSNSTopicPolicy:
+#    Type: AWS::SNS::TopicPolicy
+#    Properties:
+#      PolicyDocument:
+#        Version: "2008-10-17"
+#        Id: !Sub "${WorkflowName}-notifications-policy"
+#        Statement:
+#          -
+#            Sid: "OwnerAccessOnly"
+#            Effect: Allow
+#            Principal:
+#              AWS: "*"
+#            Action:
+#              - "SNS:GetTopicAttributes"
+#              - "SNS:SetTopicAttributes"
+#              - "SNS:AddPermission"
+#              - "SNS:RemovePermission"
+#              - "SNS:DeleteTopic"
+#              - "SNS:Subscribe"
+#              - "SNS:ListSubscriptionsByTopic"
+#              - "SNS:Publish"
+#              - "SNS:Receive"
+#            Resource: !Ref wfOutputSNSTopic
+#            Condition:
+#              StringEquals:
+#                "AWS:SourceOwner": !Ref AWS::AccountId
+#          -
+#            Sid: "AcceptSecureTransportOnly"
+#            Action: "SNS:Publish"
+#            Effect: Deny
+#            Resource:
+#              - !Ref wfOutputSNSTopic
+#            Condition:
+#              Bool:
+#                "aws:SecureTransport": "false"
+#            Principal: "*"
+#      Topics:
+#        - !Ref wfOutputSNSTopic
 
   wfSFNtoLambdaRule:
     Type: AWS::Events::Rule
