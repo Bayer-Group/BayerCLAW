@@ -115,14 +115,3 @@ Resources:
             Condition:
               ArnEquals:
                 "aws:SourceArn": !GetAtt wfEventRule.Arn
-#          -
-#            Sid: "AcceptSecureTransportOnly"
-#            Action: "SQS:SendMessage"
-#            Effect: Deny
-#            Resource:
-#              - !GetAtt wfDeadLetterQueue.Arn
-#            Condition:
-#              Bool:
-#                "aws:SecureTransport": "false"
-#            Principal: "*"
-
