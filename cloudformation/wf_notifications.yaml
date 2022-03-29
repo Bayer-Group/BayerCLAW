@@ -18,6 +18,7 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: !Sub "${WorkflowName}-notifications"
+      KmsMasterKeyId: "alias/aws/sns"
 
   wfSFNtoLambdaRule:
     Type: AWS::Events::Rule
