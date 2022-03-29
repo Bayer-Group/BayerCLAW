@@ -1,6 +1,12 @@
 # Changelog for BayerCLAW
 
-## [v1.1.0] 2021-02-02 Feature release
+## [v1.1.1] 2022-03-29 Security update
+
+### Added
+- Enabled server-side encryption on SNS topics and SQS queues. Note that workflows will need to be recompiled
+to enable encryption.
+
+## [v1.1.0] 2022-02-02 Feature release
 
 **IMPORTANT:** If you are upgrading from a previous version of BayerCLAW, you will need to update the installer
 stack before running CodePipeline (instructions [here](doc/deployment.md#updating-bayerclaw)). 
