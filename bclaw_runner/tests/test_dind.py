@@ -83,7 +83,7 @@ def test_get_environment_vars(monkeypatch):
 
 
 @pytest.mark.parametrize("tag, expected_source, expected_auth", [
-    ("local/image", "local repo", None),
+    # ("local/image", "local repo", None),
     ("public/image", "public repo", None),
     ("987654321.dkr.ecr.us-east-1.amazonaws.com/ecr-image", "ecr", {"username": "AWS", "password": "987654321-auth-token"}),
 ])

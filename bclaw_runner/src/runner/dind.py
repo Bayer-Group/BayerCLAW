@@ -80,25 +80,25 @@ def get_environment_vars() -> dict:
 
 
 def pull_image(docker_client: docker.DockerClient, tag: str) -> Image:
-    try:
+    # try:
         # check if the image already exists locally
-        ret = docker_client.images.get(tag)
-        logger.info(f"found image {tag} in local repository")
+        # ret = docker_client.images.get(tag)
+        # logger.info(f"found image {tag} in local repository")
 
-    except ImageNotFound:
-        if m := re.match(r"(\d+)\.dkr\.ecr", tag):
-            # pull from ECR
-            logger.info(f"pulling image {tag} from ECR")
-            ecr_client = boto3.client("ecr")
-            token = ecr_client.get_authorization_token(registryIds=m.groups())
-            u, p = b64decode(token["authorizationData"][0]["authorizationToken"]).decode("utf-8").split(":")
-            auth_config = {"username": u, "password": p}
-        else:
-            # pull from public repository
-            logger.info(f"pulling image {tag} from public repo")
-            auth_config = None
+    # except ImageNotFound:
+    if m := re.match(r"(\d+)\.dkr\.ecr", tag):
+        # pull from ECR
+        logger.info(f"pulling image {tag} from ECR")
+        ecr_client = boto3.client("ecr")
+        token = ecr_client.get_authorization_token(registryIds=m.groups())
+        u, p = b64decode(token["authorizationData"][0]["authorizationToken"]).decode("utf-8").split(":")
+        auth_config = {"username": u, "password": p}
+    else:
+        # pull from public repository
+        logger.info(f"pulling image {tag} from public repo")
+        auth_config = None
 
-        ret = docker_client.images.pull(tag, auth_config=auth_config)
+    ret = docker_client.images.pull(tag, auth_config=auth_config)
 
     return ret
 
