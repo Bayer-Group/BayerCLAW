@@ -7,7 +7,7 @@ import moto.ec2
 import pytest
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def aws_credentials():
     os.environ["AWS_ACCESS_KEY_ID"] = "test-access-key-id"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "test-secret-access-key"
@@ -16,7 +16,7 @@ def aws_credentials():
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def mock_core_stack(aws_credentials):
     ami_gen = moto.ec2.ec2_backend.describe_images()
     ami = next(iter(ami_gen))
