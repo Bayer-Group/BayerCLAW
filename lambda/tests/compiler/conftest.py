@@ -45,7 +45,7 @@ def mock_core_stack(aws_credentials):
         LauncherLambdaArn:
           Value: launcher_lambda_arn
         LogRetentionDays:
-          Value: 99
+          Value: "99"
         OnDemandQueueArn:
           Value: on_demand_queue_arn
         QCCheckerLambdaArn:

@@ -346,7 +346,7 @@ def test_get_skip_behavior(spec, expect):
     ("next_step", {"Next": "next_step"}),
     ("", {"End": True}),
 ])
-def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step):
+def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step, mock_core_stack):
     step = Step("step_name", sample_batch_step, next_step_name)
 
     expected_body = {
