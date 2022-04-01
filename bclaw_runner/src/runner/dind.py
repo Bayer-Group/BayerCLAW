@@ -80,12 +80,6 @@ def get_environment_vars() -> dict:
 
 
 def pull_image(docker_client: docker.DockerClient, tag: str) -> Image:
-    # try:
-        # check if the image already exists locally
-        # ret = docker_client.images.get(tag)
-        # logger.info(f"found image {tag} in local repository")
-
-    # except ImageNotFound:
     if m := re.match(r"(\d+)\.dkr\.ecr", tag):
         # pull from ECR
         logger.info(f"pulling image {tag} from ECR")
