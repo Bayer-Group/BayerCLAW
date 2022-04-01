@@ -7,7 +7,6 @@ from typing import Generator
 
 import boto3
 import docker
-from docker.errors import ImageNotFound
 from docker.models.images import Image
 from docker.types import DeviceRequest, DriverConfig, Mount
 import requests
