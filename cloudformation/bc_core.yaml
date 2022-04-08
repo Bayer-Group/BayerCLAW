@@ -195,16 +195,28 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-        - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
+#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+#        - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
         -
           Version: "2012-10-17"
           Statement:
             -
               Effect: Allow
               Action:
-                - batch:DescribeJobQueues
+                - "s3:PutObject"
+#                - "s3:GetObject"
+#                - "s3:ListBucket"
+              Resource: !Sub "arn:aws:s3:::${ResourceBucketName}"
+            -
+              Effect: Allow
+              Action:
+                - "batch:DescribeJobQueues"
               Resource: "*"
+            -
+              Effect: Allow
+              Action:
+                - "cloudformation:DescribeStacks"
+              Resource: !Ref "AWS::StackId"
       DeploymentPreference:
         Enabled: false
 
@@ -234,6 +246,7 @@ Resources:
               Action:
                 - "s3:PutObject"
                 - "s3:GetObject"
+                - "s3:GetObjectVersion"
                 - "s3:ListBucket"
               Resource: "*"
       DeploymentPreference:
@@ -256,7 +269,14 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+            -
+              Effect: Allow
+              Action:
+                - "s3:PutObject"
+                - "s3:GetObject"
+                - "s3:ListBucket"
+              Resource: "*"
       DeploymentPreference:
         Enabled: false
 
@@ -277,7 +297,14 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+            -
+              Effect: Allow
+              Action:
+                - "s3:PutObject"
+                - "s3:GetObject"
+                - "s3:ListBucket"
+              Resource: "*"
       DeploymentPreference:
         Enabled: false
 
@@ -298,10 +325,16 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+#        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
         -
           Version: "2012-10-17"
           Statement:
+            -
+              Effect: Allow
+              Action:
+                - "s3:ListBucket"
+                - "s3:GetObject"
+              Resource: "*"
             -
               Effect: Allow
               Action:
@@ -327,7 +360,17 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        -
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: Allow
+              Action:
+                - "s3:PutObject"
+                - "s3:GetObject"
+                - "s3:ListBucket"
+              Resource: "*"
       DeploymentPreference:
         Enabled: false
 
