@@ -135,7 +135,7 @@ Resources:
       LifecycleConfiguration:
         Rules:
           -
-            AbortIncompleteMultiparetUpload:
+            AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 1
             Status: Enabled
       NotificationConfiguration:
