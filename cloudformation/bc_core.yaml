@@ -270,13 +270,13 @@ Resources:
         - !Ref CommonLayer
       Policies:
 #        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-            -
-              Effect: Allow
-              Action:
-                - "s3:PutObject"
-                - "s3:GetObject"
-                - "s3:ListBucket"
-              Resource: "*"
+        -
+          Effect: Allow
+          Action:
+            - "s3:PutObject"
+            - "s3:GetObject"
+            - "s3:ListBucket"
+          Resource: "*"
       DeploymentPreference:
         Enabled: false
 
@@ -298,13 +298,13 @@ Resources:
         - !Ref CommonLayer
       Policies:
 #        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-            -
-              Effect: Allow
-              Action:
-                - "s3:PutObject"
-                - "s3:GetObject"
-                - "s3:ListBucket"
-              Resource: "*"
+        -
+          Effect: Allow
+          Action:
+            - "s3:PutObject"
+            - "s3:GetObject"
+            - "s3:ListBucket"
+          Resource: "*"
       DeploymentPreference:
         Enabled: false
 
