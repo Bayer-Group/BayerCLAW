@@ -179,6 +179,11 @@ Resources:
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 1
             Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
       VersioningConfiguration:
         Status: Enabled
 

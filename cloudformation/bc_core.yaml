@@ -132,9 +132,20 @@ Resources:
           -
             ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          -
+            AbortIncompleteMultiparetUpload:
+              DaysAfterInitiation: 1
+            Status: Enabled
       NotificationConfiguration:
         EventBridgeConfiguration:
           EventBridgeEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
       VersioningConfiguration:
         Status: Enabled
 
@@ -214,7 +225,17 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        -
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: Allow
+              Action:
+                - "s3:PutObject"
+                - "s3:GetObject"
+                - "s3:ListBucket"
+              Resource: "*"
       DeploymentPreference:
         Enabled: false
 
