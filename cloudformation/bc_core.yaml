@@ -446,7 +446,8 @@ Resources:
                 - "dynamodb:DescribeTable"
                 - "dynamodb:PutItem"
                 - "dynamodb:UpdateItem"
-              Resource: !GetAtt JobStatusTable.Arn
+              Resource: "*"
+#              Resource: !GetAtt JobStatusTable.Arn
       DeploymentPreference:
         Enabled: False
 
