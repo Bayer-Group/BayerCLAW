@@ -397,7 +397,15 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-        - arn:aws:iam::aws:policy/AmazonSNSFullAccess
+#        - arn:aws:iam::aws:policy/AmazonSNSFullAccess
+        -
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: Allow
+              Action:
+                - "sns:Publish"
+              Resource: "*"
       DeploymentPreference:
         Enabled: False
 
@@ -428,7 +436,17 @@ Resources:
       MemorySize: 128
       Timeout: 60
       Policies:
-        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+#        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        -
+          Version: "2017-10-17"
+          Statement:
+            -
+              Effect: Allow
+              Action:
+                - "dynamodb:DescribeTable"
+                - "dynamodb:PutItem"
+                - "dynamodb:UpdateItem"
+              Resource: !GetAtt JobStatusTable.Arn
       DeploymentPreference:
         Enabled: False
 
