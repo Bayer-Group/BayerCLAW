@@ -178,6 +178,7 @@ Resources:
         BlockDeviceMappings:
           - DeviceName: /dev/xvda
             Ebs:
+              Encrypted: true
               VolumeSize: !Ref RootVolumeSize
               VolumeType: gp3
           - DeviceName: /dev/sdh
