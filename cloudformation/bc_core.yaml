@@ -438,7 +438,7 @@ Resources:
       Policies:
 #        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
         -
-          Version: "2017-10-17"
+          Version: "2012-10-17"
           Statement:
             -
               Effect: Allow
@@ -446,8 +446,7 @@ Resources:
                 - "dynamodb:DescribeTable"
                 - "dynamodb:PutItem"
                 - "dynamodb:UpdateItem"
-              Resource: "*"
-#              Resource: !GetAtt JobStatusTable.Arn
+              Resource: !GetAtt JobStatusTable.Arn
       DeploymentPreference:
         Enabled: False
 
