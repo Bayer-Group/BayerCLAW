@@ -251,6 +251,9 @@ Resources:
               Resource: "*"
       DeploymentPreference:
         Enabled: false
+      VpcConfig:
+        SecurityGroupIds: !Ref SecurityGroups
+        SubnetIds: !Ref Subnets
 
   LauncherLambdaLogGroup:
     Type: AWS::Logs::LogGroup
