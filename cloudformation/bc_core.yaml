@@ -252,7 +252,9 @@ Resources:
       DeploymentPreference:
         Enabled: false
       VpcConfig:
-        SecurityGroupIds: !Ref SecurityGroups
+#        SecurityGroupIds: !Ref SecurityGroups
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
         SubnetIds: !Ref Subnets
 
   LauncherLambdaLogGroup:
