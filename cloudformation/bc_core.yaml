@@ -68,8 +68,7 @@ Parameters:
     Default: 1000
 
   SecurityGroups:
-#    Type: String
-    Type: List<AWS::EC2::SecurityGroup::Id>
+    Type: String
     Description: >
       Comma-separated list of security group IDs for Batch jobs to run under. Must allow outbound HTTP
       and HTTPS traffic. Enter "Auto" to automatically create a suitable security group.
