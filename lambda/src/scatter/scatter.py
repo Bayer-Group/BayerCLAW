@@ -13,9 +13,6 @@ from file_select import select_file_contents
 from lambda_logs import JSONFormatter, custom_lambda_logs
 from substitutions import substitute_job_data, substitute_into_filenames
 
-SESSION = boto3.Session()
-S3 = SESSION.client("s3")
-
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.handlers[0].setFormatter(JSONFormatter())
@@ -38,7 +35,7 @@ def expand_glob(glob: str, repo: str) -> list:
     # this will be used to limit the number of s3 objects to search
     prefix = re.search(r'^([^\[\]*?]+)(?=/)', globby_s3_key).group(0)
 
-    bucket = SESSION.resource("s3").Bucket(bucket_name)
+    bucket = boto3.resource("s3").Bucket(bucket_name)
     object_summaries = bucket.objects.filter(Prefix=prefix)
     object_keys = [o.key for o in object_summaries]
 
@@ -102,7 +99,9 @@ def lambda_handler(event: dict, context: object):
         scatter_data = json.loads(event["scatter"])
         step_name = event["logging"]["step_name"]
 
-        response = S3.get_object(Bucket=parent_job_data_bucket, Key=parent_job_data_key)
+        s3 = boto3.client("s3")
+
+        response = s3.get_object(Bucket=parent_job_data_bucket, Key=parent_job_data_key)
         with closing(response["Body"]) as fp:
             parent_job_data = json.load(fp)
 
@@ -126,7 +125,7 @@ def lambda_handler(event: dict, context: object):
             curr_job_data_s3_path = f"{curr_repo}/_JOB_DATA_"
             curr_job_data_bucket, curr_job_data_key = curr_job_data_s3_path.split("/", 3)[2:]
 
-            S3.put_object(Bucket=curr_job_data_bucket, Key=curr_job_data_key,
+            s3.put_object(Bucket=curr_job_data_bucket, Key=curr_job_data_key,
                           Body=json.dumps(curr_job_data).encode("utf-8"),
                           ServerSideEncryption="AES256")
 

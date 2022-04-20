@@ -34,6 +34,15 @@ OTHER_FILE_CONTENT = json.dumps({"x": {"a": 1, "b": 2},
 
 
 @pytest.fixture(scope="module")
+def aws_credentials():
+    os.environ["AWS_ACCESS_KEY_ID"] = "test-access-key-id"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "test-secret-access-key"
+    os.environ["AWS_SECURITY_TOKEN"] = "test-security-token"
+    os.environ["AWS_SESSION_TOKEN"] = "test-session-token"
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+
+
+@pytest.fixture(scope="module")
 def repo_bucket():
     with moto.mock_s3():
         yld = boto3.resource("s3", region_name="us-east-1").Bucket(TEST_BUCKET)
@@ -63,7 +72,7 @@ def test_prepend_repo(file, expect):
     ("*file*", ["file1", "file2", "file3", "other_file.json"]),
     ("nothing*", []),
 ])
-def test_expand_glob(repo_bucket, glob, expect):
+def test_expand_glob(repo_bucket, glob, expect, aws_credentials):
     repo = f"s3://{repo_bucket.name}/repo/path"
     result = sorted(expand_glob(glob, repo))
     ext_expect = [f"{repo}/{x}" for x in expect]
