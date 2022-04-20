@@ -1,5 +1,18 @@
 # Changelog for BayerCLAW
 
+## [v1.1.2] 2022-04-20 Bug fixes and security updates
+
+### Fixed
+- Resolved unit test incompatibilities.
+- Minor security upgrades:
+  - Block all public access to resource and launcher buckets.
+  - Tightened up Lambda permissions.
+  - Encrypt EC2 root volumes.
+
+### Other changes
+- bclaw_runner now tries to pull its child Docker image every time it is executed, allowing
+the image to be updated between runs.
+
 ## [v1.1.1] 2022-03-29 Security update
 
 ### Added
