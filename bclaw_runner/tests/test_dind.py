@@ -83,15 +83,12 @@ def test_get_environment_vars(monkeypatch):
 
 
 @pytest.mark.parametrize("tag, expected_source, expected_auth", [
-    ("local/image", "local repo", None),
     ("public/image", "public repo", None),
     ("987654321.dkr.ecr.us-east-1.amazonaws.com/ecr-image", "ecr", {"username": "AWS", "password": "987654321-auth-token"}),
 ])
 def test_pull_images(tag, expected_source, expected_auth, monkeypatch, mock_docker_client_factory):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     with moto.mock_ecr():
-        # client = MockDockerClient()
-        # container = mock_container_factory(0)
         client = mock_docker_client_factory()
         result = pull_image(client, tag)
         assert result.tags == [tag]
