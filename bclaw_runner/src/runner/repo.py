@@ -9,6 +9,7 @@ import os
 import re
 from typing import Dict, Generator, Iterable, List
 
+import awswrangler as wr
 import backoff
 import boto3
 from botocore.exceptions import ClientError
@@ -21,42 +22,49 @@ def _is_glob(filename: str) -> bool:
     return ret is not None
 
 
-@backoff.on_exception(backoff.expo, ClientError, max_time=60)
-def _s3_file_exists(key: str, bucket: str) -> bool:
-    session = boto3.Session()
-    s3 = session.resource("s3")
-    obj = s3.Object(bucket, key)
-    try:
-        obj.load()
-        logger.info(f"s3://{bucket}/{key} exists")
-        return True
-    except ClientError as ce:
-        if ce.response["ResponseMetadata"]["HTTPStatusCode"] == 404:
-            logger.info(f"s3://{bucket}/{key} does not exist")
-            return False
-        else:
-            raise
+# @backoff.on_exception(backoff.expo, ClientError, max_time=60)
+# def _s3_file_exists(key: str, bucket: str) -> bool:
+# def _s3_file_exists(path: str) -> bool:
+    # ret = wr.s3.does_object_exist(f"s3://{bucket}/{key}")
+    # ret = wr.s3.does_object_exist(path)
+    # return ret
+    # session = boto3.Session()
+    # s3 = session.resource("s3")
+    # obj = s3.Object(bucket, key)
+    # try:
+    #     obj.load()
+    #     logger.info(f"s3://{bucket}/{key} exists")
+    #     return True
+    # except ClientError as ce:
+    #     if ce.response["ResponseMetadata"]["HTTPStatusCode"] == 404:
+    #         logger.info(f"s3://{bucket}/{key} does not exist")
+    #         return False
+    #     else:
+    #         raise
 
 
-def _expand_s3_glob(glob: str) -> Generator[str, None, None]:
-    bucket_name, globby_s3_key = glob.split("/", 3)[2:]
-    prefix = re.search(r"^([^\[\]*?]+)(?=/)", globby_s3_key).group(0)
-
-    session = boto3.Session()
-    s3 = session.resource("s3")
-    bucket = s3.Bucket(bucket_name)
-    object_summaries = bucket.objects.filter(Prefix=prefix)
-    object_keys = [o.key for o in object_summaries]
-
-    target_keys = fnmatch.filter(object_keys, globby_s3_key)
-    target_paths = (f"s3://{bucket_name}/{k}" for k in target_keys)
-    yield from target_paths
+# def _expand_s3_glob(glob: str) -> Generator[str, None, None]:
+#     target_paths = wr.s3.list_objects(glob)
+    # bucket_name, globby_s3_key = glob.split("/", 3)[2:]
+    # prefix = re.search(r"^([^\[\]*?]+)(?=/)", globby_s3_key).group(0)
+    #
+    # session = boto3.Session()
+    # s3 = session.resource("s3")
+    # bucket = s3.Bucket(bucket_name)
+    # object_summaries = bucket.objects.filter(Prefix=prefix)
+    # object_keys = [o.key for o in object_summaries]
+    #
+    # target_keys = fnmatch.filter(object_keys, globby_s3_key)
+    # target_paths = (f"s3://{bucket_name}/{k}" for k in target_keys)
+    # yield from target_paths
 
 
 def _inputerator(s3_paths: Iterable[str]) -> Generator[str, None, None]:
     for s3_path in s3_paths:
+        # yield from wr.s3.list_objects(s3_path)
         if _is_glob(s3_path):
-            yield from _expand_s3_glob(s3_path)
+            yield from wr.s3.list_objects(s3_path)
+            # yield from _expand_s3_glob(s3_path)
         else:
             yield s3_path
 
@@ -136,11 +144,17 @@ class Repository(object):
         if any(_is_glob(f) for f in filenames):
             return False
 
-        keys = [f"{self.prefix}/{f}" for f in filenames]
-        checker = partial(_s3_file_exists, bucket=self.bucket)
+        paths = [f"s3://{self.bucket}/{self.prefix}/{f}" for f in filenames]
+        ret = all([wr.s3.does_object_exist(p) for p in paths])
+        # with ThreadPoolExecutor(max_workers=len(paths)) as executor:
+        #     ret = all(executor.map(wr.s3.does_object_exist, paths))
+            # ret = all(executor.map(_s3_file_exists, paths))
 
-        with ThreadPoolExecutor(max_workers=len(keys)) as executor:
-            ret = all(executor.map(checker, keys))
+        # keys = [f"{self.prefix}/{f}" for f in filenames]
+        # checker = partial(_s3_file_exists, bucket=self.bucket)
+
+        # with ThreadPoolExecutor(max_workers=len(keys)) as executor:
+        #     ret = all(executor.map(checker, keys))
 
         return ret
 

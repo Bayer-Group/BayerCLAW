@@ -7,7 +7,7 @@ import boto3
 import moto
 import pytest
 
-from ..src.runner.repo import _is_glob, _s3_file_exists, _expand_s3_glob, _inputerator, _download_this, _outputerator, \
+from ..src.runner.repo import _is_glob, _inputerator, _download_this, _outputerator, \
     _upload_that, Repository
 
 TEST_BUCKET = "test-bucket"
@@ -55,27 +55,28 @@ def test_is_glob(path, expect):
     assert result == expect
 
 
-@pytest.mark.parametrize("key, expect", [
-    ("repo/path/file1", True),
-    ("repo/path/file99", False),
-])
-def test_s3_file_exists(key, expect, repo_bucket):
-    result = _s3_file_exists(key, TEST_BUCKET)
-    assert result == expect
+# @pytest.mark.parametrize("key, expect", [
+#     ("repo/path/file1", True),
+#     ("repo/path/file99", False),
+# ])
+# def test_s3_file_exists(key, expect, repo_bucket):
+#     result = _s3_file_exists(key, TEST_BUCKET)
+#     assert result == expect
 
 
-@pytest.mark.parametrize("glob, expect", [
-    ("file*", ["file1", "file2", "file3"]),
-    ("file?", ["file1", "file2", "file3"]),
-    ("file[12]", ["file1", "file2"]),
-    ("*file*", ["file1", "file2", "file3", "other_file"]),
-    ("nothing*", []),
-])
-def test_expand_s3_glob(repo_bucket, glob, expect):
-    ext_glob = f"s3://{TEST_BUCKET}/repo/path/{glob}"
-    result = sorted(list(_expand_s3_glob(ext_glob)))
-    ext_expect = [f"s3://{TEST_BUCKET}/repo/path/{x}" for x in expect]
-    assert result == ext_expect
+# todo: do I neet to cover these test cases somewhere?
+# @pytest.mark.parametrize("glob, expect", [
+#     ("file*", ["file1", "file2", "file3"]),
+#     ("file?", ["file1", "file2", "file3"]),
+#     ("file[12]", ["file1", "file2"]),
+#     ("*file*", ["file1", "file2", "file3", "other_file"]),
+#     ("nothing*", []),
+# ])
+# def test_expand_s3_glob(repo_bucket, glob, expect):
+#     ext_glob = f"s3://{TEST_BUCKET}/repo/path/{glob}"
+#     result = sorted(list(_expand_s3_glob(ext_glob)))
+#     ext_expect = [f"s3://{TEST_BUCKET}/repo/path/{x}" for x in expect]
+#     assert result == ext_expect
 
 
 def test_inputerator(repo_bucket):
@@ -85,14 +86,14 @@ def test_inputerator(repo_bucket):
 
     paths = [
         "s3://test-bucket/repo/path/file*",
-        "s3://different-bucket/path/different_file",
+        "s3://different-bucket/different/path/different_file",
     ]
     result = sorted(list(_inputerator(paths)))
     expect = sorted([
         "s3://test-bucket/repo/path/file1",
         "s3://test-bucket/repo/path/file2",
         "s3://test-bucket/repo/path/file3",
-        "s3://different-bucket/path/different_file",
+        "s3://different-bucket/different/path/different_file",
     ])
     assert result == expect
 
