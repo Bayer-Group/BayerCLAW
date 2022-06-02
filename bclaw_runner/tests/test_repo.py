@@ -7,8 +7,7 @@ import boto3
 import moto
 import pytest
 
-from ..src.runner.repo import _is_glob, _inputerator, _download_this, _outputerator, \
-    _upload_that, Repository
+from ..src.runner.repo import _is_glob, Repository
 
 TEST_BUCKET = "test-bucket"
 JOB_DATA = {"job": "data"}
@@ -22,28 +21,27 @@ DIFFERENT_FILE_CONTENT = "different file"
 
 
 @pytest.fixture(scope="module")
-def repo_bucket():
+def mock_buckets():
     with moto.mock_s3():
-        yld = boto3.resource("s3", region_name="us-east-1").Bucket(TEST_BUCKET)
-        yld.create()
-        yld.put_object(Key="repo/path/_JOB_DATA_", Body=json.dumps(JOB_DATA).encode("utf-8"))
-        yld.put_object(Key="repo/path/file1", Body=FILE1_CONTENT.encode("utf-8"))
-        yld.put_object(Key="repo/path/file2", Body=FILE2_CONTENT.encode("utf-8"))
-        yld.put_object(Key="repo/path/file3", Body=FILE3_CONTENT.encode("utf-8"))
-        yld.put_object(Key="repo/path/other_file", Body=OTHER_FILE_CONTENT.encode("utf-8"))
-        yld.put_object(Key="repo/path/_control_/test_step.complete", Body=b"")
-        yield yld
+        s3 = boto3.resource("s3", region_name="us-east-1")
+
+        tb = s3.Bucket(TEST_BUCKET)
+        tb.create()
+        tb.put_object(Key="repo/path/_JOB_DATA_", Body=json.dumps(JOB_DATA).encode("utf-8"))
+        tb.put_object(Key="repo/path/file1", Body=FILE1_CONTENT.encode("utf-8"))
+        tb.put_object(Key="repo/path/file2", Body=FILE2_CONTENT.encode("utf-8"))
+        tb.put_object(Key="repo/path/file3", Body=FILE3_CONTENT.encode("utf-8"))
+        tb.put_object(Key="repo/path/other_file", Body=OTHER_FILE_CONTENT.encode("utf-8"))
+        tb.put_object(Key="repo/path/_control_/test_step.complete", Body=b"")
+
+        db = s3.Bucket(DIFFERENT_BUCKET)
+        db.create()
+        db.put_object(Key="different/path/different_file", Body=DIFFERENT_FILE_CONTENT.encode("utf-8"))
+
+        yield tb, db
 
 
-@pytest.fixture(scope="module")
-def different_bucket():
-    with moto.mock_s3():
-        boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=DIFFERENT_BUCKET)
-        yld = boto3.resource("s3", region_name="us-east-1").Bucket(DIFFERENT_BUCKET)
-        yld.put_object(Key="different/path/different_file", Body=DIFFERENT_FILE_CONTENT.encode("utf-8"))
-        yield yld
-
-
+# ok
 @pytest.mark.parametrize("path, expect", [
     ("st*r", True),
     ("/question/mark?", True),
@@ -79,23 +77,13 @@ def test_is_glob(path, expect):
 #     assert result == ext_expect
 
 
-def test_inputerator(repo_bucket):
-    boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=DIFFERENT_BUCKET)
-    different_bucket = boto3.resource("s3", region_name="us-east-1").Bucket(DIFFERENT_BUCKET)
-    different_bucket.put_object(Key="different/path/different_file", Body=DIFFERENT_FILE_CONTENT.encode("utf-8"))
-
+def test_inputerator_missing_glob(repo_bucket):
     paths = [
         "s3://test-bucket/repo/path/file*",
-        "s3://different-bucket/different/path/different_file",
+        "s3://test-bucket/repo/path/nothing*"
     ]
     result = sorted(list(_inputerator(paths)))
-    expect = sorted([
-        "s3://test-bucket/repo/path/file1",
-        "s3://test-bucket/repo/path/file2",
-        "s3://test-bucket/repo/path/file3",
-        "s3://different-bucket/different/path/different_file",
-    ])
-    assert result == expect
+    print("yo")
 
 
 @pytest.mark.parametrize("optional", [True, False])
@@ -176,45 +164,113 @@ def test_upload_that_fail(tmp_path, repo_bucket):
         _upload_that(str(target_file.absolute()), "unbucket", "repo/path")
 
 
+# ok
 def test_repository(monkeypatch):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
-    path = "s3://test-bucket/repo/path"
-    repo = Repository(path)
-    assert repo.full_path == path
+    repo_uri = "s3://test-bucket/repo/path"
+    repo = Repository(repo_uri)
+    assert repo.s3_uri == repo_uri
     assert repo.bucket == "test-bucket"
     assert repo.prefix == "repo/path"
-    assert repo.run_status_obj == "repo/path/_control_/test_step.complete"
+    assert repo.run_status_obj == "_control_/test_step.complete"
 
 
-def test_read_job_data(monkeypatch, repo_bucket):
+#ok
+def test_inputerator(monkeypatch, mock_buckets):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo_uri = f"s3://{TEST_BUCKET}/repo/path"
+    repo = Repository(repo_uri)
+
+    paths = [
+        "s3://test-bucket/repo/path/file*",
+        "s3://different-bucket/different/path/different_file",
+    ]
+    result = sorted(list(repo._inputerator(paths)))
+    expect = sorted([
+        "s3://test-bucket/repo/path/file1",
+        "s3://test-bucket/repo/path/file2",
+        "s3://test-bucket/repo/path/file3",
+        "s3://different-bucket/different/path/different_file",
+    ])
+    assert result == expect
+
+
+@pytest.mark.parametrize("glob, expected_files", [
+    # (["file*"], ["file1", "file2", "file3"]),
+    (["file?"], ["file1", "file2", "file3"]),
+    # (["file[12]"], ["file1", "file2"]),
+    # (["*file*"], ["file1", "file2", "file3", "other_file"]),
+    # (["nothing*"], []),
+])
+def test_inputerator_glob_expansion(monkeypatch, mock_buckets, glob, expected_files):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo_uri = f"s3://{TEST_BUCKET}/repo/path"
+    repo = Repository(repo_uri)
+
+    expect = [os.path.join(repo_uri, f) for f in expected_files]
+    result = sorted(list(repo._inputerator(glob)))
+    assert result == expect
+
+
+# ok
+def test_to_uri(monkeypatch):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo_uri = "s3://test-bucket/repo/path"
+    repo = Repository(repo_uri)
+    filename = "path/to/file.txt"
+    result = repo.to_uri(filename)
+    assert result == f"{repo_uri}/{filename}"
+
+
+#ok
+def test_qualify(monkeypatch):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo_uri = "s3://test-bucket/repo/path"
+    repo = Repository(repo_uri)
+    filename = "path/to/file.txt"
+    result = repo.qualify(filename)
+    assert result == f"repo/path/{filename}"
+
+
+# ok
+def test_read_job_data(monkeypatch, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
     job_data = repo.read_job_data()
     assert job_data == JOB_DATA
 
 
-@pytest.mark.parametrize("name, expect", [
-    ("file1", f"s3://{TEST_BUCKET}/repo/path/file1"),
-    ("s3://some/path/to/a/file", "s3://some/path/to/a/file"),
-])
-def test_add_s3_path(monkeypatch, name, expect):
-    monkeypatch.setenv("BC_STEP_NAME", "test_step")
-    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
-    result = repo.add_s3_path(name)
-    assert result == expect
+# defunct
+# @pytest.mark.parametrize("name, expect", [
+#     ("file1", f"s3://{TEST_BUCKET}/repo/path/file1"),
+#     ("s3://some/path/to/a/file", "s3://some/path/to/a/file"),
+# ])
+# def test_add_s3_path(monkeypatch, name, expect):
+#     monkeypatch.setenv("BC_STEP_NAME", "test_step")
+#     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+#     result = repo.add_s3_path(name)
+#     assert result == expect
 
 
+# ok
 @pytest.mark.parametrize("files, expect", [
     (["file1", "file2", "file3"], True),
     (["file1", "file99", "file3"], False),
     (["file1", "file*", "file3"], False),
     ([], True),
 ])
-def test_files_exist(monkeypatch, repo_bucket, files, expect):
+def test_files_exist(monkeypatch, mock_buckets, files, expect):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
     result = repo.files_exist(files)
     assert result == expect
+
+
+# todo: download_this
+# todo: download_inputs
+# todo: outputerator
+# todo: upload_that
+# todo: upload_outputs
 
 
 @pytest.mark.parametrize("optional", [True, False])
@@ -369,18 +425,20 @@ def test_upload_outputs_empty_outputs(monkeypatch, repo_bucket):
     repo.upload_outputs(file_spec)
 
 
+# ok
 @pytest.mark.parametrize("step_name, expect", [
     ("test_step", True),
     ("non_step", False),
 ])
-def test_check_for_previous_run(monkeypatch, repo_bucket, step_name, expect):
+def test_check_for_previous_run(monkeypatch, mock_buckets, step_name, expect):
     monkeypatch.setenv("BC_STEP_NAME", step_name)
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
     result = repo.check_for_previous_run()
     assert result == expect
 
 
-def test_clear_run_status(monkeypatch, repo_bucket):
+# ok
+def test_clear_run_status(monkeypatch, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
     assert repo.check_for_previous_run() is True
@@ -388,7 +446,8 @@ def test_clear_run_status(monkeypatch, repo_bucket):
     assert repo.check_for_previous_run() is False
 
 
-def test_put_run_status(monkeypatch, repo_bucket):
+# ok
+def test_put_run_status(monkeypatch, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step_two")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
     assert repo.check_for_previous_run() is False
