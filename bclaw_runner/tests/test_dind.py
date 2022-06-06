@@ -44,20 +44,25 @@ def test_get_mounts(monkeypatch):
                 "Destination": "/_bclaw_scratch",
             },
             {
+                "Source": "/docker_scratch",
+                "Destination": "/.scratch",
+            },
+            {
                 "DockerName": "volume12345",
                 "Destination": "/efs",
             },
             {
                 "Source": "/miscellaneous/host/volume",
-                "Destination": "/somewhere"
-            }
-        ]
+                "Destination": "/somewhere",
+            },
+        ],
     }
     parent_workspace = "/_bclaw_scratch/parent_workspace"
     child_workspace = "/child_workspace"
 
     expect = [
         Mount(child_workspace, "/scratch/parent_workspace", type="bind", read_only=False),
+        Mount("/.scratch", "/docker_scratch", type="bind", read_only=False),
         Mount("/efs", "volume12345", type="volume", read_only=True,
               driver_config=DriverConfig("amazon-ecs-volume-plugin")),
         Mount("/somewhere", "/miscellaneous/host/volume", type="bind", read_only=True)

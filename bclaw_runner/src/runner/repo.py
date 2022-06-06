@@ -13,10 +13,16 @@ import awswrangler as wr
 import backoff
 import boto3
 from botocore.exceptions import ClientError
+from more_itertools import peekable
 
 logger = logging.getLogger(__name__)
 
-METADATA = {"execution_id": os.environ.get("BC_EXECUTION_ID", "undefined")}
+#METADATA = {"execution_id": os.environ.get("BC_EXECUTION_ID", "undefined")}
+
+
+def _file_metadata():
+    ret = {"execution_id": os.environ.get("BC_EXECUTION_ID", "undefined")}
+    return ret
 
 
 def _is_glob(filename: str) -> bool:
@@ -45,20 +51,19 @@ def _is_glob(filename: str) -> bool:
     #         raise
 
 
-# def _expand_s3_glob(glob: str) -> Generator[str, None, None]:
-#     target_paths = wr.s3.list_objects(glob)
-    # bucket_name, globby_s3_key = glob.split("/", 3)[2:]
-    # prefix = re.search(r"^([^\[\]*?]+)(?=/)", globby_s3_key).group(0)
-    #
-    # session = boto3.Session()
-    # s3 = session.resource("s3")
-    # bucket = s3.Bucket(bucket_name)
-    # object_summaries = bucket.objects.filter(Prefix=prefix)
-    # object_keys = [o.key for o in object_summaries]
-    #
-    # target_keys = fnmatch.filter(object_keys, globby_s3_key)
-    # target_paths = (f"s3://{bucket_name}/{k}" for k in target_keys)
-    # yield from target_paths
+def _expand_s3_glob(glob: str) -> Generator[str, None, None]:
+    bucket_name, globby_s3_key = glob.split("/", 3)[2:]
+    prefix = re.search(r"^([^\[\]*?]+)(?=/)", globby_s3_key).group(0)
+
+    session = boto3.Session()
+    s3 = session.resource("s3")
+    bucket = s3.Bucket(bucket_name)
+    object_summaries = bucket.objects.filter(Prefix=prefix)
+    object_keys = (o.key for o in object_summaries)
+
+    target_keys = fnmatch.filter(object_keys, globby_s3_key)
+    target_paths = (f"s3://{bucket_name}/{k}" for k in target_keys)
+    yield from target_paths
 
 
 # def _inputerator(s3_paths: Iterable[str]) -> Generator[str, None, None]:
@@ -180,18 +185,16 @@ class Repository(object):
         return ret
 
     # todo: exclude _JOB_DATA_, execution_info/, _control_/
-    def _inputerator(self, input_files: Iterable[str]) -> Generator[str, None, None]:
-        for filename in input_files:
-            optional = filename.endswith("?")
-            filename = filename.rstrip("?")
+    def _inputerator(self, input_spec: Dict[str, str]) -> Generator[str, None, None]:
+        for symbolic_name, filename in input_spec.items():
+            optional = symbolic_name.endswith("?")
 
             if filename.startswith("s3://"):
                 uri = filename
             else:
                 uri = self.to_uri(os.path.basename(filename))
-                # uri = f"{self.full_uri}/{os.path.basename(filename)}"
 
-            s3_objects = wr.s3.list_objects(uri)
+            s3_objects = peekable(_expand_s3_glob(uri))
             if not s3_objects:
                 if optional:
                     logger.warning(f"optional file not found: {filename}; skipping")
@@ -201,7 +204,6 @@ class Repository(object):
 
     @staticmethod
     def _download_this(s3_uri: str) -> str:
-        # probably safer, possibly faster than wr.s3.download
         bucket, key = s3_uri.split("/", 3)[2:]
         dest = os.path.basename(key)
         logger.info(f"starting download: {s3_uri} -> {dest}")
@@ -213,10 +215,13 @@ class Repository(object):
 
     def download_inputs(self, input_spec: Dict[str, str]) -> Dict[str, str]:
         with ThreadPoolExecutor(max_workers=256) as executor:
-            result = list(executor.map(self._download_this, self._inputerator(input_spec.values())))
+            result = list(executor.map(self._download_this, self._inputerator(input_spec)))
 
         logger.info(f"{len(result)} files downloaded")
-        ret = {k: os.path.basename(v) for k, v in input_spec.items()}
+
+        # todo: optional k still has ?
+        # todo: filter out missing files?
+        ret = {k.rstrip("?"): os.path.basename(v) for k, v in input_spec.items()}
         return ret
 
     @staticmethod
@@ -235,7 +240,7 @@ class Repository(object):
         s3 = session.resource("s3")
         s3.Object(self.bucket, key).upload_file(local_file,
                                            ExtraArgs={"ServerSideEncryption": "AES256",
-                                                      "Metadata": METADATA})
+                                                      "Metadata": _file_metadata()})
         logger.info(f"finished upload: {local_file} -> {dest}")
         return dest
 
@@ -294,7 +299,7 @@ class Repository(object):
         # because aws wrangler doesn't do empty files
         s3 = boto3.resource("s3")
         status_obj = s3.Object(self.bucket, self.qualify(self.run_status_obj))
-        status_obj.put(Body=b"", Metadata=METADATA)
+        status_obj.put(Body=b"", Metadata=_file_metadata())
         # s3 = boto3.client("s3")
         # response = s3.put_object(Bucket=self.bucket, Key=self.qualify(self.run_status_obj), Body=b"")
         # if not 200 <= response["ResponseMetadata"]["HTTPStatusCode"] <= 299:

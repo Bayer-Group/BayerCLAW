@@ -7,7 +7,7 @@ import boto3
 import moto
 import pytest
 
-from ..src.runner.repo import _is_glob, Repository
+from ..src.runner.repo import _is_glob, _expand_s3_glob, Repository
 
 TEST_BUCKET = "test-bucket"
 JOB_DATA = {"job": "data"}
@@ -62,107 +62,106 @@ def test_is_glob(path, expect):
 #     assert result == expect
 
 
-# todo: do I neet to cover these test cases somewhere?
-# @pytest.mark.parametrize("glob, expect", [
-#     ("file*", ["file1", "file2", "file3"]),
-#     ("file?", ["file1", "file2", "file3"]),
-#     ("file[12]", ["file1", "file2"]),
-#     ("*file*", ["file1", "file2", "file3", "other_file"]),
-#     ("nothing*", []),
-# ])
-# def test_expand_s3_glob(repo_bucket, glob, expect):
-#     ext_glob = f"s3://{TEST_BUCKET}/repo/path/{glob}"
-#     result = sorted(list(_expand_s3_glob(ext_glob)))
-#     ext_expect = [f"s3://{TEST_BUCKET}/repo/path/{x}" for x in expect]
-#     assert result == ext_expect
+@pytest.mark.parametrize("glob, expect", [
+    ("file*", ["file1", "file2", "file3"]),
+    ("file?", ["file1", "file2", "file3"]),
+    ("file[12]", ["file1", "file2"]),
+    ("*file*", ["file1", "file2", "file3", "other_file"]),
+    ("nothing*", []),
+])
+def test_expand_s3_glob(mock_buckets, glob, expect):
+    ext_glob = f"s3://{TEST_BUCKET}/repo/path/{glob}"
+    result = sorted(list(_expand_s3_glob(ext_glob)))
+    ext_expect = [f"s3://{TEST_BUCKET}/repo/path/{x}" for x in expect]
+    assert result == ext_expect
 
 
-def test_inputerator_missing_glob(repo_bucket):
-    paths = [
-        "s3://test-bucket/repo/path/file*",
-        "s3://test-bucket/repo/path/nothing*"
-    ]
-    result = sorted(list(_inputerator(paths)))
-    print("yo")
+# def test_inputerator_missing_glob(repo_bucket):
+#     paths = [
+#         "s3://test-bucket/repo/path/file*",
+#         "s3://test-bucket/repo/path/nothing*"
+#     ]
+#     result = sorted(list(_inputerator(paths)))
+#     print("yo")
 
 
-@pytest.mark.parametrize("optional", [True, False])
-def test_download_this(optional, tmp_path, repo_bucket):
-    os.chdir(tmp_path)
-    _download_this("s3://test-bucket/repo/path/file1", optional)
-    expected_file = tmp_path / "file1"
-    assert os.path.isfile(expected_file)
-    with expected_file.open() as fp:
-        line = fp.readline()
-        assert line == FILE1_CONTENT
+# @pytest.mark.parametrize("optional", [True, False])
+# def test_download_this(optional, tmp_path, repo_bucket):
+#     os.chdir(tmp_path)
+#     _download_this("s3://test-bucket/repo/path/file1", optional)
+#     expected_file = tmp_path / "file1"
+#     assert os.path.isfile(expected_file)
+#     with expected_file.open() as fp:
+#         line = fp.readline()
+#         assert line == FILE1_CONTENT
 
 
-def test_download_this_missing_required_file(tmp_path, repo_bucket):
-    target = "s3://test-bucket/repo/path/file99"
-    os.chdir(tmp_path)
-    with pytest.raises(RuntimeError, match=f"download failed: {target}"):
-        _download_this(target, False)
+# def test_download_this_missing_required_file(tmp_path, repo_bucket):
+#     target = "s3://test-bucket/repo/path/file99"
+#     os.chdir(tmp_path)
+#     with pytest.raises(RuntimeError, match=f"download failed: {target}"):
+#         _download_this(target, False)
 
 
-def test_download_this_missing_optional_file(tmp_path, repo_bucket, caplog):
-    target = "s3://test-bucket/repo/path/file99"
-    os.chdir(tmp_path)
-    _download_this(target, True)
-    unexpected_file = tmp_path / "file99"
-    assert "optional file not found" in caplog.text
-    assert os.path.exists(unexpected_file) is False
+# def test_download_this_missing_optional_file(tmp_path, repo_bucket, caplog):
+#     target = "s3://test-bucket/repo/path/file99"
+#     os.chdir(tmp_path)
+#     _download_this(target, True)
+#     unexpected_file = tmp_path / "file99"
+#     assert "optional file not found" in caplog.text
+#     assert os.path.exists(unexpected_file) is False
 
 
-def test_outputerator(tmp_path, caplog):
-    filenames = "output1 output2 output3 other_thing ignore_me".split()
-    for filename in filenames:
-        file = tmp_path / filename
-        file.open("w").close()
-    request = ["output*", "other_thing", "non_thing*"]
-
-    os.chdir(tmp_path)
-    result = sorted(list(_outputerator(request)))
-    expect = sorted("output1 output2 output3 other_thing".split())
-    assert result == expect
-
-    assert caplog.messages[0] == "no file matching 'non_thing*' found in workspace"
-
-
-def test_upload_that(monkeypatch, tmp_path, repo_bucket):
-    monkeypatch.setenv("BC_EXECUTION_ID", "ELVISLIVES")
-
-    target_file = tmp_path / "output1"
-    with target_file.open("w") as fp:
-        print("target file", file=fp)
-
-    _upload_that(str(target_file.absolute()), TEST_BUCKET, "repo/path")
-
-    chek = repo_bucket.Object("repo/path/output1").get()
-
-    expected_metadata = {"execution_id": "ELVISLIVES"}
-    assert chek["Metadata"] == expected_metadata
-
-    with closing(chek["Body"]) as fp:
-        line = next(fp)
-        assert line == "target file\n".encode("utf-8")
+# def test_outputerator(tmp_path, caplog):
+#     filenames = "output1 output2 output3 other_thing ignore_me".split()
+#     for filename in filenames:
+#         file = tmp_path / filename
+#         file.open("w").close()
+#     request = ["output*", "other_thing", "non_thing*"]
+#
+#     os.chdir(tmp_path)
+#     result = sorted(list(_outputerator(request)))
+#     expect = sorted("output1 output2 output3 other_thing".split())
+#     assert result == expect
+#
+#     assert caplog.messages[0] == "no file matching 'non_thing*' found in workspace"
 
 
-def test_upload_that_missing_file(tmp_path, caplog, repo_bucket):
-    target_file = tmp_path / "missing"
-
-    _upload_that(str(target_file.absolute()), TEST_BUCKET, "repo/path")
-    assert f"{target_file} not found; skipping upload" in caplog.text
-
-
-def test_upload_that_fail(tmp_path, repo_bucket):
-    target_file = tmp_path / "outputx"
-
-    with target_file.open("w") as fp:
-        print("target file", file=fp)
-
-    with pytest.raises(RuntimeError, match="upload failed: outputx -> s3://unbucket/repo/path/outputx"):
-        _upload_that(str(target_file.absolute()), "unbucket", "repo/path")
-
+# def test_upload_that(monkeypatch, tmp_path, repo_bucket):
+#     monkeypatch.setenv("BC_EXECUTION_ID", "ELVISLIVES")
+#
+#     target_file = tmp_path / "output1"
+#     with target_file.open("w") as fp:
+#         print("target file", file=fp)
+#
+#     _upload_that(str(target_file.absolute()), TEST_BUCKET, "repo/path")
+#
+#     chek = repo_bucket.Object("repo/path/output1").get()
+#
+#     expected_metadata = {"execution_id": "ELVISLIVES"}
+#     assert chek["Metadata"] == expected_metadata
+#
+#     with closing(chek["Body"]) as fp:
+#         line = next(fp)
+#         assert line == "target file\n".encode("utf-8")
+#
+#
+# def test_upload_that_missing_file(tmp_path, caplog, repo_bucket):
+#     target_file = tmp_path / "missing"
+#
+#     _upload_that(str(target_file.absolute()), TEST_BUCKET, "repo/path")
+#     assert f"{target_file} not found; skipping upload" in caplog.text
+#
+#
+# def test_upload_that_fail(tmp_path, repo_bucket):
+#     target_file = tmp_path / "outputx"
+#
+#     with target_file.open("w") as fp:
+#         print("target file", file=fp)
+#
+#     with pytest.raises(RuntimeError, match="upload failed: outputx -> s3://unbucket/repo/path/outputx"):
+#         _upload_that(str(target_file.absolute()), "unbucket", "repo/path")
+#
 
 # ok
 def test_repository(monkeypatch):
@@ -175,17 +174,17 @@ def test_repository(monkeypatch):
     assert repo.run_status_obj == "_control_/test_step.complete"
 
 
-#ok
+# ok
 def test_inputerator(monkeypatch, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo_uri = f"s3://{TEST_BUCKET}/repo/path"
     repo = Repository(repo_uri)
 
-    paths = [
-        "s3://test-bucket/repo/path/file*",
-        "s3://different-bucket/different/path/different_file",
-    ]
-    result = sorted(list(repo._inputerator(paths)))
+    spec = {
+        "files": "s3://test-bucket/repo/path/file*",
+        "different_file": "s3://different-bucket/different/path/different_file",
+    }
+    result = sorted(list(repo._inputerator(spec)))
     expect = sorted([
         "s3://test-bucket/repo/path/file1",
         "s3://test-bucket/repo/path/file2",
@@ -195,12 +194,13 @@ def test_inputerator(monkeypatch, mock_buckets):
     assert result == expect
 
 
+# ok
 @pytest.mark.parametrize("glob, expected_files", [
-    # (["file*"], ["file1", "file2", "file3"]),
-    (["file?"], ["file1", "file2", "file3"]),
-    # (["file[12]"], ["file1", "file2"]),
-    # (["*file*"], ["file1", "file2", "file3", "other_file"]),
-    # (["nothing*"], []),
+    ({"f": "file*"}, ["file1", "file2", "file3"]),
+    ({"f?": "file?"}, ["file1", "file2", "file3"]),
+    ({"f": "file[12]"}, ["file1", "file2"]),
+    ({"f?": "*file*"}, ["file1", "file2", "file3", "other_file"]),
+    ({"f?": "nothing*"}, []),
 ])
 def test_inputerator_glob_expansion(monkeypatch, mock_buckets, glob, expected_files):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
@@ -210,6 +210,47 @@ def test_inputerator_glob_expansion(monkeypatch, mock_buckets, glob, expected_fi
     expect = [os.path.join(repo_uri, f) for f in expected_files]
     result = sorted(list(repo._inputerator(glob)))
     assert result == expect
+
+
+# ok
+@pytest.mark.parametrize("spec", [
+    {"f": "missing"},
+    {"f": "missing*"},
+])
+def test_inputerator_fail(monkeypatch, mock_buckets, spec):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo_uri = f"s3://{TEST_BUCKET}/repo/path"
+    repo = Repository(repo_uri)
+
+    with pytest.raises(FileNotFoundError):
+        _ = list(repo._inputerator(spec))
+
+
+# ok
+def test_download_this(monkeypatch, mock_buckets, tmp_path):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo_uri = f"s3://{TEST_BUCKET}/repo/path"
+    repo = Repository(repo_uri)
+
+    os.chdir(tmp_path)
+    repo._download_this("s3://test-bucket/repo/path/file1")
+    expected_file = tmp_path / "file1"
+    assert os.path.isfile(expected_file)
+    with expected_file.open() as fp:
+        line = fp.readline()
+        assert line == FILE1_CONTENT
+
+
+# todo: defunct?
+# def test_download_this_missing_required_file(monkeypatch, mock_buckets, tmp_path):
+#     monkeypatch.setenv("BC_STEP_NAME", "test_step")
+#     repo_uri = f"s3://{TEST_BUCKET}/repo/path"
+#     repo = Repository(repo_uri)
+#
+#     target = "s3://test-bucket/repo/path/file99"
+#     os.chdir(tmp_path)
+#     with pytest.raises(FileNotFoundError, match=f"download failed: {target}"):
+#         repo._download_this(target)
 
 
 # ok
@@ -266,21 +307,10 @@ def test_files_exist(monkeypatch, mock_buckets, files, expect):
     assert result == expect
 
 
-# todo: download_this
-# todo: download_inputs
-# todo: outputerator
-# todo: upload_that
-# todo: upload_outputs
-
-
-@pytest.mark.parametrize("optional", [True, False])
-def test_download_inputs(optional, monkeypatch, tmp_path, repo_bucket):
+# ok
+def test_download_inputs(monkeypatch, tmp_path, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
-
-    boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=DIFFERENT_BUCKET)
-    different_bucket = boto3.resource("s3", region_name="us-east-1").Bucket(DIFFERENT_BUCKET)
-    different_bucket.put_object(Key="different/path/different_file", Body=DIFFERENT_FILE_CONTENT.encode("utf-8"))
 
     file_spec = {
         "files": "file*",
@@ -289,7 +319,7 @@ def test_download_inputs(optional, monkeypatch, tmp_path, repo_bucket):
     }
 
     os.chdir(tmp_path)
-    result = repo.download_inputs(file_spec, optional)
+    result = repo.download_inputs(file_spec)
     expect = {
         "files": "file*",
         "other_file": "other_file",
@@ -303,13 +333,10 @@ def test_download_inputs(optional, monkeypatch, tmp_path, repo_bucket):
     assert result == expect
 
 
-def test_download_inputs_missing_required_file(monkeypatch, tmp_path, repo_bucket):
+# ok
+def test_download_inputs_missing_required_file(monkeypatch, tmp_path, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
-
-    boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=DIFFERENT_BUCKET)
-    different_bucket = boto3.resource("s3", region_name="us-east-1").Bucket(DIFFERENT_BUCKET)
-    different_bucket.put_object(Key="different/path/different_file", Body=DIFFERENT_FILE_CONTENT.encode("utf-8"))
 
     file_spec = {
         "files": "file*",
@@ -319,27 +346,24 @@ def test_download_inputs_missing_required_file(monkeypatch, tmp_path, repo_bucke
     }
 
     os.chdir(tmp_path)
-    with pytest.raises(RuntimeError, match=f"download failed: {file_spec['missing_file']}"):
-        _ = repo.download_inputs(file_spec, False)
+    with pytest.raises(FileNotFoundError):
+        _ = repo.download_inputs(file_spec)
 
 
-def test_download_inputs_missing_optional_file(monkeypatch, tmp_path, caplog, repo_bucket):
+# ok
+def test_download_inputs_missing_optional_file(monkeypatch, tmp_path, caplog, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
-
-    boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=DIFFERENT_BUCKET)
-    different_bucket = boto3.resource("s3", region_name="us-east-1").Bucket(DIFFERENT_BUCKET)
-    different_bucket.put_object(Key="different/path/different_file", Body=DIFFERENT_FILE_CONTENT.encode("utf-8"))
 
     file_spec = {
         "files": "file*",
         "other_file": "other_file",
         "different_file": f"s3://{DIFFERENT_BUCKET}/different/path/different_file",
-        "missing_file": f"s3://{DIFFERENT_BUCKET}/missing_path/missing_file"
+        "missing_file?": f"s3://{DIFFERENT_BUCKET}/missing_path/missing_file"
     }
 
     os.chdir(tmp_path)
-    result = repo.download_inputs(file_spec, True)
+    result = repo.download_inputs(file_spec)
     expect = {
         "files": "file*",
         "other_file": "other_file",
@@ -348,7 +372,7 @@ def test_download_inputs_missing_optional_file(monkeypatch, tmp_path, caplog, re
     }
 
     assert result == expect
-    assert f"optional file not found: {file_spec['missing_file']}; skipping" in caplog.text
+    assert f"optional file not found: {file_spec['missing_file?']}; skipping" in caplog.text
     assert os.path.exists(tmp_path / "file1")
     assert os.path.exists(tmp_path / "file2")
     assert os.path.exists(tmp_path / "file3")
@@ -357,17 +381,88 @@ def test_download_inputs_missing_optional_file(monkeypatch, tmp_path, caplog, re
     assert os.path.exists(tmp_path / "missing_file") is False
 
 
-@pytest.mark.parametrize("optional", [True, False])
-def test_download_inputs_empty_inputs(optional, monkeypatch, repo_bucket):
+# ok
+def test_download_inputs_empty_inputs(monkeypatch, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
 
     file_spec = {}
 
-    result = repo.download_inputs(file_spec, optional)
+    result = repo.download_inputs(file_spec)
     assert len(result) == 0
 
 
+# ok
+# todo: recursive glob
+def test_outputerator(monkeypatch, tmp_path, caplog):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+
+    filenames = "output1 output2 output3 other_thing ignore_me".split()
+    for filename in filenames:
+        file = tmp_path / filename
+        file.open("w").close()
+    request = ["output*", "other_thing", "non_thing*"]
+
+    os.chdir(tmp_path)
+    result = sorted(list(repo._outputerator(request)))
+    expect = sorted("output1 output2 output3 other_thing".split())
+    assert result == expect
+
+    assert caplog.messages[0] == "no file matching 'non_thing*' found in workspace"
+
+
+# todo: upload_that
+# ok
+def test_upload_that(monkeypatch, tmp_path, mock_buckets):
+    monkeypatch.setenv("BC_EXECUTION_ID", "ELVISLIVES")
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+
+    target_file = tmp_path / "output1"
+    with target_file.open("w") as fp:
+        print("target file", file=fp)
+
+    repo._upload_that(str(target_file.absolute()))
+
+    test_bucket, _ = mock_buckets
+    chek = test_bucket.Object("repo/path/output1").get()
+
+    expected_metadata = {"execution_id": "ELVISLIVES"}
+    assert chek["Metadata"] == expected_metadata
+
+    with closing(chek["Body"]) as fp:
+        line = next(fp)
+        assert line == "target file\n".encode("utf-8")
+
+
+# todo: defunct?
+# def test_upload_that_missing_file(monkeypatch, tmp_path, caplog, mock_buckets):
+#     monkeypatch.setenv("BC_STEP_NAME", "test_step")
+#     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+#
+#     target_file = tmp_path / "missing"
+#
+#     repo._upload_that(str(target_file.absolute()))
+#     assert f"{target_file} not found; skipping upload" in caplog.text
+
+
+def test_upload_that_fail(monkeypatch, tmp_path, mock_buckets):
+    monkeypatch.setenv("BC_EXECUTION_ID", "ELVISLIVES")
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://unbucket/repo/path")
+
+    target_file = tmp_path / "outputx"
+
+    with target_file.open("w") as fp:
+        print("target file", file=fp)
+
+    with pytest.raises(RuntimeError, match="upload failed: outputx -> s3://unbucket/repo/path/outputx"):
+        repo._upload_that(str(target_file.absolute()))
+
+
+
+# todo: upload_outputs
 def test_upload_outputs(monkeypatch, tmp_path, repo_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo_two/path")
