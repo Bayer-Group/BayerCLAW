@@ -1,9 +1,9 @@
 from contextlib import closing
-import jmespath
 import json
 import os
 
 import boto3
+import jmespath
 import moto
 import pytest
 
@@ -41,7 +41,6 @@ def mock_buckets():
         yield tb, db
 
 
-# ok
 @pytest.mark.parametrize("path, expect", [
     ("st*r", True),
     ("/question/mark?", True),
@@ -51,15 +50,6 @@ def mock_buckets():
 def test_is_glob(path, expect):
     result = _is_glob(path)
     assert result == expect
-
-
-# @pytest.mark.parametrize("key, expect", [
-#     ("repo/path/file1", True),
-#     ("repo/path/file99", False),
-# ])
-# def test_s3_file_exists(key, expect, repo_bucket):
-#     result = _s3_file_exists(key, TEST_BUCKET)
-#     assert result == expect
 
 
 @pytest.mark.parametrize("glob, expect", [
@@ -76,94 +66,6 @@ def test_expand_s3_glob(mock_buckets, glob, expect):
     assert result == ext_expect
 
 
-# def test_inputerator_missing_glob(repo_bucket):
-#     paths = [
-#         "s3://test-bucket/repo/path/file*",
-#         "s3://test-bucket/repo/path/nothing*"
-#     ]
-#     result = sorted(list(_inputerator(paths)))
-#     print("yo")
-
-
-# @pytest.mark.parametrize("optional", [True, False])
-# def test_download_this(optional, tmp_path, repo_bucket):
-#     os.chdir(tmp_path)
-#     _download_this("s3://test-bucket/repo/path/file1", optional)
-#     expected_file = tmp_path / "file1"
-#     assert os.path.isfile(expected_file)
-#     with expected_file.open() as fp:
-#         line = fp.readline()
-#         assert line == FILE1_CONTENT
-
-
-# def test_download_this_missing_required_file(tmp_path, repo_bucket):
-#     target = "s3://test-bucket/repo/path/file99"
-#     os.chdir(tmp_path)
-#     with pytest.raises(RuntimeError, match=f"download failed: {target}"):
-#         _download_this(target, False)
-
-
-# def test_download_this_missing_optional_file(tmp_path, repo_bucket, caplog):
-#     target = "s3://test-bucket/repo/path/file99"
-#     os.chdir(tmp_path)
-#     _download_this(target, True)
-#     unexpected_file = tmp_path / "file99"
-#     assert "optional file not found" in caplog.text
-#     assert os.path.exists(unexpected_file) is False
-
-
-# def test_outputerator(tmp_path, caplog):
-#     filenames = "output1 output2 output3 other_thing ignore_me".split()
-#     for filename in filenames:
-#         file = tmp_path / filename
-#         file.open("w").close()
-#     request = ["output*", "other_thing", "non_thing*"]
-#
-#     os.chdir(tmp_path)
-#     result = sorted(list(_outputerator(request)))
-#     expect = sorted("output1 output2 output3 other_thing".split())
-#     assert result == expect
-#
-#     assert caplog.messages[0] == "no file matching 'non_thing*' found in workspace"
-
-
-# def test_upload_that(monkeypatch, tmp_path, repo_bucket):
-#     monkeypatch.setenv("BC_EXECUTION_ID", "ELVISLIVES")
-#
-#     target_file = tmp_path / "output1"
-#     with target_file.open("w") as fp:
-#         print("target file", file=fp)
-#
-#     _upload_that(str(target_file.absolute()), TEST_BUCKET, "repo/path")
-#
-#     chek = repo_bucket.Object("repo/path/output1").get()
-#
-#     expected_metadata = {"execution_id": "ELVISLIVES"}
-#     assert chek["Metadata"] == expected_metadata
-#
-#     with closing(chek["Body"]) as fp:
-#         line = next(fp)
-#         assert line == "target file\n".encode("utf-8")
-#
-#
-# def test_upload_that_missing_file(tmp_path, caplog, repo_bucket):
-#     target_file = tmp_path / "missing"
-#
-#     _upload_that(str(target_file.absolute()), TEST_BUCKET, "repo/path")
-#     assert f"{target_file} not found; skipping upload" in caplog.text
-#
-#
-# def test_upload_that_fail(tmp_path, repo_bucket):
-#     target_file = tmp_path / "outputx"
-#
-#     with target_file.open("w") as fp:
-#         print("target file", file=fp)
-#
-#     with pytest.raises(RuntimeError, match="upload failed: outputx -> s3://unbucket/repo/path/outputx"):
-#         _upload_that(str(target_file.absolute()), "unbucket", "repo/path")
-#
-
-# ok
 def test_repository(monkeypatch):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo_uri = "s3://test-bucket/repo/path"
@@ -174,7 +76,44 @@ def test_repository(monkeypatch):
     assert repo.run_status_obj == "_control_/test_step.complete"
 
 
-# ok
+def test_to_uri(monkeypatch):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo_uri = "s3://test-bucket/repo/path"
+    repo = Repository(repo_uri)
+    filename = "path/to/file.txt"
+    result = repo.to_uri(filename)
+    assert result == f"{repo_uri}/{filename}"
+
+
+def test_qualify(monkeypatch):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo_uri = "s3://test-bucket/repo/path"
+    repo = Repository(repo_uri)
+    filename = "path/to/file.txt"
+    result = repo.qualify(filename)
+    assert result == f"repo/path/{filename}"
+
+
+def test_read_job_data(monkeypatch, mock_buckets):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+    job_data = repo.read_job_data()
+    assert job_data == JOB_DATA
+
+
+@pytest.mark.parametrize("files, expect", [
+    (["file1", "file2", "subdir/file3"], True),
+    (["file1", "file99", "subdir/file3"], False),
+    (["file1", "file*", "subdir/file3"], False),
+    ([], True),
+])
+def test_files_exist(monkeypatch, mock_buckets, files, expect):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+    result = repo.files_exist(files)
+    assert result == expect
+
+
 def test_inputerator(monkeypatch, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo_uri = f"s3://{TEST_BUCKET}/repo/path"
@@ -194,25 +133,23 @@ def test_inputerator(monkeypatch, mock_buckets):
     assert result == expect
 
 
-# ok
-@pytest.mark.parametrize("glob, expected_files", [
+@pytest.mark.parametrize("spec, expected_files", [
     ({"f": "file*"}, ["file1", "file2", "file3"]),
     ({"f?": "file?"}, ["file1", "file2", "file3"]),
     ({"f": "file[12]"}, ["file1", "file2"]),
     ({"f?": "*file*"}, ["file1", "file2", "file3", "other_file"]),
     ({"f?": "nothing*"}, []),
 ])
-def test_inputerator_glob_expansion(monkeypatch, mock_buckets, glob, expected_files):
+def test_inputerator_glob_expansion(monkeypatch, mock_buckets, spec, expected_files):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo_uri = f"s3://{TEST_BUCKET}/repo/path"
     repo = Repository(repo_uri)
 
     expect = [os.path.join(repo_uri, f) for f in expected_files]
-    result = sorted(list(repo._inputerator(glob)))
+    result = sorted(list(repo._inputerator(spec)))
     assert result == expect
 
 
-# ok
 @pytest.mark.parametrize("spec", [
     {"f": "missing"},
     {"f": "missing*"},
@@ -226,7 +163,6 @@ def test_inputerator_fail(monkeypatch, mock_buckets, spec):
         _ = list(repo._inputerator(spec))
 
 
-# ok
 def test_download_this(monkeypatch, mock_buckets, tmp_path):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo_uri = f"s3://{TEST_BUCKET}/repo/path"
@@ -241,73 +177,17 @@ def test_download_this(monkeypatch, mock_buckets, tmp_path):
         assert line == FILE1_CONTENT
 
 
-# todo: defunct?
-# def test_download_this_missing_required_file(monkeypatch, mock_buckets, tmp_path):
-#     monkeypatch.setenv("BC_STEP_NAME", "test_step")
-#     repo_uri = f"s3://{TEST_BUCKET}/repo/path"
-#     repo = Repository(repo_uri)
-#
-#     target = "s3://test-bucket/repo/path/file99"
-#     os.chdir(tmp_path)
-#     with pytest.raises(FileNotFoundError, match=f"download failed: {target}"):
-#         repo._download_this(target)
-
-
-# ok
-def test_to_uri(monkeypatch):
+def test_download_this_missing_file(monkeypatch, mock_buckets, tmp_path):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
-    repo_uri = "s3://test-bucket/repo/path"
+    repo_uri = f"s3://{TEST_BUCKET}/repo/path"
     repo = Repository(repo_uri)
-    filename = "path/to/file.txt"
-    result = repo.to_uri(filename)
-    assert result == f"{repo_uri}/{filename}"
+
+    target = "s3://test-bucket/repo/path/file99"
+    os.chdir(tmp_path)
+    with pytest.raises(FileNotFoundError, match=target):
+        repo._download_this(target)
 
 
-#ok
-def test_qualify(monkeypatch):
-    monkeypatch.setenv("BC_STEP_NAME", "test_step")
-    repo_uri = "s3://test-bucket/repo/path"
-    repo = Repository(repo_uri)
-    filename = "path/to/file.txt"
-    result = repo.qualify(filename)
-    assert result == f"repo/path/{filename}"
-
-
-# ok
-def test_read_job_data(monkeypatch, mock_buckets):
-    monkeypatch.setenv("BC_STEP_NAME", "test_step")
-    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
-    job_data = repo.read_job_data()
-    assert job_data == JOB_DATA
-
-
-# defunct
-# @pytest.mark.parametrize("name, expect", [
-#     ("file1", f"s3://{TEST_BUCKET}/repo/path/file1"),
-#     ("s3://some/path/to/a/file", "s3://some/path/to/a/file"),
-# ])
-# def test_add_s3_path(monkeypatch, name, expect):
-#     monkeypatch.setenv("BC_STEP_NAME", "test_step")
-#     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
-#     result = repo.add_s3_path(name)
-#     assert result == expect
-
-
-# ok
-@pytest.mark.parametrize("files, expect", [
-    (["file1", "file2", "file3"], True),
-    (["file1", "file99", "file3"], False),
-    (["file1", "file*", "file3"], False),
-    ([], True),
-])
-def test_files_exist(monkeypatch, mock_buckets, files, expect):
-    monkeypatch.setenv("BC_STEP_NAME", "test_step")
-    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
-    result = repo.files_exist(files)
-    assert result == expect
-
-
-# ok
 def test_download_inputs(monkeypatch, tmp_path, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
@@ -333,7 +213,6 @@ def test_download_inputs(monkeypatch, tmp_path, mock_buckets):
     assert result == expect
 
 
-# ok
 def test_download_inputs_missing_required_file(monkeypatch, tmp_path, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
@@ -350,7 +229,6 @@ def test_download_inputs_missing_required_file(monkeypatch, tmp_path, mock_bucke
         _ = repo.download_inputs(file_spec)
 
 
-# ok
 def test_download_inputs_missing_optional_file(monkeypatch, tmp_path, caplog, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
@@ -381,7 +259,6 @@ def test_download_inputs_missing_optional_file(monkeypatch, tmp_path, caplog, mo
     assert os.path.exists(tmp_path / "missing_file") is False
 
 
-# ok
 def test_download_inputs_empty_inputs(monkeypatch, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
@@ -392,7 +269,6 @@ def test_download_inputs_empty_inputs(monkeypatch, mock_buckets):
     assert len(result) == 0
 
 
-# ok
 # todo: recursive glob
 def test_outputerator(monkeypatch, tmp_path, caplog):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
@@ -412,8 +288,6 @@ def test_outputerator(monkeypatch, tmp_path, caplog):
     assert caplog.messages[0] == "no file matching 'non_thing*' found in workspace"
 
 
-# todo: upload_that
-# ok
 def test_upload_that(monkeypatch, tmp_path, mock_buckets):
     monkeypatch.setenv("BC_EXECUTION_ID", "ELVISLIVES")
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
@@ -436,15 +310,14 @@ def test_upload_that(monkeypatch, tmp_path, mock_buckets):
         assert line == "target file\n".encode("utf-8")
 
 
-# todo: defunct?
-# def test_upload_that_missing_file(monkeypatch, tmp_path, caplog, mock_buckets):
-#     monkeypatch.setenv("BC_STEP_NAME", "test_step")
-#     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
-#
-#     target_file = tmp_path / "missing"
-#
-#     repo._upload_that(str(target_file.absolute()))
-#     assert f"{target_file} not found; skipping upload" in caplog.text
+def test_upload_that_missing_file(monkeypatch, tmp_path, caplog, mock_buckets):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+
+    target_file = tmp_path / "missing"
+
+    with pytest.raises(FileNotFoundError):
+        repo._upload_that(str(target_file.absolute()))
 
 
 def test_upload_that_fail(monkeypatch, tmp_path, mock_buckets):
@@ -457,13 +330,11 @@ def test_upload_that_fail(monkeypatch, tmp_path, mock_buckets):
     with target_file.open("w") as fp:
         print("target file", file=fp)
 
-    with pytest.raises(RuntimeError, match="upload failed: outputx -> s3://unbucket/repo/path/outputx"):
+    with pytest.raises(boto3.exceptions.S3UploadFailedError):
         repo._upload_that(str(target_file.absolute()))
 
 
-
-# todo: upload_outputs
-def test_upload_outputs(monkeypatch, tmp_path, repo_bucket):
+def test_upload_outputs(monkeypatch, tmp_path, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo_two/path")
 
@@ -493,7 +364,7 @@ def test_upload_outputs(monkeypatch, tmp_path, repo_bucket):
     assert repo_contents == expect
 
 
-def test_upload_outputs_fail(monkeypatch, tmp_path, repo_bucket):
+def test_upload_outputs_fail(monkeypatch, tmp_path, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://unbucket/repo_x/path")
 
@@ -507,11 +378,11 @@ def test_upload_outputs_fail(monkeypatch, tmp_path, repo_bucket):
     }
 
     os.chdir(tmp_path)
-    with pytest.raises(RuntimeError, match=f"upload failed:"):
+    with pytest.raises(boto3.exceptions.S3UploadFailedError):
         repo.upload_outputs(file_spec)
 
 
-def test_upload_outputs_empty_outputs(monkeypatch, repo_bucket):
+def test_upload_outputs_empty_outputs(monkeypatch, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
 
@@ -520,7 +391,6 @@ def test_upload_outputs_empty_outputs(monkeypatch, repo_bucket):
     repo.upload_outputs(file_spec)
 
 
-# ok
 @pytest.mark.parametrize("step_name, expect", [
     ("test_step", True),
     ("non_step", False),
@@ -532,7 +402,6 @@ def test_check_for_previous_run(monkeypatch, mock_buckets, step_name, expect):
     assert result == expect
 
 
-# ok
 def test_clear_run_status(monkeypatch, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
@@ -541,7 +410,6 @@ def test_clear_run_status(monkeypatch, mock_buckets):
     assert repo.check_for_previous_run() is False
 
 
-# ok
 def test_put_run_status(monkeypatch, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step_two")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
