@@ -63,6 +63,21 @@ class Repository(object):
             ret = json.load(fp)
         return ret
 
+    def _s3_file_exists(self, key: str) -> bool:
+        session = boto3.Session()
+        s3 = session.resource("s3")
+        obj = s3.Object(self.bucket, key)
+        try:
+            obj.load()
+            logger.info(f"s3://{self.bucket}/{key} exists")
+            return True
+        except botocore.exceptions.ClientError as ce:
+            if ce.response["ResponseMetadata"]["HTTPStatusCode"] == 404:
+                logger.info(f"s3://{self.bucket}/{key} does not exist")
+                return False
+            else:
+                raise
+
     def files_exist(self, filenames: List[str]) -> bool:
         # this is for backward compatibility. Note that if you have a step that produces
         # no outputs (i.e. being run for side effects only), it will always be skipped
@@ -75,8 +90,10 @@ class Repository(object):
         if any(_is_glob(f) for f in filenames):
             return False
 
-        uris = [self.to_uri(os.path.basename(f)) for f in filenames]
-        ret = all([wr.s3.does_object_exist(u) for u in uris])
+        # uris = [self.to_uri(os.path.basename(f)) for f in filenames]
+        keys = (self.qualify(os.path.basename(f)) for f in filenames)
+        # ret = all([wr.s3.does_object_exist(u) for u in uris])
+        ret = all(self._s3_file_exists(k) for k in keys)
         return ret
 
     def _inputerator(self, input_spec: Dict[str, str]) -> Generator[str, None, None]:
@@ -152,7 +169,8 @@ class Repository(object):
         Returns:
             True if this step has been run before
         """
-        ret = wr.s3.does_object_exist(self.to_uri(self.run_status_obj))
+        # ret = wr.s3.does_object_exist(self.to_uri(self.run_status_obj))
+        ret = self._s3_file_exists(self.qualify(self.run_status_obj))
         return ret
 
     def clear_run_status(self) -> None:
