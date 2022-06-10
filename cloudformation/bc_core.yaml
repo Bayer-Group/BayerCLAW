@@ -216,11 +216,11 @@ Resources:
 #                - "s3:GetObject"
 #                - "s3:ListBucket"
               Resource: !Sub "arn:${AWS::Partition}:s3:::${ResourceBucketName}/*"
-            -
-              Effect: Allow
-              Action:
-                - "batch:DescribeJobQueues"
-              Resource: "*"
+#            -
+#              Effect: Allow
+#              Action:
+#                - "batch:DescribeJobQueues"
+#              Resource: "*"
             -
               Effect: Allow
               Action:

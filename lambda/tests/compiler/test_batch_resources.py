@@ -1,14 +1,12 @@
 import json
 import textwrap
 
-import boto3
-import moto
 import pytest
 import yaml
 
-from ...src.compiler.pkg.batch_resources import parse_uri, get_ecr_uri, get_custom_job_queue_arn, get_job_queue,\
-    get_memory_in_mibs, get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout,\
-    batch_step, job_definition_rc, handle_batch, SCRATCH_PATH
+from ...src.compiler.pkg.batch_resources import parse_uri, get_ecr_uri, get_job_queue,\
+    get_memory_in_mibs, get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, \
+    get_timeout, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH
 from ...src.compiler.pkg.misc_resources import LAUNCHER_STACK_NAME
 from ...src.compiler.pkg.util import CoreStack, Step, Resource, State
 
@@ -39,46 +37,48 @@ def test_get_memory_in_mibs(req, mibs):
     assert result == mibs
 
 
-@pytest.fixture(scope="module")
-def mock_custom_job_queue(aws_credentials):
-    with moto.mock_iam():
-        iam = boto3.resource("iam")
-        role = iam.create_role(RoleName="test-role", AssumeRolePolicyDocument="{}")
+# @pytest.fixture(scope="module")
+# def mock_custom_job_queue(aws_credentials):
+#     with moto.mock_iam():
+#         iam = boto3.resource("iam")
+#         role = iam.create_role(RoleName="test-role", AssumeRolePolicyDocument="{}")
+#
+#         with moto.mock_batch():
+#             batch = boto3.client("batch")
+#             comp_env = batch.create_compute_environment(
+#                 computeEnvironmentName="test-env",
+#                 type="UNMANAGED",
+#                 serviceRole=role.arn
+#             )
+#
+#             queue = batch.create_job_queue(
+#                 jobQueueName="custom-queue",
+#                 state="ENABLED",
+#                 priority=99,
+#                 computeEnvironmentOrder=[
+#                     {
+#                         "computeEnvironment": comp_env["computeEnvironmentArn"],
+#                         "order": 1
+#                     }
+#                 ]
+#             )
+#
+#             yield queue
 
-        with moto.mock_batch():
-            batch = boto3.client("batch")
-            comp_env = batch.create_compute_environment(
-                computeEnvironmentName="test-env",
-                type="UNMANAGED",
-                serviceRole=role.arn
-            )
 
-            queue = batch.create_job_queue(
-                jobQueueName="custom-queue",
-                state="ENABLED",
-                priority=99,
-                computeEnvironmentOrder=[
-                    {
-                        "computeEnvironment": comp_env["computeEnvironmentArn"],
-                        "order": 1
-                    }
-                ]
-            )
-
-            yield queue
-
-
-def test_get_custom_job_queue_arn(mock_custom_job_queue):
-    result = get_custom_job_queue_arn("custom-queue")
-    assert result == mock_custom_job_queue["jobQueueArn"]
+# def test_get_custom_job_queue_arn(mock_custom_job_queue):
+#     result = get_custom_job_queue_arn("custom-queue")
+#     expect = "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue"
+#     assert result == mock_custom_job_queue["jobQueueArn"]
+    # assert result == expect
 
 
 @pytest.mark.parametrize("spec, expected", [
     ({"spot": True}, "spot_queue_arn"),
     ({"spot": False}, "on_demand_queue_arn"),
-    ({"queue_name": "custom-queue"}, "arn:aws:batch:us-east-1:123456789012:job-queue/custom-queue")
+    ({"queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue")
 ])
-def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack, mock_custom_job_queue):
+def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
     result = get_job_queue(core_stack, spec)

@@ -96,7 +96,7 @@ The fields of the step specification objects are:
   when set to `true`, this causes a step to be skipped if its output files already exist in the job's repository. This is
   not as reliable as `skip_on_rerun`, so it is deprecated for most purposes. However, there is still a legitimate use
   case for `skip_if_output_exists` in [subpipes](subpipes.md#running-a-subpipe-independently).
-* `coampute`: An object specifying the compute environment that will be used. Optional.
+* `compute`: An object specifying the compute environment that will be used. Optional.
   * `cpus`:  Specify the number of vCPUs to reserve. Optional. Defaults to 1.
   * `memory`: Specify the amount of memory to reserve. This may be provided as a number (in which case
    it specifies the number of megabytes to reserve), or as a string containing units such as Gb or Mb.

@@ -36,17 +36,19 @@ def get_ecr_uri(registry: Union[str, None], image_version: str) -> Union[str, di
     return ret
 
 
-@lru_cache(maxsize=None)
-def get_custom_job_queue_arn(queue_name: str) -> str:
-    batch = boto3.client("batch")
-    desc = batch.describe_job_queues(jobQueues=[queue_name])
-    ret = desc["jobQueues"][0]["jobQueueArn"]
-    return ret
+# @lru_cache(maxsize=None)
+# def get_custom_job_queue_arn(queue_name: str) -> str:
+    # batch = boto3.client("batch")
+    # desc = batch.describe_job_queues(jobQueues=[queue_name])
+    # ret = desc["jobQueues"][0]["jobQueueArn"]
+    # ret = f"arn:aws:batch:${{AWSRegion}}:${{AWSAccountId}}:job-queue/{queue_name}"
+    # return ret
 
 
 def get_job_queue(core_stack: CoreStack, compute_spec: dict) -> str:
-    if compute_spec.get("queue_name") is not None:
-        ret = get_custom_job_queue_arn(compute_spec["queue_name"])
+    if (queue_name := compute_spec.get("queue_name")) is not None:
+        # ret = get_custom_job_queue_arn(compute_spec["queue_name"])
+        ret = f"arn:aws:batch:${{AWSRegion}}:${{AWSAccountId}}:job-queue/{queue_name}"
     elif compute_spec["spot"]:
         ret = core_stack.output("SpotQueueArn")
     else:

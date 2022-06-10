@@ -11,7 +11,7 @@ import moto
 import pytest
 
 from ..src import runner
-from ..src.runner.runner_main import split_inputs, main, cli
+from ..src.runner.runner_main import main, cli
 
 
 TEST_BUCKET = "test-bucket"
@@ -59,20 +59,20 @@ opt_inputs = {
 }
 
 
-@pytest.mark.parametrize("all_inputs, expected_req, expected_opt", [
-    ({**req_inputs, **opt_inputs}, req_inputs, opt_inputs),
-    (req_inputs, req_inputs, {}),
-    (opt_inputs, {}, opt_inputs),
-    ({}, {}, {}),
-])
-def test_split_inputs(all_inputs, expected_req, expected_opt):
-    req_result, opt_result = split_inputs(all_inputs)
-    assert req_result == expected_req
-    assert len(opt_result) == len(expected_opt)
-    for k, v in opt_result.items():
-        orig_key = k + "?"
-        assert orig_key in expected_opt
-        assert v == expected_opt[orig_key]
+# @pytest.mark.parametrize("all_inputs, expected_req, expected_opt", [
+#     ({**req_inputs, **opt_inputs}, req_inputs, opt_inputs),
+#     (req_inputs, req_inputs, {}),
+#     (opt_inputs, {}, opt_inputs),
+#     ({}, {}, {}),
+# ])
+# def test_split_inputs(all_inputs, expected_req, expected_opt):
+#     req_result, opt_result = split_inputs(all_inputs)
+#     assert req_result == expected_req
+#     assert len(opt_result) == len(expected_opt)
+#     for k, v in opt_result.items():
+#         orig_key = k + "?"
+#         assert orig_key in expected_opt
+#         assert v == expected_opt[orig_key]
 
 
 def test_main(monkeypatch, tmp_path, mock_bucket):
@@ -84,21 +84,21 @@ def test_main(monkeypatch, tmp_path, mock_bucket):
         "ref1": f"s3://{TEST_BUCKET}/references/reference_file",
     }
 
-    params = {
-        "param1": "3"
-    }
+    # params = {
+    #     "param1": "3"
+    # }
 
     inputs = {
         "input1": "file${job.key1}",
         "input2": "file${job.key2}",
-        "input3?": "file${param1}",
+        "input3?": "file3",
         "input4?": "file99"
     }
 
     outputs = {
         "output1": "outfile${job.key1}",
         "output2": "outfile${job.key2}",
-        "output3": "outfile${param1}"
+        "output3": "outfile3"
     }
 
     commands = [
@@ -108,7 +108,7 @@ def test_main(monkeypatch, tmp_path, mock_bucket):
         "echo ${job.key2} >> ${output3}",
         "echo ${parent.value} >> ${output3}",
         "echo ${scatter.value} >> ${output3}",
-        "echo ${param1} >> ${output3}"
+        "echo '3' >> ${output3}"
         "echo ${input4} >> ${output3}"
     ]
 
@@ -119,7 +119,6 @@ def test_main(monkeypatch, tmp_path, mock_bucket):
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
-                    params=params,
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     skip="true")
     assert response == 0
@@ -209,7 +208,6 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
-                    params={},
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     skip="true")
 
@@ -241,7 +239,6 @@ def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket):
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
-                    params={},
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     skip="true")
     assert response != 0
@@ -259,7 +256,7 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "step4")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
     monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
-    monkeypatch.setattr("bclaw_runner.src.runner.repo._upload_that", failing_uploader)
+    monkeypatch.setattr("bclaw_runner.src.runner.repo.Repository._upload_that", failing_uploader)
 
     references = {}
     inputs = {}
@@ -271,7 +268,6 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
-                    params={},
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     skip="true")
     assert response != 0
@@ -299,7 +295,6 @@ def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect):
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
-                    params={},
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     skip=skip)
     assert response == expect
@@ -317,10 +312,8 @@ def fake_termination_checker_impl(*_):
 
 @moto.mock_logs
 @pytest.mark.parametrize("argv, expect", [
-    ("prog --cmd 2 --in 3 --out 4 --param 5 --ref 6 --repo 7 --skip 8 --image 9",
-     [2, "9", 3, 4, 5, 6, "7", "8"]),
     ("prog --cmd 2 --in 3 --out 4 --ref 6 --repo 7 --skip 8 --image 9",
-     [2, "9", 3, 4, {}, 6, "7", "8"])
+     [2, "9", 3, 4, 6, "7", "8"])
 ])
 def test_cli(capsys, requests_mock, monkeypatch, argv, expect):
     requests_mock.get("http://169.254.169.254/latest/meta-data/instance-life-cycle", text="spot")
