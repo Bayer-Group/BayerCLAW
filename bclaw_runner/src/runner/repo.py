@@ -8,7 +8,6 @@ import os
 import re
 from typing import Dict, Generator, Iterable, List
 
-import awswrangler as wr
 import boto3
 import botocore.exceptions
 from more_itertools import peekable
@@ -174,7 +173,13 @@ class Repository(object):
         return ret
 
     def clear_run_status(self) -> None:
-        wr.s3.delete_objects(self.to_uri(self.run_status_obj))
+        s3 = boto3.resource("s3")
+        status_obj = s3.Object(self.bucket, self.qualify(self.run_status_obj))
+        status_obj.delete()
+        # response = s3.delete_object(Bucket=self.bucket, Key=self.run_status_obj)
+        # if not 200 <= response["ResponseMetadata"]["HTTPStatusCode"] <= 299:
+        #     raise RuntimeError("unable to clear previous run status")
+        # wr.s3.delete_objects(self.to_uri(self.run_status_obj))
 
     def put_run_status(self) -> None:
         # because aws wrangler doesn't do empty files
