@@ -62,6 +62,7 @@ class Repository(object):
             ret = json.load(fp)
         return ret
 
+    # todo: need test
     def _s3_file_exists(self, key: str) -> bool:
         session = boto3.Session()
         s3 = session.resource("s3")
@@ -89,9 +90,7 @@ class Repository(object):
         if any(_is_glob(f) for f in filenames):
             return False
 
-        # uris = [self.to_uri(os.path.basename(f)) for f in filenames]
         keys = (self.qualify(os.path.basename(f)) for f in filenames)
-        # ret = all([wr.s3.does_object_exist(u) for u in uris])
         ret = all(self._s3_file_exists(k) for k in keys)
         return ret
 
@@ -168,7 +167,6 @@ class Repository(object):
         Returns:
             True if this step has been run before
         """
-        # ret = wr.s3.does_object_exist(self.to_uri(self.run_status_obj))
         ret = self._s3_file_exists(self.qualify(self.run_status_obj))
         return ret
 
@@ -176,13 +174,8 @@ class Repository(object):
         s3 = boto3.resource("s3")
         status_obj = s3.Object(self.bucket, self.qualify(self.run_status_obj))
         status_obj.delete()
-        # response = s3.delete_object(Bucket=self.bucket, Key=self.run_status_obj)
-        # if not 200 <= response["ResponseMetadata"]["HTTPStatusCode"] <= 299:
-        #     raise RuntimeError("unable to clear previous run status")
-        # wr.s3.delete_objects(self.to_uri(self.run_status_obj))
 
     def put_run_status(self) -> None:
-        # because aws wrangler doesn't do empty files
         s3 = boto3.resource("s3")
         status_obj = s3.Object(self.bucket, self.qualify(self.run_status_obj))
         status_obj.put(Body=b"", Metadata=_file_metadata())
