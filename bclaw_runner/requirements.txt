@@ -1,3 +1,4 @@
+awswrangler
 backoff
 boto3
 docker
