@@ -62,7 +62,6 @@ class Repository(object):
             ret = json.load(fp)
         return ret
 
-    # todo: need test
     def _s3_file_exists(self, key: str) -> bool:
         session = boto3.Session()
         s3 = session.resource("s3")

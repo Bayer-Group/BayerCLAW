@@ -100,6 +100,15 @@ def test_read_job_data(monkeypatch, mock_buckets):
     job_data = repo.read_job_data()
     assert job_data == JOB_DATA
 
+@pytest.mark.parametrize("key, expect", [
+    ("repo/path/file1", True),
+    ("repo/path/file99", False),
+])
+def test_s3_file_exists(monkeypatch, key, expect, mock_buckets):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+    result = repo._s3_file_exists(key)
+    assert result == expect
 
 @pytest.mark.parametrize("files, expect", [
     (["file1", "file2", "subdir/file3"], True),
