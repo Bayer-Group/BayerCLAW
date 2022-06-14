@@ -37,42 +37,6 @@ def test_get_memory_in_mibs(req, mibs):
     assert result == mibs
 
 
-# @pytest.fixture(scope="module")
-# def mock_custom_job_queue(aws_credentials):
-#     with moto.mock_iam():
-#         iam = boto3.resource("iam")
-#         role = iam.create_role(RoleName="test-role", AssumeRolePolicyDocument="{}")
-#
-#         with moto.mock_batch():
-#             batch = boto3.client("batch")
-#             comp_env = batch.create_compute_environment(
-#                 computeEnvironmentName="test-env",
-#                 type="UNMANAGED",
-#                 serviceRole=role.arn
-#             )
-#
-#             queue = batch.create_job_queue(
-#                 jobQueueName="custom-queue",
-#                 state="ENABLED",
-#                 priority=99,
-#                 computeEnvironmentOrder=[
-#                     {
-#                         "computeEnvironment": comp_env["computeEnvironmentArn"],
-#                         "order": 1
-#                     }
-#                 ]
-#             )
-#
-#             yield queue
-
-
-# def test_get_custom_job_queue_arn(mock_custom_job_queue):
-#     result = get_custom_job_queue_arn("custom-queue")
-#     expect = "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue"
-#     assert result == mock_custom_job_queue["jobQueueArn"]
-    # assert result == expect
-
-
 @pytest.mark.parametrize("spec, expected", [
     ({"spot": True}, "spot_queue_arn"),
     ({"spot": False}, "on_demand_queue_arn"),
@@ -208,6 +172,7 @@ def sample_batch_step():
             spot: true
             type: memory
             gpu: 2
+            shell: bash
           filesystems:
             -
               efs_id: fs-12345
@@ -269,6 +234,7 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                 "references": "fff",
                 "command": json.dumps(step.spec["commands"]),
                 "outputs": "ooo",
+                "shell": "bash",
                 "skip": "sss",
             },
             "ContainerProperties": {
@@ -280,6 +246,7 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                     "--ref", "Ref::references",
                     "--cmd", "Ref::command",
                     "--out", "Ref::outputs",
+                    "--shell", "Ref::shell",
                     "--skip", "Ref::skip",
                 ],
                 "Image": "runner_image_uri",
@@ -288,7 +255,6 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                     {"Name": "BC_SCRATCH_PATH",    "Value": SCRATCH_PATH},
                     {"Name": "BC_STEP_NAME",       "Value": step_name},
                     {"Name": "AWS_DEFAULT_REGION", "Value": {"Ref": "AWS::Region"}},
-                    # {"Name": "BC_EFS_PATH",        "Value": "/mnt/efs"},
                 ],
                 "ResourceRequirements": [
                     {"Type": "VCPU",   "Value": "4"},
@@ -321,7 +287,7 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
     }
 
     def helper():
-        job_def_name1 = yield from job_definition_rc(core_stack, step, task_role)
+        job_def_name1 = yield from job_definition_rc(core_stack, step, task_role, "bash")
         assert job_def_name1 == expected_job_def_name
 
     for job_def_rc in helper():
@@ -420,7 +386,7 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step,
     {},
     {"task_role": "arn:from:step:spec"}
 ])
-def test_handle_batch(wf_params, step_task_role_request, monkeypatch, sample_batch_step):
+def test_handle_batch(wf_params, mock_core_stack, step_task_role_request, monkeypatch, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
@@ -458,7 +424,7 @@ def test_handle_batch(wf_params, step_task_role_request, monkeypatch, sample_bat
         assert " --outdir outt " in resource.spec["Properties"]["Parameters"]["command"]
 
 
-def test_handle_batch_with_qc(monkeypatch, sample_batch_step):
+def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
@@ -496,7 +462,7 @@ def test_handle_batch_with_qc(monkeypatch, sample_batch_step):
     assert resource_dict["StepNameJobDef"]["Type"] == "AWS::Batch::JobDefinition"
 
 
-def test_handle_batch_auto_inputs(monkeypatch, sample_batch_step):
+def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
@@ -508,3 +474,21 @@ def test_handle_batch_auto_inputs(monkeypatch, sample_batch_step):
         assert states[0].spec["Parameters"]["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())
+
+
+@pytest.mark.parametrize("step_shell, expect", [
+    (None, "sh"),
+    ("bash", "bash"),
+])
+def test_handle_batch_shell_opt(monkeypatch, mock_core_stack, sample_batch_step, step_shell, expect):
+    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
+    core_stack = CoreStack()
+
+    step = Step("step_name", sample_batch_step, "next_step")
+    step.spec["compute"]["shell"] = step_shell
+
+    def helper():
+        _ = yield from handle_batch(core_stack, step, {"shell": "sh"})
+
+    rc = dict(helper())
+    assert rc["StepNameJobDef"]["Properties"]["Parameters"]["shell"] == expect

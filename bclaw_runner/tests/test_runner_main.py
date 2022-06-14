@@ -59,22 +59,6 @@ opt_inputs = {
 }
 
 
-# @pytest.mark.parametrize("all_inputs, expected_req, expected_opt", [
-#     ({**req_inputs, **opt_inputs}, req_inputs, opt_inputs),
-#     (req_inputs, req_inputs, {}),
-#     (opt_inputs, {}, opt_inputs),
-#     ({}, {}, {}),
-# ])
-# def test_split_inputs(all_inputs, expected_req, expected_opt):
-#     req_result, opt_result = split_inputs(all_inputs)
-#     assert req_result == expected_req
-#     assert len(opt_result) == len(expected_opt)
-#     for k, v in opt_result.items():
-#         orig_key = k + "?"
-#         assert orig_key in expected_opt
-#         assert v == expected_opt[orig_key]
-
-
 def test_main(monkeypatch, tmp_path, mock_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "step1")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
@@ -83,10 +67,6 @@ def test_main(monkeypatch, tmp_path, mock_bucket):
     references = {
         "ref1": f"s3://{TEST_BUCKET}/references/reference_file",
     }
-
-    # params = {
-    #     "param1": "3"
-    # }
 
     inputs = {
         "input1": "file${job.key1}",
@@ -120,6 +100,7 @@ def test_main(monkeypatch, tmp_path, mock_bucket):
                     inputs=inputs,
                     outputs=outputs,
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
+                    shell="sh",
                     skip="true")
     assert response == 0
 
@@ -209,6 +190,7 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
                     inputs=inputs,
                     outputs=outputs,
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
+                    shell="sh",
                     skip="true")
 
     assert response == 255
@@ -240,6 +222,7 @@ def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket):
                     inputs=inputs,
                     outputs=outputs,
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
+                    shell="sh",
                     skip="true")
     assert response != 0
 
@@ -269,6 +252,7 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
                     inputs=inputs,
                     outputs=outputs,
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
+                    shell="sh",
                     skip="true")
     assert response != 0
     curr_bucket_contents = {o.key for o in mock_bucket.objects.all()}
@@ -296,6 +280,7 @@ def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect):
                     inputs=inputs,
                     outputs=outputs,
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
+                    shell="sh",
                     skip=skip)
     assert response == expect
 
@@ -312,8 +297,8 @@ def fake_termination_checker_impl(*_):
 
 @moto.mock_logs
 @pytest.mark.parametrize("argv, expect", [
-    ("prog --cmd 2 --in 3 --out 4 --ref 6 --repo 7 --skip 8 --image 9",
-     [2, "9", 3, 4, 6, "7", "8"])
+    ("prog --cmd 2 --in 3 --out 4 --shell 5 --ref 6 --repo 7 --skip 8 --image 9",
+     [2, "9", 3, 4, 6, "7", "5", "8"])
 ])
 def test_cli(capsys, requests_mock, monkeypatch, argv, expect):
     requests_mock.get("http://169.254.169.254/latest/meta-data/instance-life-cycle", text="spot")

@@ -76,7 +76,9 @@ batch_step_schema = Schema(All(
             ),
             Optional("memory", default="1 Gb"): Any(float, int, str, msg="memory must be a number or string"),
             Optional("spot", default=True): bool,
-            Optional("queue_name", default=None): Maybe(str)
+            Optional("queue_name", default=None): Maybe(str),
+            Optional("shell", default=None): Any(None, "bash", "sh", "sh-pipefail",
+                                                 msg="shell option must be bash, sh, or sh-pipefail"),
         },
         Optional("filesystems", default=[]): [
             {
@@ -193,6 +195,8 @@ workflow_schema = Schema(
             Optional("workflow_name", default=""): str,
             Optional("job_name", default=""): str,
             Required("repository", msg="repository is required"): str,
+            Optional("shell", default="sh"): Any("bash", "sh", "sh-pipefail",
+                                                 msg="shell option must be bash, sh, or sh-pipefail"),
             Optional("task_role", default=None): Maybe(str),
         },
         Required("steps", "steps list not found"): All(Length(min=1, msg="at least one step is required"),

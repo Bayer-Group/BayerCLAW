@@ -36,18 +36,8 @@ def get_ecr_uri(registry: Union[str, None], image_version: str) -> Union[str, di
     return ret
 
 
-# @lru_cache(maxsize=None)
-# def get_custom_job_queue_arn(queue_name: str) -> str:
-    # batch = boto3.client("batch")
-    # desc = batch.describe_job_queues(jobQueues=[queue_name])
-    # ret = desc["jobQueues"][0]["jobQueueArn"]
-    # ret = f"arn:aws:batch:${{AWSRegion}}:${{AWSAccountId}}:job-queue/{queue_name}"
-    # return ret
-
-
 def get_job_queue(core_stack: CoreStack, compute_spec: dict) -> str:
     if (queue_name := compute_spec.get("queue_name")) is not None:
-        # ret = get_custom_job_queue_arn(compute_spec["queue_name"])
         ret = f"arn:aws:batch:${{AWSRegion}}:${{AWSAccountId}}:job-queue/{queue_name}"
     elif compute_spec["spot"]:
         ret = core_stack.output("SpotQueueArn")
@@ -188,7 +178,8 @@ def get_timeout(step: Step) -> dict:
 
 def job_definition_rc(core_stack: CoreStack,
                       step: Step,
-                      task_role: Union[str, dict]) -> Generator[Resource, None, str]:
+                      task_role: Union[str, dict],
+                      shell_opt: str) -> Generator[Resource, None, str]:
     job_def_name = make_logical_name(f"{step.name}.job.def")
 
     registry, image_version, image, version = parse_uri(step.spec["image"])
@@ -207,6 +198,7 @@ def job_definition_rc(core_stack: CoreStack,
                 "references": "fff",
                 "command": json.dumps(step.spec["commands"]),
                 "outputs": "ooo",
+                "shell": shell_opt,
                 "skip": "sss",
             },
             "ContainerProperties": {
@@ -218,6 +210,7 @@ def job_definition_rc(core_stack: CoreStack,
                     "--ref", "Ref::references",
                     "--cmd", "Ref::command",
                     "--out", "Ref::outputs",
+                    "--shell", "Ref::shell",
                     "--skip", "Ref::skip",
                 ],
                 "Image": core_stack.output("RunnerImageURI"),
@@ -271,7 +264,6 @@ def batch_step(core_stack: CoreStack,
             "JobQueue": get_job_queue(core_stack, step.spec["compute"]),
             "Parameters": {
                 "repo.$": "$.repo",
-                # "parameters": json.dumps(spec["params"]),
                 **step.input_field,
                 "references": json.dumps(step.spec["references"]),
                 "outputs": json.dumps(step.spec["outputs"]),
@@ -328,11 +320,12 @@ def handle_batch(core_stack: CoreStack,
     logger.info(f"making batch step {step.name}")
 
     task_role = step.spec.get("task_role") or wf_params.get("task_role") or core_stack.output("ECSTaskRoleArn")
+    shell_opt = step.spec["compute"]["shell"] or wf_params.get("shell")
 
     subbed_spec = do_param_substitution(step.spec)
     subbed_step = Step(step.name, subbed_spec, step.next)
 
-    job_def_name = yield from job_definition_rc(core_stack, subbed_step, task_role)
+    job_def_name = yield from job_definition_rc(core_stack, subbed_step, task_role, shell_opt)
 
     if subbed_spec["qc_check"] is not None:
         qc_state = handle_qc_check(core_stack, subbed_step)
