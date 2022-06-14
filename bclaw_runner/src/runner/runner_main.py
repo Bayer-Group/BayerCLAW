@@ -11,6 +11,7 @@ Options:
     --out JSON_STRING    output files
     --ref JSON_STRING    reference files
     --repo S3_PATH       repository path
+    --shell SHELL        unix shell to run commands in (bash | sh | sh-pipefail)
     --skip STRING        step skip condition: output, rerun, none [default: none]
     --help -h            show help
     --version            show version
@@ -41,6 +42,7 @@ def main(commands: List[str],
          outputs: Dict[str, str],
          references: Dict[str, str],
          repo_path: str,
+         shell: str,
          skip: str) -> int:
 
     repo = Repository(repo_path)
@@ -80,7 +82,7 @@ def main(commands: List[str],
             local_job_data = write_job_data_file(job_data_obj, wrk)
 
             # run commands
-            status = run_commands(image, subbed_commands, wrk, local_job_data)
+            status = run_commands(image, subbed_commands, wrk, local_job_data, shell)
             if status == 0:
                 logger.info("command block succeeded")
             else:
@@ -117,7 +119,8 @@ def cli() -> int:
         outputs  = json.loads(args["--out"])
         refs     = json.loads(args["--ref"])
         repo     = args["--repo"]
+        shell    = args["--shell"]
         skip     = args["--skip"]
 
-        ret = main(commands, image, inputs, outputs, refs, repo, skip)
+        ret = main(commands, image, inputs, outputs, refs, repo, shell, skip)
         return ret
