@@ -11,7 +11,7 @@ Options:
     --out JSON_STRING    output files
     --ref JSON_STRING    reference files
     --repo S3_PATH       repository path
-    --shell SHELL        unix shell to run commands in (bash | sh | sh-pipefail)
+    --shell SHELL        unix shell to run commands in (bash | sh | sh-pipefail) [default: sh]
     --skip STRING        step skip condition: output, rerun, none [default: none]
     --help -h            show help
     --version            show version
