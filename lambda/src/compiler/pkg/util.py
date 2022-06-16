@@ -122,3 +122,21 @@ def time_string_to_seconds(time: str) -> int:
     td = timedelta(**{unit: count})
     ret = td.seconds + 60 * 60 * 24 * td.days
     return ret
+
+
+def lambda_retry() -> dict:
+    ret = {
+        "Retry": [
+            {
+                "ErrorEquals": [
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException",
+                ],
+                "MaxAttempts": 5,
+                "IntervalSeconds": 2,
+                "BackoffRate": 2,
+            },
+        ]
+    }
+    return ret

@@ -25,7 +25,7 @@ from docopt import docopt
 
 from .cache import get_reference_inputs
 from .custom_logs import LOGGING_CONFIG
-from .string_subs import substitute
+from .string_subs import substitute, substitute_image_tag
 from .repo import Repository
 from .termination import spot_termination_checker
 from .version import VERSION
@@ -65,6 +65,8 @@ def main(commands: List[str],
     jobby_outputs    = substitute(outputs,    job_data_obj)
     jobby_references = substitute(references, job_data_obj)
 
+    jobby_image = substitute_image_tag(image, job_data_obj)
+
     with workspace() as wrk:
         try:
             # download references, link to workspace
@@ -82,7 +84,7 @@ def main(commands: List[str],
             local_job_data = write_job_data_file(job_data_obj, wrk)
 
             # run commands
-            status = run_commands(image, subbed_commands, wrk, local_job_data, shell)
+            status = run_commands(jobby_image, subbed_commands, wrk, local_job_data, shell)
             if status == 0:
                 logger.info("command block succeeded")
             else:
