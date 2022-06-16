@@ -195,6 +195,9 @@ workflow_schema = Schema(
             Optional("workflow_name", default=""): str,
             Optional("job_name", default=""): str,
             Required("repository", msg="repository is required"): str,
+            Optional("task_role", default=None): Maybe(str),
+        },
+        Optional("options", default={}): {
             Optional("shell", default="sh"): Any("bash", "sh", "sh-pipefail",
                                                  msg="shell option must be bash, sh, or sh-pipefail"),
             Optional("task_role", default=None): Maybe(str),
