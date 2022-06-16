@@ -1,5 +1,12 @@
 # Changelog for BayerCLAW
 
+- refactored repo
+- custom queue lookup
+- shell option (in progress)
+- recursive output file globbing (in progress)
+- sub job data into image version tag (in progress)
+- add retry to lambda steps (in progress)
+
 ## [v1.1.2] 2022-04-20 Bug fixes and security updates
 
 ### Fixed

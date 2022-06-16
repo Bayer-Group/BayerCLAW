@@ -1,11 +1,9 @@
-from functools import lru_cache
 import json
 import logging
 import math
 import re
 from typing import Generator, List, Tuple, Union
 
-import boto3
 import humanfriendly
 
 from .qc_resources import handle_qc_check
@@ -178,7 +176,7 @@ def get_timeout(step: Step) -> dict:
 
 def job_definition_rc(core_stack: CoreStack,
                       step: Step,
-                      task_role: Union[str, dict],
+                      task_role: str,
                       shell_opt: str) -> Generator[Resource, None, str]:
     job_def_name = make_logical_name(f"{step.name}.job.def")
 

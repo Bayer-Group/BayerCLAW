@@ -52,20 +52,19 @@ def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack):
 def test_get_environment():
     step = Step("test_step", {}, "next_step")
     result = get_environment(step)
-
-    assert "Environment" in result
-    varz = result["Environment"]
-    assert isinstance(varz, list)
-
-    assert len(varz) == 4
-    assert varz[0] == {"Name": "BC_WORKFLOW_NAME",
-                       "Value": {"Ref": "AWS::StackName"}}
-    assert varz[1] == {"Name": "BC_SCRATCH_PATH",
-                       "Value": SCRATCH_PATH}
-    assert varz[2] == {"Name": "BC_STEP_NAME",
-                       "Value": "test_step"}
-    assert varz[3] == {"Name": "AWS_DEFAULT_REGION",
-                       "Value": {"Ref": "AWS::Region"}}
+    expect = {
+        "Environment": [
+            {"Name": "BC_WORKFLOW_NAME",
+             "Value": {"Ref": "AWS::StackName"}},
+            {"Name": "BC_SCRATCH_PATH",
+             "Value": SCRATCH_PATH},
+            {"Name": "BC_STEP_NAME",
+             "Value": "test_step"},
+            {"Name": "AWS_DEFAULT_REGION",
+             "Value": {"Ref": "AWS::Region"}},
+        ]
+    }
+    assert result == expect
 
 
 @pytest.mark.parametrize("gpu", [0, 5, "all"])
@@ -161,8 +160,9 @@ def test_get_timeout(timeout, expect):
         assert result["Properties"]["Timeout"]["AttemptDurationSeconds"] == expect
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def sample_batch_step():
+    # todo: remove params block
     ret = yaml.safe_load(textwrap.dedent("""
           commands: 
             - ${FASTP0200}/fastp --in1 ${reads1} --in2 ${reads2} --out1 ${paired1} --outdir ${outdir} --out2 ${paired2} --unpaired1 ${unpaired1} --unpaired2 ${unpaired2} --adapter_fasta ${adapter_file} --length_required 25 --json ${trim_log}
