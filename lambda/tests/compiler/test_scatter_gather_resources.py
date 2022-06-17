@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.scatter_gather_resources import scatter_step, map_step, gather_step, handle_scatter_gather
-from ...src.compiler.pkg.util import CoreStack, Step
+from ...src.compiler.pkg.util import CoreStack, Step, lambda_retry
 
 
 def test_scatter_step(monkeypatch, mock_core_stack):
@@ -46,6 +46,7 @@ def test_scatter_step(monkeypatch, mock_core_stack):
                 "workflow_name": "${WorkflowName}",
             },
         },
+        **lambda_retry(),
         "ResultPath": "$.items",
         "Next": "map_step_name",
     }
@@ -110,6 +111,7 @@ def test_gather_step(next_step_name, next_or_end, monkeypatch, mock_core_stack):
                 "workflow_name": "${WorkflowName}",
             },
         },
+        **lambda_retry(),
         "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
         **next_or_end,

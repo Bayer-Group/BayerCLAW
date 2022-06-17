@@ -3,7 +3,7 @@ import logging
 from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import CoreStack, Step, Resource, State, do_param_substitution, lambda_logging_block
+from .util import CoreStack, Step, Resource, State, do_param_substitution, lambda_logging_block, lambda_retry
 
 
 def scatter_step(core_stack: CoreStack, step: Step, map_step_name: str) -> dict:
@@ -16,6 +16,7 @@ def scatter_step(core_stack: CoreStack, step: Step, map_step_name: str) -> dict:
             **step.input_field,
             **lambda_logging_block(step.name),
         },
+        **lambda_retry(),
         "ResultPath": "$.items",
         "Next": map_step_name
     }
@@ -52,6 +53,7 @@ def gather_step(core_stack: CoreStack, step: Step) -> dict:
             "results.$": "$.results",
             **lambda_logging_block(step.name),
         },
+        **lambda_retry(),
         "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
         **step.next_or_end,

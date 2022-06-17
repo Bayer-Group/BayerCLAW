@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.subpipe_resources import file_submit_step, run_subpipe_step, file_retrieve_step, handle_subpipe
-from ...src.compiler.pkg.util import CoreStack, Step
+from ...src.compiler.pkg.util import CoreStack, Step, lambda_retry
 
 
 @pytest.fixture(scope="module")
@@ -46,6 +46,7 @@ def test_file_submit_step(sample_subpipe_spec, monkeypatch, mock_core_stack):
                 "workflow_name": "${WorkflowName}",
             },
         },
+        **lambda_retry(),
         "ResultPath": "$.subpipe",
         "OutputPath": "$",
         "Next": "run_subpipe_step_name",
@@ -107,6 +108,7 @@ def test_file_retrieve_step(next_step_name, next_or_end, sample_subpipe_spec, mo
                 "workflow_name": "${WorkflowName}",
             },
         },
+        **lambda_retry(),
         "ResultSelector": {},
         "ResultPath": "$.prev_outputs",
         "OutputPath": "$",

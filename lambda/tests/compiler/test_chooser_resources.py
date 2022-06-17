@@ -7,7 +7,7 @@ from voluptuous.error import Invalid
 logging.basicConfig(level=logging.INFO)
 
 from ...src.compiler.pkg.chooser_resources import choice_spec, handle_chooser_step
-from ...src.compiler.pkg.util import CoreStack, Step, State, lambda_logging_block
+from ...src.compiler.pkg.util import CoreStack, Step, State, lambda_logging_block, lambda_retry
 
 
 def test_choice_spec():
@@ -63,6 +63,7 @@ def test_make_chooser_steps(monkeypatch, mock_core_stack):
             ],
             **lambda_logging_block("step_name")
         },
+        **lambda_retry(),
         "ResultPath": "$.choice",
         "OutputPath": "$",
         "Next": "step_name.choose",

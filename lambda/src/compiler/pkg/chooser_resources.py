@@ -4,7 +4,7 @@ from typing import List
 
 from voluptuous.error import Invalid
 
-from .util import CoreStack, Step, State, lambda_logging_block
+from .util import CoreStack, Step, State, lambda_logging_block, lambda_retry
 
 
 def choice_spec(expr_str: str, next_step: str) -> dict:
@@ -39,6 +39,7 @@ def handle_chooser_step(core_stack: CoreStack, step: Step) -> List[State]:
             "expressions": exprs,
             **lambda_logging_block(step.name),
         },
+        **lambda_retry(),
         "ResultPath": "$.choice",
         "OutputPath": "$",
         "Next": choice_step_name,

@@ -2,7 +2,7 @@ import json
 import logging
 from typing import List
 
-from .util import CoreStack, Step, State, lambda_logging_block
+from .util import CoreStack, Step, State, lambda_logging_block, lambda_retry
 
 
 def file_submit_step(core_stack: CoreStack, step: Step, run_subpipe_step_name: str) -> dict:
@@ -14,6 +14,7 @@ def file_submit_step(core_stack: CoreStack, step: Step, run_subpipe_step_name: s
             "submit": json.dumps(step.spec["submit"]),
             **lambda_logging_block(step.name),
         },
+        **lambda_retry(),
         "ResultPath": "$.subpipe",
         "OutputPath": "$",
         "Next": run_subpipe_step_name,
@@ -62,6 +63,7 @@ def file_retrieve_step(core_stack: CoreStack, step: Step) -> dict:
             },
             **lambda_logging_block(step.name)
         },
+        **lambda_retry(),
         "ResultSelector": {},
         "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
