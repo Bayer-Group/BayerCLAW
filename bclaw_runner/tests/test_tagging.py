@@ -22,6 +22,7 @@ def mock_ec2_instance():
     (None, None, "undefined.undefined"),
 ])
 def test_tag_this_instance(monkeypatch, mock_ec2_instance, requests_mock, wf_name, step_name, expect):
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     if wf_name is not None:
         monkeypatch.setenv("BC_WORKFLOW_NAME", wf_name)
     if step_name is not None:
@@ -40,7 +41,8 @@ def test_tag_this_instance(monkeypatch, mock_ec2_instance, requests_mock, wf_nam
     {"exc": requests.exceptions.ConnectTimeout},
     {"text": "not-a-valid-instance-id"}
 ])
-def test_tag_this_instance_never_crashes(requests_mock, problem, caplog):
+def test_tag_this_instance_never_crashes(monkeypatch, requests_mock, problem, caplog):
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     requests_mock.get(INSTANCE_ID_URL, **problem)
     tag_this_instance()
     assert "unable to tag image, continuing" in caplog.text
