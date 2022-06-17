@@ -27,6 +27,7 @@ from .cache import get_reference_inputs
 from .custom_logs import LOGGING_CONFIG
 from .string_subs import substitute, substitute_image_tag
 from .repo import Repository
+from .tagging import tag_this_instance
 from .termination import spot_termination_checker
 from .version import VERSION
 from .workspace import workspace, write_job_data_file, run_commands
@@ -110,6 +111,7 @@ def main(commands: List[str],
 
 
 def cli() -> int:
+    tag_this_instance()
     with spot_termination_checker():
         args = docopt(__doc__, version=VERSION)
 

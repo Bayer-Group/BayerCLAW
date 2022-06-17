@@ -12,24 +12,26 @@ from .util import CoreStack, Step, Resource, State, make_logical_name, do_param_
 
 SCRATCH_PATH = "/_bclaw_scratch"
 
-# "registry/path/image_name:version" -> ("registry/path", "image_name:version", "image_name", "version")
-# "registry/path/image_name"         -> ("registry/path", "image_name", "image_name", None)
-# "image_name:version"               -> (None, "image_name:version", "image_name", "version")
-# "image_name"                       -> (None, "image_name", "image_name", None)
-URI_PARSER = re.compile(r"^(?:(.+)/)?(([^:]+)(?::(.+))?)$")
 
-def parse_uri(uri: str) -> Tuple[str, str, str, str]:
-    registry, image_version, image, version = URI_PARSER.fullmatch(uri).groups()
-    return registry, image_version, image, version
+# "registry/path/image_name:version" -> ("registry/path", "image_name", "version")
+# "registry/path/image_name"         -> ("registry/path", "image_name", None)
+# "image_name:version"               -> (None, "image_name", "version")
+# "image_name"                       -> (None, "image_name", None)
+URI_PARSER = re.compile(r"^(?:(.+)/)?([^:]+)(?::(.+))?$")
 
+def expand_image_uri(uri: str) -> Union[str, dict]:
+    registry, image, version = URI_PARSER.fullmatch(uri).groups()
 
-def get_ecr_uri(registry: Union[str, None], image_version: str) -> Union[str, dict]:
     if registry is None:
+        if version is None:
+            tag = ""
+        else:
+            tag = ":" + re.sub(r"\${", "${!", version)
         ret = {
-            "Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{image_version}",
+            "Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{image}{tag}",
         }
     else:
-        ret = "/".join([registry, image_version])
+        ret = uri
 
     return ret
 
@@ -180,8 +182,6 @@ def job_definition_rc(core_stack: CoreStack,
                       shell_opt: str) -> Generator[Resource, None, str]:
     job_def_name = make_logical_name(f"{step.name}.job.def")
 
-    registry, image_version, image, version = parse_uri(step.spec["image"])
-
     job_def = {
         "Type": "AWS::Batch::JobDefinition",
         "Properties": {
@@ -191,7 +191,7 @@ def job_definition_rc(core_stack: CoreStack,
                     "Ref": "AWS::StackName",
                 },
                 "repo": "rrr",
-                "image": get_ecr_uri(registry, image_version),
+                "image": expand_image_uri(step.spec["image"]),
                 "inputs": "iii",
                 "references": "fff",
                 "command": json.dumps(step.spec["commands"]),

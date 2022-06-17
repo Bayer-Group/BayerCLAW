@@ -4,7 +4,7 @@ import textwrap
 import pytest
 import yaml
 
-from ...src.compiler.pkg.batch_resources import parse_uri, get_ecr_uri, get_job_queue,\
+from ...src.compiler.pkg.batch_resources import URI_PARSER, expand_image_uri, get_job_queue,\
     get_memory_in_mibs, get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, \
     get_timeout, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH
 from ...src.compiler.pkg.misc_resources import LAUNCHER_STACK_NAME
@@ -12,23 +12,28 @@ from ...src.compiler.pkg.util import CoreStack, Step, Resource, State
 
 
 @pytest.mark.parametrize("uri, expected", [
-    ("registry/path/image:version", ("registry/path", "image:version", "image", "version")),
-    ("registry/path/image",         ("registry/path", "image", "image", None)),
-    ("image:version",               (None, "image:version", "image", "version")),
-    ("image",                       (None, "image", "image", None))
+    ("registry/path/image:version", ("registry/path", "image", "version")),
+    ("registry/path/image",         ("registry/path", "image", None)),
+    ("image:version",               (None, "image", "version")),
+    ("image",                       (None, "image", None))
 ])
-def test_parse_uri(uri, expected):
-    response = parse_uri(uri)
-    assert response == expected
+def test_uri_parser(uri, expected):
+    result = URI_PARSER.fullmatch(uri).groups()
+    assert result == expected
 
 
-@pytest.mark.parametrize("reg_v, expected", [
-    ((None, "image:v1"), {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:v1"}),
-    (("registry", "image:v1"), "registry/image:v1")
+@pytest.mark.parametrize("uri, expected", [
+    ("registry/path/image_name:version", "registry/path/image_name:version"),
+    ("registry/path/image_name:${version}", "registry/path/image_name:${version}"),
+    ("registry/path/image_name", "registry/path/image_name"),
+    ("image_name:version", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name:version"}),
+    ("image_name:${version}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name:${!version}"}),
+    ("image_name:${ver}${sion}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name:${!ver}${!sion}"}),
+    ("image_name", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name"}),
 ])
-def test_get_ecr_uri(reg_v, expected):
-    response = get_ecr_uri(*reg_v)
-    assert response == expected
+def test_expand_image_uri(uri, expected):
+    result = expand_image_uri(uri)
+    assert result == expected
 
 
 @pytest.mark.parametrize("req, mibs", [(10, 10), (1, 4), (9.1, 10), ("1G", 1024), ("9.1M", 10), ("1M", 4)])
@@ -40,7 +45,7 @@ def test_get_memory_in_mibs(req, mibs):
 @pytest.mark.parametrize("spec, expected", [
     ({"spot": True}, "spot_queue_arn"),
     ({"spot": False}, "on_demand_queue_arn"),
-    ({"queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue")
+    ({"spot": True, "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue")
 ])
 def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
