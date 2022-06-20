@@ -1,18 +1,8 @@
-import boto3
 import jmespath
-import moto
 import pytest
 import requests
 
 from ..src.runner.tagging import INSTANCE_ID_URL, tag_this_instance
-
-
-@pytest.fixture(scope="module")
-def mock_ec2_instance():
-    with moto.mock_ec2():
-        ec2 = boto3.resource("ec2", region_name="us-east-1")
-        instances = ec2.create_instances(ImageId="ami-12345", MinCount=1, MaxCount=1)
-        yield instances[0]
 
 
 @pytest.mark.parametrize("wf_name, step_name, expect", [

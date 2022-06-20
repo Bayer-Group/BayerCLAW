@@ -299,6 +299,25 @@ def test_outputerator(monkeypatch, tmp_path, caplog):
     assert caplog.messages[0] == "no file matching 'non_thing*' found in workspace"
 
 
+def test_outputerator_recursive_glob(monkeypatch, tmp_path):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+
+    targets = [
+        tmp_path / "dir1" / "dir2" / "dir3" / "file1.txt",
+        tmp_path / "dir4" / "dir5" / "file2.txt"
+    ]
+    for target in targets:
+        target.parent.mkdir(exist_ok=True, parents=True)
+        target.write_text("foo")
+
+    os.chdir(tmp_path)
+    request = ["dir*/**/file*.txt"]
+    result = sorted(list(repo._outputerator(request)))
+    assert result[0] == "dir1/dir2/dir3/file1.txt"
+    assert result[1] == "dir4/dir5/file2.txt"
+
+
 def test_upload_that(monkeypatch, tmp_path, mock_buckets):
     monkeypatch.setenv("BC_EXECUTION_ID", "ELVISLIVES")
     monkeypatch.setenv("BC_STEP_NAME", "test_step")

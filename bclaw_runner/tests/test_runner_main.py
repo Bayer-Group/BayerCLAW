@@ -7,11 +7,13 @@ import textwrap
 import time
 
 import boto3
+import jmespath
 import moto
 import pytest
 
 from ..src import runner
 from ..src.runner.runner_main import main, cli
+from ..src.runner.tagging import INSTANCE_ID_URL
 
 
 TEST_BUCKET = "test-bucket"
@@ -19,6 +21,7 @@ JOB_DATA = {
     "job": {
         "key1": 1,
         "key2": 2,
+        "img_tag": "test"
     },
     "parent": {
         "value": "parent_value"
@@ -44,6 +47,7 @@ def mock_bucket():
 
 
 def fake_container(image_tag: str, command: str, work_dir: str, job_data_file: str):
+    assert image_tag == "fake_image:test"
     response = subprocess.run(command, shell=True)
     return response.returncode
 
@@ -94,7 +98,7 @@ def test_main(monkeypatch, tmp_path, mock_bucket):
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
 
-    response = main(image="fake_image",
+    response = main(image="fake_image:${job.img_tag}",
                     commands=commands,
                     references=references,
                     inputs=inputs,
@@ -184,7 +188,7 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
 
-    response = main(image="fake_image",
+    response = main(image="fake_image:test",
                     commands=commands,
                     references=references,
                     inputs=inputs,
@@ -216,7 +220,7 @@ def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket):
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
 
-    response = main(image="fake_image",
+    response = main(image="fake_image:test",
                     commands=commands,
                     references=references,
                     inputs=inputs,
@@ -246,7 +250,7 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
     outputs = {"output6": "outfile6"}
     commands = ["echo wut > ${output6}"]
 
-    response = main(image="fake_image",
+    response = main(image="fake_image:test",
                     commands=commands,
                     references=references,
                     inputs=inputs,
@@ -274,7 +278,7 @@ def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect):
     outputs = {}
     commands = ["false"]
 
-    response = main(image="fake_image",
+    response = main(image="fake_image:test",
                     commands=commands,
                     references=references,
                     inputs=inputs,
@@ -300,9 +304,10 @@ def fake_termination_checker_impl(*_):
     ("prog --cmd 2 --in 3 --out 4 --shell 5 --ref 6 --repo 7 --skip 8 --image 9",
      [2, "9", 3, 4, 6, "7", "5", "8"])
 ])
-def test_cli(capsys, requests_mock, monkeypatch, argv, expect):
+def test_cli(capsys, requests_mock, mock_ec2_instance, monkeypatch, argv, expect):
     requests_mock.get("http://169.254.169.254/latest/meta-data/instance-life-cycle", text="spot")
     requests_mock.get("http://169.254.169.254/latest/meta-data/spot/instance-action", status_code=404)
+    requests_mock.get(INSTANCE_ID_URL, text=mock_ec2_instance.id)
     monkeypatch.setenv("BC_WORKFLOW_NAME", "testWorkflowName")
     monkeypatch.setenv("BC_STEP_NAME", "test:step:name")
     monkeypatch.setenv("BC_JOB_NAME", "test*job")
@@ -318,3 +323,7 @@ def test_cli(capsys, requests_mock, monkeypatch, argv, expect):
     captured = capsys.readouterr()
     assert "fake main running" in captured.out
     assert "fake termination checker running" in captured.out
+
+    mock_ec2_instance.load()
+    name_tag = jmespath.search("[?Key=='Name'].Value", mock_ec2_instance.tags)[0]
+    assert name_tag == "testWorkflowName.test:step:name"
