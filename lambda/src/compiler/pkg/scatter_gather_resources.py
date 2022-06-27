@@ -51,7 +51,8 @@ def gather_step(core_stack: CoreStack, step: Step) -> dict:
         "Parameters": {
             "repo.$": "$.repo",
             "outputs": json.dumps(step.spec["outputs"]),
-            "results.$": "$.results",
+            "items.$": "$.items",
+            # "results.$": "$.results",
             **lambda_logging_block(step.name),
         },
         **lambda_retry(),
