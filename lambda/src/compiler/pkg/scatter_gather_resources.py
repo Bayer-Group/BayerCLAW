@@ -36,7 +36,8 @@ def map_step(sub_branch: dict, gather_step_name: str) -> dict:
             "repo.$": "$$.Map.Item.Value.repo",
         },
         "Iterator": sub_branch,
-        "ResultPath": "$.results",
+        # "ResultPath": "$.results",
+        "ResultPath": None,
         "Next": gather_step_name,
     }
 

@@ -67,7 +67,8 @@ def test_map_step():
             "repo.$": "$$.Map.Item.Value.repo",
         },
         "Iterator": sub_branch,
-        "ResultPath": "$.results",
+        "ResultPath": None,
+        # "ResultPath": "$.results",
         "Next": "gather_step_name",
     }
     assert result == expect
