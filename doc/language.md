@@ -39,13 +39,22 @@ This tells CloudFormation to compile (transform) our template through the Lambda
 us to deploy the template directly using CloudFormation.
 
 ## The params block
-The params block of the workflow template contains the following key-value pairs:
+The params block of the workflow template contains values to be used by the workflow:
 
 * `repository`(required): The S3 location that will be used to store intermediate and output files. Usually, this should
 be parameterized with one or more unique identifiers from the job data file.
 * `job_name` (optional): An name used to help identify individual executions. Should refer to one or more fields in the
 job data file (see [String Substitution](#string-substitution)). After string substitution, the job name should only
 contain alphanumeric characters, underscores, dashes, and periods. 
+* `task_role` (optional): ‼️DEPRECATED‼️ This is moving to the [options](#-the-options-block) block,
+and its use in the `params` block is deprecated.
+
+## 🆕 The options block
+
+The options block contains settings that affect the operation of BayerCLAW:
+
+* 🆕`shell` (optional): Sets the UNIX shell (and shell options) that will be used to run commands in
+    this workflow. Choices are `sh` (the default), `bash`, and `sh-pipefail`.
 * `task_role` (optional): the ARN of a pre-existing [ECS task role](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html)
     to be used by all the steps in this workflow, such as `arn:aws:iam::123456789012:role/hello-world-ecs-task-role`.
     This allows advanced users to provide custom AWS permissions to the workflow, if needed.
@@ -89,7 +98,9 @@ The fields of the step specification objects are:
   The value specifies the local path to the file relative to the working directory inside the Docker container.
   Even if the local path contains several directory names, only the base name of the file will be appended to the workflow
   `repository` path to determine its destination in S3. Shell-style wildcards (globs) are accepted in place of single
-  file names, and will expand to all matching local files (e.g. `outdir[0-9]/*.txt`).
+  file names, and will expand to all matching local files (e.g. `outdir[0-9]/*.txt`). In addition, you can use the
+  pattern `**` to search for files recursively through a directory structure. Note, however, that the directory structure
+  will *not* be preserved in the S3 repository.
 * `skip_on_rerun` (optional): When rerunning a job, set this to `true` to bypass a step if has already been run successfully.
   Defaults to `false`
 * `skip_if_output_exists` (optional): Similar to `skip_on_rerun`,
@@ -119,6 +130,8 @@ The fields of the step specification objects are:
     natively support the use of GPU resources: you will need to create a custom GPU-enabled job queue and use the
     `queue_name` parameter to direct jobs to it. See [the custom queue documentation](custom_queue.md) for
     details.
+  * 🆕`shell`: Overrides the global `shell` option from the [params](#the-params-block) block. Choices are
+      `sh`, `bash`, and `sh-pipefail`, defaults to `sh`.
 * `filesystems`: A list of objects describing EFS filesystems that will be mounted for this job. Note that you may
   have several entries in this list, but each `efs_id` must be unique. All filesystems are mounted read-only.
   * `efs_id`: An EFS filesystem ID. Should be something like `fs-1234abcd`.
@@ -149,6 +162,9 @@ Transform: BC_Compiler
 
 params:
   repository: s3://my-bucket/two-step/repo/${job.SAMPLE_ID}
+  
+options:
+  shell: bash
 
 steps:
   -
@@ -166,6 +182,7 @@ steps:
         cpus: 4
         memory: 40 Gb
         spot: true
+        shell: sh-pipefail
       timeout: 12h
   -
     Annotate:

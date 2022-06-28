@@ -1,11 +1,20 @@
 # Changelog for BayerCLAW
 
-- refactored repo
-- custom queue lookup
-- shell option (in progress)
-- recursive output file globbing (in progress)
-- sub job data into image version tag (in progress)
-- add retry to lambda steps (in progress)
+## [v1.1.3] 2022-06-?? Feature release
+- You can now choose to run Batch job commands under the `sh` or `bash` shell.
+- Docker image version tags can be selected at runtime by substituting values from the
+job data file.
+- To help with cost tracking, the EC2 instances that run Batch jobs now receive a `Name`
+tag consisting of the workflow name and step name. These EC2 tags can be used to
+filter and classify charges in AWS Cost Explorer.
+- Enabled recursive output file globbing using the `**` pattern.
+- Added a global `options` block to the workflow language spec.
+
+### Other changes
+- Refactored code that handles the S3 repository.
+- Made custom batch queue lookups more robust.
+- Hardened Lambda invocations against transient failures.
+- Reduced scatter step output, allowing for bigger scatters.
 
 ## [v1.1.2] 2022-04-20 Bug fixes and security updates
 
@@ -21,6 +30,9 @@
 the image to be updated between runs.
 
 ## [v1.1.1] 2022-03-29 Security update
+
+**NOTE**: Upgrading to v1.1.1 requires a full refresh of the installer and core
+stacks. Instructions can be found [here](doc/deployment.md#updating-bayerclaw).
 
 ### Added
 - Enabled server-side encryption on SNS topics and SQS queues. Note that workflows will need to be recompiled
@@ -40,6 +52,30 @@ It can also run Docker images with built-in ENTRYPOINTs, but the ENTRYPOINT will
 - Global EFS mounts have been removed. These have been deprecated since v1.0.4, and are easily replaced with 
 [per-job EFS mounts](doc/language.md#the-steps-block). 
 - CloudTrail dependencies have been removed.
+
+  #### Note:
+  If you are upgrading from BayerCLAW 1.0.x, and your workflows use a custom task_role, you will need
+  to add the following policy to those roles:
+  ```json
+    {
+      "PolicyName": "ECRAccess",
+      "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "ecr:GetAuthorizationToken",
+              "ecr:BatchCheckLayerAvailability",
+              "ecr:GetDownloadUrlForLayer",
+              "ecr:BatchGetImage"
+            ],
+            "Resource": "*"
+          }
+        ]
+      } 
+    }
+  ```
 
 ## [v1.0.6] 2022-01-27 Bug fix
 ### Fixed
