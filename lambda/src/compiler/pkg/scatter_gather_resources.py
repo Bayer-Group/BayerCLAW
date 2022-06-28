@@ -36,7 +36,6 @@ def map_step(sub_branch: dict, gather_step_name: str) -> dict:
             "repo.$": "$$.Map.Item.Value.repo",
         },
         "Iterator": sub_branch,
-        # "ResultPath": "$.results",
         "ResultPath": None,
         "Next": gather_step_name,
     }
@@ -52,7 +51,6 @@ def gather_step(core_stack: CoreStack, step: Step) -> dict:
             "repo.$": "$.repo",
             "outputs": json.dumps(step.spec["outputs"]),
             "items.$": "$.items",
-            # "results.$": "$.results",
             **lambda_logging_block(step.name),
         },
         **lambda_retry(),

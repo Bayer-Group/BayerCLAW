@@ -68,7 +68,6 @@ def test_map_step():
         },
         "Iterator": sub_branch,
         "ResultPath": None,
-        # "ResultPath": "$.results",
         "Next": "gather_step_name",
     }
     assert result == expect
@@ -100,7 +99,6 @@ def test_gather_step(next_step_name, next_or_end, monkeypatch, mock_core_stack):
         "Parameters": {
             "repo.$": "$.repo",
             "outputs": json.dumps(spec["outputs"]),
-            # "results.$": "$.results",
             "items.$": "$.items",
             "logging": {
                 "branch.$": "$.index",
