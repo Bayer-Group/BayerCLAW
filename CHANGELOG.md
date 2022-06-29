@@ -1,6 +1,6 @@
 # Changelog for BayerCLAW
 
-## [v1.1.3] 2022-06-?? Feature release
+## [v1.1.3] 2022-06-29 Feature release
 - You can now choose to run Batch job commands under the `sh` or `bash` shell.
 - Docker image version tags can be selected at runtime by substituting values from the
 job data file.
@@ -8,7 +8,8 @@ job data file.
 tag consisting of the workflow name and step name. These EC2 tags can be used to
 filter and classify charges in AWS Cost Explorer.
 - Enabled recursive output file globbing using the `**` pattern.
-- Added a global `options` block to the workflow language spec.
+- Added a global `options` block to the workflow language spec. Global `task_role` settings should now
+  be placed in the `options` block.
 
 ### Other changes
 - Refactored code that handles the S3 repository.

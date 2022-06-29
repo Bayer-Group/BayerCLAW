@@ -66,13 +66,21 @@ The workflow section consists of a single JSON or YAML list containing processin
 The steps will be run in the order listed in the workflow template file.
 
 The fields of the step specification objects are:
-* `image` (required): The path to the Docker container to use.
-  A plain name, like `ubuntu` or `my-repo/BayerCLAW-demo`, will first be checked against ECR in the current account.
-  If the named image exists in ECR, that one will be used.
-  Otherwise, the plain name will refer to the public Docker Hub.
-  Using public images is a potential security risk as other people control the code inside!
-  Alternately, `image` can be a full Docker-style path to an image in any private Docker repo, including ECR, for
-  example `123456789012.dkr.ecr.us-east-1.amazonaws.com/my-repo/BayerCLAW-demo`.
+* `image` (required): The name of the Docker image to use. If you specify a plain name, such as `ubuntu` or `my_image:v1`,
+  BayerCLAW will attempt to pull the image out of your account's ECR repository. Use a fully qualified URI, such as
+  `docker.io/library/ubuntu` to access images in public repositories. You can also use fully qualified URIs for images
+  in ECR. Use of version tags is recommended but optional; per custom, the version tag defaults to `:latest`. The usual
+  [caveats](https://www.howtogeek.com/devops/understanding-dockers-latest-tag/) about the `:latest` tag apply.
+
+  🆕 You can [substitute](#string-substitution) values from the job data file into the version tag of your image, for
+  example:
+  ```yaml
+  image: my_repo/my_image:${job.environment}
+  ```
+  This is intended to help deploy multiple instances of a workflow in an account without having to change the code.
+
+  String substitutions can only be performed in the version tag, not in any other part of
+  the image name.
 * `task_role` (optional): allows overriding the global `task_role` on a per-step basis, if desired.
 * `inputs`: A set of key-value pairs indicating files to be downloaded from S3 for processing.
   The value can be either an absolute S3 path (`s3://example-bucket/myfile.txt`) or a relative path (`myfile.txt`).
