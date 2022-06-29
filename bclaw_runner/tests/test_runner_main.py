@@ -7,11 +7,13 @@ import textwrap
 import time
 
 import boto3
+import jmespath
 import moto
 import pytest
 
 from ..src import runner
-from ..src.runner.runner_main import split_inputs, main, cli
+from ..src.runner.runner_main import main, cli
+from ..src.runner.tagging import INSTANCE_ID_URL
 
 
 TEST_BUCKET = "test-bucket"
@@ -19,6 +21,7 @@ JOB_DATA = {
     "job": {
         "key1": 1,
         "key2": 2,
+        "img_tag": "test"
     },
     "parent": {
         "value": "parent_value"
@@ -44,6 +47,7 @@ def mock_bucket():
 
 
 def fake_container(image_tag: str, command: str, work_dir: str, job_data_file: str):
+    assert image_tag == "fake_image:test"
     response = subprocess.run(command, shell=True)
     return response.returncode
 
@@ -59,22 +63,6 @@ opt_inputs = {
 }
 
 
-@pytest.mark.parametrize("all_inputs, expected_req, expected_opt", [
-    ({**req_inputs, **opt_inputs}, req_inputs, opt_inputs),
-    (req_inputs, req_inputs, {}),
-    (opt_inputs, {}, opt_inputs),
-    ({}, {}, {}),
-])
-def test_split_inputs(all_inputs, expected_req, expected_opt):
-    req_result, opt_result = split_inputs(all_inputs)
-    assert req_result == expected_req
-    assert len(opt_result) == len(expected_opt)
-    for k, v in opt_result.items():
-        orig_key = k + "?"
-        assert orig_key in expected_opt
-        assert v == expected_opt[orig_key]
-
-
 def test_main(monkeypatch, tmp_path, mock_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "step1")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
@@ -84,21 +72,17 @@ def test_main(monkeypatch, tmp_path, mock_bucket):
         "ref1": f"s3://{TEST_BUCKET}/references/reference_file",
     }
 
-    params = {
-        "param1": "3"
-    }
-
     inputs = {
         "input1": "file${job.key1}",
         "input2": "file${job.key2}",
-        "input3?": "file${param1}",
+        "input3?": "file3",
         "input4?": "file99"
     }
 
     outputs = {
         "output1": "outfile${job.key1}",
         "output2": "outfile${job.key2}",
-        "output3": "outfile${param1}"
+        "output3": "outfile3"
     }
 
     commands = [
@@ -108,19 +92,19 @@ def test_main(monkeypatch, tmp_path, mock_bucket):
         "echo ${job.key2} >> ${output3}",
         "echo ${parent.value} >> ${output3}",
         "echo ${scatter.value} >> ${output3}",
-        "echo ${param1} >> ${output3}"
+        "echo '3' >> ${output3}"
         "echo ${input4} >> ${output3}"
     ]
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
 
-    response = main(image="fake_image",
+    response = main(image="fake_image:${job.img_tag}",
                     commands=commands,
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
-                    params=params,
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
+                    shell="sh",
                     skip="true")
     assert response == 0
 
@@ -204,13 +188,13 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
 
-    response = main(image="fake_image",
+    response = main(image="fake_image:test",
                     commands=commands,
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
-                    params={},
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
+                    shell="sh",
                     skip="true")
 
     assert response == 255
@@ -236,13 +220,13 @@ def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket):
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
 
-    response = main(image="fake_image",
+    response = main(image="fake_image:test",
                     commands=commands,
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
-                    params={},
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
+                    shell="sh",
                     skip="true")
     assert response != 0
 
@@ -259,20 +243,20 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "step4")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
     monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
-    monkeypatch.setattr("bclaw_runner.src.runner.repo._upload_that", failing_uploader)
+    monkeypatch.setattr("bclaw_runner.src.runner.repo.Repository._upload_that", failing_uploader)
 
     references = {}
     inputs = {}
     outputs = {"output6": "outfile6"}
     commands = ["echo wut > ${output6}"]
 
-    response = main(image="fake_image",
+    response = main(image="fake_image:test",
                     commands=commands,
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
-                    params={},
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
+                    shell="sh",
                     skip="true")
     assert response != 0
     curr_bucket_contents = {o.key for o in mock_bucket.objects.all()}
@@ -294,13 +278,13 @@ def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect):
     outputs = {}
     commands = ["false"]
 
-    response = main(image="fake_image",
+    response = main(image="fake_image:test",
                     commands=commands,
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
-                    params={},
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
+                    shell="sh",
                     skip=skip)
     assert response == expect
 
@@ -317,14 +301,13 @@ def fake_termination_checker_impl(*_):
 
 @moto.mock_logs
 @pytest.mark.parametrize("argv, expect", [
-    ("prog --cmd 2 --in 3 --out 4 --param 5 --ref 6 --repo 7 --skip 8 --image 9",
-     [2, "9", 3, 4, 5, 6, "7", "8"]),
-    ("prog --cmd 2 --in 3 --out 4 --ref 6 --repo 7 --skip 8 --image 9",
-     [2, "9", 3, 4, {}, 6, "7", "8"])
+    ("prog --cmd 2 --in 3 --out 4 --shell 5 --ref 6 --repo 7 --skip 8 --image 9",
+     [2, "9", 3, 4, 6, "7", "5", "8"])
 ])
-def test_cli(capsys, requests_mock, monkeypatch, argv, expect):
+def test_cli(capsys, requests_mock, mock_ec2_instance, monkeypatch, argv, expect):
     requests_mock.get("http://169.254.169.254/latest/meta-data/instance-life-cycle", text="spot")
     requests_mock.get("http://169.254.169.254/latest/meta-data/spot/instance-action", status_code=404)
+    requests_mock.get(INSTANCE_ID_URL, text=mock_ec2_instance.id)
     monkeypatch.setenv("BC_WORKFLOW_NAME", "testWorkflowName")
     monkeypatch.setenv("BC_STEP_NAME", "test:step:name")
     monkeypatch.setenv("BC_JOB_NAME", "test*job")
@@ -340,3 +323,7 @@ def test_cli(capsys, requests_mock, monkeypatch, argv, expect):
     captured = capsys.readouterr()
     assert "fake main running" in captured.out
     assert "fake termination checker running" in captured.out
+
+    mock_ec2_instance.load()
+    name_tag = jmespath.search("[?Key=='Name'].Value", mock_ec2_instance.tags)[0]
+    assert name_tag == "testWorkflowName.test:step:name"

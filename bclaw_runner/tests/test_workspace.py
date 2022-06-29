@@ -54,7 +54,7 @@ def test_run_commands(tmp_path, monkeypatch):
     ]
 
     os.chdir(tmp_path)
-    response = run_commands("fake/image:tag", commands, tmp_path, "fake/job/data/file.json")
+    response = run_commands("fake/image:tag", commands, tmp_path, "fake/job/data/file.json", "sh")
 
     assert response == 0
     assert f.exists()
@@ -74,7 +74,7 @@ def test_exit_on_command_fail1(tmp_path, monkeypatch):
     ]
 
     os.chdir(tmp_path)
-    response = run_commands("fake/image:tag", commands, tmp_path, "fake/job/data/file.json")
+    response = run_commands("fake/image:tag", commands, tmp_path, "fake/job/data/file.json", "sh")
     assert response != 0
 
     assert f.exists()
@@ -94,7 +94,7 @@ def test_exit_on_undef_var1(tmp_path, monkeypatch):
     ]
 
     os.chdir(tmp_path)
-    response = run_commands("fake/image:tag", commands, tmp_path, "fake/job/data/file.json")
+    response = run_commands("fake/image:tag", commands, tmp_path, "fake/job/data/file.json", "sh")
     assert response != 0
 
     assert f.exists()

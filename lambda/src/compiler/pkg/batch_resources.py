@@ -1,11 +1,9 @@
-from functools import lru_cache
 import json
 import logging
 import math
 import re
 from typing import Generator, List, Tuple, Union
 
-import boto3
 import humanfriendly
 
 from .qc_resources import handle_qc_check
@@ -14,39 +12,33 @@ from .util import CoreStack, Step, Resource, State, make_logical_name, do_param_
 
 SCRATCH_PATH = "/_bclaw_scratch"
 
-# "registry/path/image_name:version" -> ("registry/path", "image_name:version", "image_name", "version")
-# "registry/path/image_name"         -> ("registry/path", "image_name", "image_name", None)
-# "image_name:version"               -> (None, "image_name:version", "image_name", "version")
-# "image_name"                       -> (None, "image_name", "image_name", None)
-URI_PARSER = re.compile(r"^(?:(.+)/)?(([^:]+)(?::(.+))?)$")
 
-def parse_uri(uri: str) -> Tuple[str, str, str, str]:
-    registry, image_version, image, version = URI_PARSER.fullmatch(uri).groups()
-    return registry, image_version, image, version
+# "registry/path/image_name:version" -> ("registry/path", "image_name", "version")
+# "registry/path/image_name"         -> ("registry/path", "image_name", None)
+# "image_name:version"               -> (None, "image_name", "version")
+# "image_name"                       -> (None, "image_name", None)
+URI_PARSER = re.compile(r"^(?:(.+)/)?([^:]+)(?::(.+))?$")
 
+def expand_image_uri(uri: str) -> Union[str, dict]:
+    registry, image, version = URI_PARSER.fullmatch(uri).groups()
 
-def get_ecr_uri(registry: Union[str, None], image_version: str) -> Union[str, dict]:
     if registry is None:
+        if version is None:
+            tag = ""
+        else:
+            tag = ":" + re.sub(r"\${", "${!", version)
         ret = {
-            "Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{image_version}",
+            "Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{image}{tag}",
         }
     else:
-        ret = "/".join([registry, image_version])
+        ret = uri
 
-    return ret
-
-
-@lru_cache(maxsize=None)
-def get_custom_job_queue_arn(queue_name: str) -> str:
-    batch = boto3.client("batch")
-    desc = batch.describe_job_queues(jobQueues=[queue_name])
-    ret = desc["jobQueues"][0]["jobQueueArn"]
     return ret
 
 
 def get_job_queue(core_stack: CoreStack, compute_spec: dict) -> str:
-    if compute_spec.get("queue_name") is not None:
-        ret = get_custom_job_queue_arn(compute_spec["queue_name"])
+    if (queue_name := compute_spec.get("queue_name")) is not None:
+        ret = f"arn:aws:batch:${{AWSRegion}}:${{AWSAccountId}}:job-queue/{queue_name}"
     elif compute_spec["spot"]:
         ret = core_stack.output("SpotQueueArn")
     else:
@@ -186,10 +178,9 @@ def get_timeout(step: Step) -> dict:
 
 def job_definition_rc(core_stack: CoreStack,
                       step: Step,
-                      task_role: Union[str, dict]) -> Generator[Resource, None, str]:
+                      task_role: str,
+                      shell_opt: str) -> Generator[Resource, None, str]:
     job_def_name = make_logical_name(f"{step.name}.job.def")
-
-    registry, image_version, image, version = parse_uri(step.spec["image"])
 
     job_def = {
         "Type": "AWS::Batch::JobDefinition",
@@ -200,11 +191,12 @@ def job_definition_rc(core_stack: CoreStack,
                     "Ref": "AWS::StackName",
                 },
                 "repo": "rrr",
-                "image": get_ecr_uri(registry, image_version),
+                "image": expand_image_uri(step.spec["image"]),
                 "inputs": "iii",
                 "references": "fff",
                 "command": json.dumps(step.spec["commands"]),
                 "outputs": "ooo",
+                "shell": shell_opt,
                 "skip": "sss",
             },
             "ContainerProperties": {
@@ -216,6 +208,7 @@ def job_definition_rc(core_stack: CoreStack,
                     "--ref", "Ref::references",
                     "--cmd", "Ref::command",
                     "--out", "Ref::outputs",
+                    "--shell", "Ref::shell",
                     "--skip", "Ref::skip",
                 ],
                 "Image": core_stack.output("RunnerImageURI"),
@@ -269,7 +262,6 @@ def batch_step(core_stack: CoreStack,
             "JobQueue": get_job_queue(core_stack, step.spec["compute"]),
             "Parameters": {
                 "repo.$": "$.repo",
-                # "parameters": json.dumps(spec["params"]),
                 **step.input_field,
                 "references": json.dumps(step.spec["references"]),
                 "outputs": json.dumps(step.spec["outputs"]),
@@ -326,11 +318,12 @@ def handle_batch(core_stack: CoreStack,
     logger.info(f"making batch step {step.name}")
 
     task_role = step.spec.get("task_role") or wf_params.get("task_role") or core_stack.output("ECSTaskRoleArn")
+    shell_opt = step.spec["compute"]["shell"] or wf_params.get("shell")
 
     subbed_spec = do_param_substitution(step.spec)
     subbed_step = Step(step.name, subbed_spec, step.next)
 
-    job_def_name = yield from job_definition_rc(core_stack, subbed_step, task_role)
+    job_def_name = yield from job_definition_rc(core_stack, subbed_step, task_role, shell_opt)
 
     if subbed_spec["qc_check"] is not None:
         qc_state = handle_qc_check(core_stack, subbed_step)

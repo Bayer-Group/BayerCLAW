@@ -107,9 +107,14 @@ Some updates may require a full refresh of everything including the installer st
 1. Pull the latest version of the BayerCLAW repo to your local machine.
 2. Run the command:
     ```bash
-   aws cloudformation deploy --template-file bc_installer.yaml --stack-name <installer stack name>
+   aws cloudformation deploy --template-file bc_installer.yaml --stack-name <installer stack name> --capabilities CAPABILITY_IAM
    ```
 3. After the CloudFormation update finishes, run CodePipeline as described above.
+
+### Note
+In general, patch level updates (e.g 1.1.1 -> 1.1.2) can be performed by running CodePipeline.
+Major and minor version changes (e.g 1.1.9 -> 1.2.0) will require a full refresh.
+If there are exceptions, they will be noted in [CHANGELOG.md](../CHANGELOG.md)
 
 ## Deploying multiple BayerCLAW installations to an account
 

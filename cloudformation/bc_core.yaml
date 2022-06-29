@@ -171,7 +171,6 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-#        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
         -
           Version: "2012-10-17"
           Statement:
@@ -204,8 +203,6 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-#        - "arn:aws:iam::aws:policy/AWSCloudFormationFullAccess"
         -
           Version: "2012-10-17"
           Statement:
@@ -213,14 +210,7 @@ Resources:
               Effect: Allow
               Action:
                 - "s3:PutObject"
-#                - "s3:GetObject"
-#                - "s3:ListBucket"
               Resource: !Sub "arn:${AWS::Partition}:s3:::${ResourceBucketName}/*"
-            -
-              Effect: Allow
-              Action:
-                - "batch:DescribeJobQueues"
-              Resource: "*"
             -
               Effect: Allow
               Action:
@@ -246,7 +236,6 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
         -
           Version: "2012-10-17"
           Statement:
@@ -254,16 +243,11 @@ Resources:
               Effect: Allow
               Action:
                 - "s3:PutObject"
-#                - "s3:GetObject"
                 - "s3:GetObjectVersion"
                 - "s3:ListBucket"
               Resource: "*"
       DeploymentPreference:
         Enabled: false
-#      VpcConfig:
-#        SecurityGroupIds:
-#          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
-#        SubnetIds: !Ref Subnets
 
   LauncherLambdaLogGroup:
     Type: AWS::Logs::LogGroup
@@ -282,7 +266,6 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
         -
           Version: "2012-10-17"
           Statement:
@@ -313,7 +296,6 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
         -
           Version: "2012-10-17"
           Statement:
@@ -344,7 +326,6 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-#        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
         -
           Version: "2012-10-17"
           Statement:
@@ -379,7 +360,6 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
         -
           Version: "2012-10-17"
           Statement:
@@ -410,7 +390,6 @@ Resources:
       Layers:
         - !Ref CommonLayer
       Policies:
-#        - arn:aws:iam::aws:policy/AmazonSNSFullAccess
         -
           Version: "2012-10-17"
           Statement:
@@ -449,7 +428,6 @@ Resources:
       MemorySize: 128
       Timeout: 60
       Policies:
-#        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
         -
           Version: "2012-10-17"
           Statement:
@@ -563,7 +541,6 @@ Resources:
             Statement:
               - Effect: "Allow"
                 Action:
-#                  - "ecr:*"
                   - "ecr:GetAuthorizationToken"
                   - "ecr:BatchCheckLayerAvailability"
                   - "ecr:GetDownloadUrlForLayer"

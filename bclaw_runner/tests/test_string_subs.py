@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from ..src.runner.string_subs import lookup, substitute
+from ..src.runner.string_subs import lookup, substitute, substitute_image_tag
 
 
 @pytest.mark.parametrize("pattern, string, expect", [
@@ -39,6 +39,18 @@ def test_substitute_string():
     target = "I ${x} the ${y.z} ${p[1].what} of a ${q} ${general}"
     result = substitute(target, subs)
     expect = "I am the very model of a ['modern', 'major'] ${general}"
+    assert result == expect
+
+
+def test_substitute_nested():
+    subs = {
+        "metadata": {
+            "received": "2022-06-01",
+        },
+    }
+    target = "received on ${metadata.received}"
+    result = substitute(target, subs)
+    expect = "received on 2022-06-01"
     assert result == expect
 
 
@@ -112,4 +124,23 @@ def test_substitute_recursion():
             "nine": "99 two"
         },
     }
+    assert result == expect
+
+
+@pytest.mark.parametrize("original, expect", [
+    ("docker.io/library/single:${sub}", "docker.io/library/single:tag"),
+    ("public.ecr.aws/docker/library/multi:${a}_${b}_${c}", "public.ecr.aws/docker/library/multi:eh_bee_sea"),
+    ("123456789012.dkr.ecr.us-east-1.amazonaws.com/no:subs", "123456789012.dkr.ecr.us-east-1.amazonaws.com/no:subs"),
+    ("123456789012.dkr.ecr.us-east-1.amazonaws.com/no_tags", "123456789012.dkr.ecr.us-east-1.amazonaws.com/no_tags"),
+    ("myregistryhost:5000/fedora/httpd:${sub}", "myregistryhost:5000/fedora/httpd:tag"),  # https://docs.docker.com/engine/reference/commandline/tag/#tag-an-image-for-a-private-repository
+    ("probably:${a}/highly/${b}/illegal/${c}:${sub}", "probably:${a}/highly/${b}/illegal/${c}:tag"),
+])
+def test_substitute_image_tag(original, expect):
+    spec = {
+        "sub": "tag",
+        "a": "eh",
+        "b": "bee",
+        "c": "sea",
+    }
+    result = substitute_image_tag(original, spec)
     assert result == expect

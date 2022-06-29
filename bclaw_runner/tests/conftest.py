@@ -1,7 +1,9 @@
 import io
 from typing import Optional
 
+import boto3
 from docker.errors import ImageNotFound
+import moto
 import pytest
 
 
@@ -96,3 +98,11 @@ def mock_docker_client_factory():
     def _ret(container: Optional[MockContainer] = None):
         return MockDockerClient(container)
     return _ret
+
+
+@pytest.fixture(scope="module")
+def mock_ec2_instance():
+    with moto.mock_ec2():
+        ec2 = boto3.resource("ec2", region_name="us-east-1")
+        instances = ec2.create_instances(ImageId="ami-12345", MinCount=1, MaxCount=1)
+        yield instances[0]

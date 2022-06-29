@@ -2,7 +2,7 @@ import logging
 from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import CoreStack, Step, Resource, State, lambda_logging_block
+from .util import CoreStack, Step, Resource, State, lambda_logging_block, lambda_retry
 
 
 def handle_parallel_step(core_stack: CoreStack,
@@ -35,6 +35,7 @@ def handle_parallel_step(core_stack: CoreStack,
                             "expression": expression,
                             **lambda_logging_block(step.name)
                         },
+                        **lambda_retry(),
                         "Catch": [
                             {
                                 "ErrorEquals": ["ConditionFailed"],

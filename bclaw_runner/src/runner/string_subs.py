@@ -3,16 +3,15 @@ import jmespath
 import re
 from typing import Any
 
-SUB_FINDER = re.compile(r"\${(.+?)}")
 
-# todo: use glom instead?
-#       https://pypi.org/project/glom/
 def lookup(m: re.Match, spec: dict) -> str:
     ret = jmespath.search(m.group(1), spec)
     if ret is None:
         ret = m.group(0)
     return str(ret)
 
+
+SUB_FINDER = re.compile(r"\${(.+?)}")
 
 def substitute(target: Any, spec: dict) -> Any:
     if isinstance(target, str):
@@ -25,4 +24,12 @@ def substitute(target: Any, spec: dict) -> Any:
     else:
         ret = target
 
+    return ret
+
+
+def substitute_image_tag(image_tag: str, spec: dict) -> str:
+    name, *version_tag = image_tag.rsplit(":", 1)
+    _lookup = partial(lookup, spec=spec)
+    subbed = [SUB_FINDER.sub(_lookup, v) for v in version_tag]
+    ret = ":".join([name] + subbed)
     return ret

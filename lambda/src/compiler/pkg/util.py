@@ -116,9 +116,28 @@ def do_param_substitution(spec: dict) -> dict:
 
 
 def time_string_to_seconds(time: str) -> int:
-    UNITS = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
+    units = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
     count = int(time[:-1])
-    unit = UNITS[time[-1]]
+    unit = units[time[-1]]
     td = timedelta(**{unit: count})
     ret = td.seconds + 60 * 60 * 24 * td.days
+    return ret
+
+
+def lambda_retry() -> dict:
+    # https://docs.aws.amazon.com/step-functions/latest/dg/bp-lambda-serviceexception.html
+    ret = {
+        "Retry": [
+            {
+                "ErrorEquals": [
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException",
+                ],
+                "MaxAttempts": 5,
+                "IntervalSeconds": 2,
+                "BackoffRate": 2,
+            },
+        ]
+    }
     return ret

@@ -64,7 +64,7 @@ def lambda_handler(event: dict, context):
         ret = {}
 
         if len(jobby_outputs) > 0:
-            repos = jmespath.search("results[].repo", event)
+            repos = jmespath.search("items[].repo", event)
             finder = partial(find_output_files, repos=repos)
 
             with ThreadPoolExecutor(max_workers=len(jobby_outputs)) as executor:

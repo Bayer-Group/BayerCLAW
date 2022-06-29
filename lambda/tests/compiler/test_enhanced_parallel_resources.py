@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.enhanced_parallel_resources import handle_parallel_step
-from ...src.compiler.pkg.util import CoreStack, Step, State, lambda_logging_block
+from ...src.compiler.pkg.util import CoreStack, Step, State, lambda_logging_block, lambda_retry
 
 
 @pytest.mark.parametrize("next_step_name, next_or_end", [
@@ -82,6 +82,7 @@ def test_handle_parallel_step_enhanced(next_step_name, next_or_end, monkeypatch,
                 "expression": condition_1,
                 **lambda_logging_block("step_name")
             },
+            **lambda_retry(),
             "Catch": [
                 {
                     "ErrorEquals": ["ConditionFailed"],
@@ -117,6 +118,7 @@ def test_handle_parallel_step_enhanced(next_step_name, next_or_end, monkeypatch,
                 "expression": condition_2,
                 **lambda_logging_block("step_name")
             },
+            **lambda_retry(),
             "Catch": [
                 {
                     "ErrorEquals": ["ConditionFailed"],

@@ -1,7 +1,7 @@
 import pytest
 
 from ...src.compiler.pkg.state_machine_resources import make_launcher_step, make_step_list
-from ...src.compiler.pkg.util import CoreStack, Step, lambda_logging_block
+from ...src.compiler.pkg.util import CoreStack, Step, lambda_logging_block, lambda_retry
 
 
 def test_make_launcher_step(monkeypatch, mock_core_stack):
@@ -19,8 +19,8 @@ def test_make_launcher_step(monkeypatch, mock_core_stack):
                 "repo_template": wf_params["repository"],
                 "input_obj.$": "$",
                 **lambda_logging_block("Launch"),
-
             },
+            **lambda_retry(),
             "ResultPath": "$",
             "OutputPath": "$",
             "_stet": True,

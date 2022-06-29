@@ -63,6 +63,9 @@ def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> G
                 # then mount the host path to the child container
                 yield Mount(child_workspace, host_workspace, type="bind", read_only=False)
 
+            elif volume_spec["Destination"] == "/.scratch":
+                yield Mount(volume_spec["Destination"], volume_spec["Source"], type="bind", read_only=False)
+
             else:
                 yield Mount(volume_spec["Destination"], volume_spec["Source"], type="bind", read_only=True)
 

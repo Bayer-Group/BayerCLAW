@@ -12,7 +12,7 @@ from . import enhanced_parallel_resources as ep
 from . import native_step_resources as ns
 from . import scatter_gather_resources as sg
 from . import subpipe_resources as sp
-from .util import CoreStack, Step, Resource, State, make_logical_name, lambda_logging_block
+from .util import CoreStack, Step, Resource, State, make_logical_name, lambda_logging_block, lambda_retry
 from .validation import validate_batch_step, validate_native_step, validate_parallel_step, validate_scatter_step, \
     validate_subpipe_step, validate_chooser_step
 
@@ -29,6 +29,7 @@ def make_launcher_step(core_stack: CoreStack, wf_params: dict) -> dict:
                 "input_obj.$": "$",
                 **lambda_logging_block(launch_step_name),
             },
+            **lambda_retry(),
             "ResultPath": "$",
             "OutputPath": "$",
             "_stet": True,

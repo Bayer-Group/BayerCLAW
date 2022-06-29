@@ -14,7 +14,7 @@ def compile_template(wf_spec: dict, state_machine_out=None) -> dict:
 
     # normalize workflow spec
     normalized_wf = workflow_schema(wf_spec)
-    wf_params = normalized_wf["params"]
+    wf_params = normalized_wf["params"] | normalized_wf["options"]
     steps = normalized_wf["steps"]
 
     # create state machine and associated resources
