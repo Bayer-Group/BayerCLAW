@@ -1,6 +1,8 @@
 # Changelog for BayerCLAW
 
 ## [v1.1.3] 2022-06-29 Feature release
+
+### Added
 - You can now choose to run Batch job commands under the `sh` or `bash` shell.
 - Docker image version tags can be selected at runtime by substituting values from the
 job data file.
