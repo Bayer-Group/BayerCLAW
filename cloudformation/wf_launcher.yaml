@@ -65,7 +65,7 @@ Resources:
           InputTransformer:
             InputPathsMap:
               bucket: "$.detail.bucket.name"
-              key: "$detail.object.key"
+              key: "$.detail.object.key"
               version: "$.detail.object.version-id"
             InputTemplate:
               !Sub >-
