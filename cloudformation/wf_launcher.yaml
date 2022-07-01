@@ -32,7 +32,6 @@ Resources:
               Service: events.amazonaws.com
             Action: "sts:AssumeRole"
       ManagedPolicyArns:
-#        - "arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess"
         - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
 
   wfEventRule:
@@ -61,7 +60,6 @@ Resources:
           DeadLetterConfig:
             Arn: !GetAtt wfDeadLetterQueue.Arn
           Id: namer-lambda-target
-#          RoleArn: !GetAtt wfEventRuleRole.Arn
           InputTransformer:
             InputPathsMap:
               bucket: "$.detail.bucket.name"
@@ -73,33 +71,12 @@ Resources:
                   "job_file": {
                     "bucket": <bucket>,
                     "key": <key>,
-                    "version": <version>
+                    "version": <version>,
+                    "s3_request_id": "DEPRECATED"
                   },
                   "index": "main",
                   "sfn_arn": "${StateMachineArn}"
                 }
-#        -
-#          Arn: !Ref StateMachineArn
-#          DeadLetterConfig:
-#            Arn: !GetAtt wfDeadLetterQueue.Arn
-#          Id: state-machine-target
-#          RoleArn: !GetAtt wfEventRuleRole.Arn
-#          InputTransformer:
-#            InputPathsMap:
-#              bucket: "$.detail.bucket.name"
-#              key: "$.detail.object.key"
-#              requestID: "$.detail.request-id"
-#              version: "$.detail.object.version-id"
-#            InputTemplate: >-
-#              {
-#                "job_file": {
-#                  "bucket": <bucket>,
-#                  "key": <key>,
-#                  "version": <version>,
-#                  "s3_request_id": <requestID>
-#                },
-#                "index": "main"
-#              }
 
   wfEventArchive:
     Type: AWS::Events::Archive
