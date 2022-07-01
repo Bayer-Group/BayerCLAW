@@ -61,7 +61,7 @@ Resources:
           DeadLetterConfig:
             Arn: !GetAtt wfDeadLetterQueue.Arn
           Id: namer-lambda-target
-          RoleArn: !GetAtt wfEventRuleRole.Arn
+#          RoleArn: !GetAtt wfEventRuleRole.Arn
           InputTransformer:
             InputPathsMap:
               bucket: "$.detail.bucket.name"
