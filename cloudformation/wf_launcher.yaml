@@ -59,7 +59,7 @@ Resources:
         -
           Arn: !Ref NamerLambdaArn
           DeadLetterConfig:
-            - Arn: !GetAtt wfDeadLetterQueue.Arn
+            Arn: !GetAtt wfDeadLetterQueue.Arn
           Id: namer-lambda-target
           RoleArn: !GetAtt wfEventRuleRole.Arn
           InputTransformer:
