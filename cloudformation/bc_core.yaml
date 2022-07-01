@@ -717,7 +717,7 @@ Outputs:
     Value: !Ref LogRetentionDays
 
   NamerLambdaArn:
-    Value: !Ref NamerLambda
+    Value: !GetAtt NamerLambda.Arn
 
   NamerLambdaLogGroupName:
     Value: !Ref NamerLambdaLogGroup
