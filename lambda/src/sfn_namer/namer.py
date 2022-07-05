@@ -64,6 +64,5 @@ def lambda_handler(event: dict, context: object) -> None:
                 break
 
     except sfn.exceptions.ExecutionAlreadyExists:
-        # we'll assume that this is most likely caused by a duplicated event rather
-        # than an actual name collision, and ignore it
-        pass
+        # duplicated s3 events are way more likely than bona fide name collisions
+        print(f"duplicate event: {exec_name}")

@@ -395,7 +395,6 @@ Resources:
               Effect: Allow
               Action:
                 - "states:StartExecution"
-#                - "states:DescribeExecution"
               Resource: "*"
       DeploymentPreference:
         Enabled: False
