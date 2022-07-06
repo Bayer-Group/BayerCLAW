@@ -2,7 +2,7 @@ import json
 import pytest
 
 from ...src.compiler.pkg.util import CoreStack, Step, make_logical_name, _param_subber, \
-    do_param_substitution, time_string_to_seconds
+    do_param_substitution, time_string_to_seconds, merge_params_and_options
 
 
 @pytest.mark.parametrize("next_step, expect", [
@@ -317,3 +317,17 @@ def test_do_param_substitution_scatter():
 def test_time_string_to_seconds(timestring, seconds):
     result = time_string_to_seconds(timestring)
     assert result == seconds
+
+
+@pytest.mark.parametrize("p_role, o_role, x_role", [
+    (None, None, None),
+    (None, "opt_role", "opt_role"),
+    ("parm_role", None, "parm_role"),
+    ("parm_role", "opt_role", "opt_role"),
+])
+def test_merge_params_and_options(p_role, o_role, x_role):
+    params = {"a": 1, "b": 2, "c": 3, "task_role": p_role}
+    options = {"z": 9, "y": 8, "task_role": o_role}
+    expect = {"a": 1, "b": 2, "c": 3, "z": 9, "y": 8, "task_role": x_role}
+    result = merge_params_and_options(params, options)
+    assert result == expect

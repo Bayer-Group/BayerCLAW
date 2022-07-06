@@ -2,7 +2,7 @@ import logging
 
 from . import state_machine_resources as sm
 from .misc_resources import launcher_substack_rc, notifications_substack_rc
-from .util import CoreStack, Resource
+from .util import CoreStack, Resource, merge_params_and_options
 from .validation import workflow_schema
 
 logger = logging.getLogger()
@@ -14,7 +14,7 @@ def compile_template(wf_spec: dict, state_machine_out=None) -> dict:
 
     # normalize workflow spec
     normalized_wf = workflow_schema(wf_spec)
-    wf_params = normalized_wf["params"] | normalized_wf["options"]
+    wf_params = merge_params_and_options(normalized_wf["params"], normalized_wf["options"])
     steps = normalized_wf["steps"]
 
     # create state machine and associated resources

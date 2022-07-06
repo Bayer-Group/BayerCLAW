@@ -141,3 +141,10 @@ def lambda_retry() -> dict:
         ]
     }
     return ret
+
+
+def merge_params_and_options(params: dict, options: dict) -> dict:
+    ret = params | options
+    if ret["task_role"] is None:
+        ret["task_role"] = params["task_role"]
+    return ret
