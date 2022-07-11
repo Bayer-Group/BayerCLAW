@@ -26,10 +26,11 @@ def _is_glob(filename: str) -> bool:
 
 
 def _expand_s3_glob(glob: str) -> Generator[str, None, None]:
-    logger.info(glob)
     bucket_name, globby_s3_key = glob.split("/", 3)[2:]
-    logger.info(globby_s3_key)
-    prefix = re.search(r"^([^\[\]*?]+)(?=/)", globby_s3_key).group(0)
+    if (m := re.search(r"^([^\[\]*?]+)(?=/)", globby_s3_key)) is not None:
+        prefix = m.group(0)
+    else:
+        prefix = ""
 
     session = boto3.Session()
     s3 = session.resource("s3")

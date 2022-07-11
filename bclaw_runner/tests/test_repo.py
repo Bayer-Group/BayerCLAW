@@ -18,6 +18,8 @@ OTHER_FILE_CONTENT = "other file"
 
 DIFFERENT_BUCKET = "different-bucket"
 DIFFERENT_FILE_CONTENT = "different file"
+NO_FOLDER_FILE1_CONTENT = "no folder file 1"
+NO_FOLDER_FILE2_CONTENT = "no folder file 2"
 
 
 @pytest.fixture(scope="module")
@@ -37,6 +39,8 @@ def mock_buckets():
         db = s3.Bucket(DIFFERENT_BUCKET)
         db.create()
         db.put_object(Key="different/path/different_file", Body=DIFFERENT_FILE_CONTENT.encode("utf-8"))
+        db.put_object(Key="no_folder_file1", Body=NO_FOLDER_FILE1_CONTENT.encode("utf-8"))
+        db.put_object(Key="no_folder_file2", Body=NO_FOLDER_FILE2_CONTENT.encode("utf-8"))
 
         yield tb, db
 
@@ -58,11 +62,27 @@ def test_is_glob(path, expect):
     ("file[12]", ["file1", "file2"]),
     ("*file*", ["file1", "file2", "file3", "other_file"]),
     ("nothing*", []),
+    ("file1", ["file1"]),
 ])
 def test_expand_s3_glob(mock_buckets, glob, expect):
     ext_glob = f"s3://{TEST_BUCKET}/repo/path/{glob}"
     result = sorted(list(_expand_s3_glob(ext_glob)))
     ext_expect = [f"s3://{TEST_BUCKET}/repo/path/{x}" for x in expect]
+    assert result == ext_expect
+
+
+@pytest.mark.parametrize("glob, expect", [
+    ("no_folder_file*", ["no_folder_file1", "no_folder_file2"]),
+    ("no_folder_file1", ["no_folder_file1"]),
+    ("*", ["no_folder_file1", "no_folder_file2", "different/path/different_file"]),
+    ("[lmnop]*", ["no_folder_file1", "no_folder_file2"]),
+    ("?iffer*", ["different/path/different_file"]),
+    ("qwerty*", []),
+])
+def test_expand_s3_glob_no_folder(mock_buckets, glob, expect):
+    ext_glob = f"s3://{DIFFERENT_BUCKET}/{glob}"
+    result = sorted(list(_expand_s3_glob(ext_glob)))
+    ext_expect = sorted([f"s3://{DIFFERENT_BUCKET}/{x}" for x in expect])
     assert result == ext_expect
 
 
