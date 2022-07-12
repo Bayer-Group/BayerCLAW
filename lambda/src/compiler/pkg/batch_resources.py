@@ -38,7 +38,7 @@ def expand_image_uri(uri: str) -> Union[str, dict]:
 
 def get_job_queue(core_stack: CoreStack, compute_spec: dict) -> str:
     if (queue_name := compute_spec.get("queue_name")) is not None:
-        ret = f"arn:aws:batch:${{AWSRegion}}:${{AWSAccountId}}:job-queue/{queue_name}"
+        ret = f"arn:aws:batch:${{AWSRegion}}:${{XYZAccountId}}:job-queue/{queue_name}"
     elif compute_spec["spot"]:
         ret = core_stack.output("SpotQueueArn")
     else:
