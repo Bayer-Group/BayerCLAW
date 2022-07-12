@@ -65,6 +65,7 @@ Resources:
               bucket: "$.detail.bucket.name"
               key: "$.detail.object.key"
               version: "$.detail.object.version-id"
+              replay: "$.replay-name"
             InputTemplate:
               !Sub >-
                 {
@@ -72,6 +73,7 @@ Resources:
                     "bucket": <bucket>,
                     "key": <key>,
                     "version": <version>,
+                    "replay": <replay>,
                     "s3_request_id": "DEPRECATED"
                   },
                   "index": "main",
