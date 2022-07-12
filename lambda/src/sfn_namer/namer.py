@@ -37,6 +37,7 @@ def lambda_handler(event: dict, context: object) -> None:
     #   "job_file": {
     #     "bucket": "...",
     #     "key": "...",
+    #     "replay": "...",  # empty string if not replay
     #     "version": "..."
     #   },
     #   "index": "main",
