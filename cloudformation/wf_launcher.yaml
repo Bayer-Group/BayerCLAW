@@ -13,12 +13,41 @@ Parameters:
   NamerLambdaArn:
     Type: String
 
+# todo: notifications topic
 
 Resources:
   wfDeadLetterQueue:
     Type: AWS::SQS::Queue
     Properties:
+      MessageRetentionPeriod: 1209600
       KmsMasterKeyId: "alias/aws/sqs"
+
+  wfIncomingJobsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt wfDeadLetterQueue.Arn
+        maxReceiveCount: 3
+      KmsMasterKeyId: "alias/aws/sqs"
+
+  wfIncomingJobsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !GetAtt wfIncomingJobsQueue.QueueName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: "wfIncomingJobsQueuePolicyDocument"
+        Statement:
+          Sid: todo
+          Effect: Allow
+          Action: "SQS:SendMessage"
+          Resource: !GetAtt wfIncomingJobsQueue.Arn
+          Principal:
+            Service: "events.amazonaws.com"
+          Condition:
+            ArnEquals: !GetAtt wfEventRule.Arn
 
   wfEventRuleRole:
     Type: AWS::IAM::Role
@@ -34,6 +63,19 @@ Resources:
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
 
+  wfNamerEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 1
+      Enabled: true
+      EventSourceArn: !GetAtt wfIncomingJobsQueue.Arn
+      FunctionName: !Ref NamerLambdaArn
+
+  # todo: incoming queue DONE
+  # todo: event source mapping DONE
+  # todo: cloudwatch alarm
+
+  # todo: target -> incoming queue DONE
   wfEventRule:
     Type: AWS::Events::Rule
     Properties:
@@ -56,10 +98,10 @@ Resources:
       RoleArn: !GetAtt wfEventRuleRole.Arn
       Targets:
         -
-          Arn: !Ref NamerLambdaArn
+          Id: todo
+          Arn: !GetAtt wfIncomingJobsQueue.Arn
           DeadLetterConfig:
             Arn: !GetAtt wfDeadLetterQueue.Arn
-          Id: namer-lambda-target
           InputTransformer:
             InputPathsMap:
               bucket: "$.detail.bucket.name"
@@ -73,12 +115,36 @@ Resources:
                     "bucket": <bucket>,
                     "key": <key>,
                     "version": <version>,
-                    "replay": <replay>,
                     "s3_request_id": "DEPRECATED"
                   },
+                  "replay": <replay>
                   "index": "main",
                   "sfn_arn": "${StateMachineArn}"
                 }
+#        -
+#          Arn: !Ref NamerLambdaArn
+#          DeadLetterConfig:
+#            Arn: !GetAtt wfDeadLetterQueue.Arn
+#          Id: namer-lambda-target
+#          InputTransformer:
+#            InputPathsMap:
+#              bucket: "$.detail.bucket.name"
+#              key: "$.detail.object.key"
+#              version: "$.detail.object.version-id"
+#              replay: "$.replay-name"
+#            InputTemplate:
+#              !Sub >-
+#                {
+#                  "job_file": {
+#                    "bucket": <bucket>,
+#                    "key": <key>,
+#                    "version": <version>,
+#                    "s3_request_id": "DEPRECATED"
+#                  },
+#                  "replay": <replay>
+#                  "index": "main",
+#                  "sfn_arn": "${StateMachineArn}"
+#                }
 
   wfEventArchive:
     Type: AWS::Events::Archive
