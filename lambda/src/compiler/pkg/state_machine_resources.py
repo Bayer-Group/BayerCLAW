@@ -210,6 +210,6 @@ def add_definition_substitutions(sfn_resource: Resource, other_resources: dict) 
     defn_subs = {k: {"Ref": k} for k in other_resources.keys() if k != sfn_resource.name}
     defn_subs["WorkflowName"] = {"Ref": "AWS::StackName"}
     defn_subs["AWSRegion"] = {"Ref": "AWS::Region"}
-    defn_subs["XYZAccountId"] = {"Ref": "AWS::AccountId"}
+    defn_subs["AWSAccountId"] = {"Ref": "AWS::AccountId"}
 
     sfn_resource.spec["Properties"]["DefinitionSubstitutions"] = defn_subs

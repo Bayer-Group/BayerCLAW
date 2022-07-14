@@ -395,17 +395,20 @@ Resources:
               Effect: Allow
               Action:
                 - "states:StartExecution"
+                - "sqs:ReceiveMessage"
+                - "sqs:GetQueueAttributes"
+                - "sqs:DeleteMessage"
               Resource: "*"
       DeploymentPreference:
         Enabled: False
 
-  PermissionToInvokeNamer:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref NamerLambda
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
+#  PermissionToInvokeNamer:
+#    Type: AWS::Lambda::Permission
+#    Properties:
+#      FunctionName: !Ref NamerLambda
+#      Action: lambda:InvokeFunction
+#      Principal: events.amazonaws.com
+#      SourceAccount: !Ref AWS::AccountId
 
   NamerLambdaLogGroup:
     Type: AWS::Logs::LogGroup

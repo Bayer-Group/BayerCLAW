@@ -27,7 +27,7 @@ def run_subpipe_step(step: Step, retrieve_step_name: str) -> dict:
     state_machine_arn = step.spec["subpipe"]
 
     if not state_machine_arn.startswith("arn:"):
-        state_machine_arn = "arn:aws:states:${AWSRegion}:${XYZAccountId}:stateMachine:" + state_machine_arn
+        state_machine_arn = "arn:aws:states:${AWSRegion}:${AWSAccountId}:stateMachine:" + state_machine_arn
 
     ret = {
         "Type": "Task",

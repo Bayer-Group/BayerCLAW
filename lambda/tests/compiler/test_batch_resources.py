@@ -45,7 +45,7 @@ def test_get_memory_in_mibs(req, mibs):
 @pytest.mark.parametrize("spec, expected", [
     ({"spot": True}, "spot_queue_arn"),
     ({"spot": False}, "on_demand_queue_arn"),
-    ({"spot": True, "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${XYZAccountId}:job-queue/custom-queue")
+    ({"spot": True, "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue")
 ])
 def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
