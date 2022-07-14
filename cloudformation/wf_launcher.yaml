@@ -37,17 +37,15 @@ Resources:
       Queues:
         - !GetAtt wfIncomingJobsQueue.QueueName
       PolicyDocument:
-        Version: "2012-10-17"
-        Id: "wfIncomingJobsQueuePolicyDocument"
         Statement:
-          Sid: todo
-          Effect: Allow
-          Action: "SQS:SendMessage"
-          Resource: !GetAtt wfIncomingJobsQueue.Arn
-          Principal:
-            Service: "events.amazonaws.com"
-          Condition:
-            ArnEquals: !GetAtt wfEventRule.Arn
+          -
+            Effect: Allow
+            Action: "SQS:SendMessage"
+            Resource: !GetAtt wfIncomingJobsQueue.Arn
+            Principal:
+              Service: "events.amazonaws.com"
+            Condition:
+              ArnEquals: !GetAtt wfEventRule.Arn
 
   wfEventRuleRole:
     Type: AWS::IAM::Role
