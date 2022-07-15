@@ -187,12 +187,14 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
+  # todo: remove
   AdminSNSTopic:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: !Sub "${InstallationName}-admin-notifs"
       KmsMasterKeyId: "alias/aws/sns"
 
+  # todo: remove
   AdminSNSTopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
@@ -415,6 +417,7 @@ Resources:
                 Effect: Allow
                 Resource: "*"
 
+# todo: remove
 Outputs:
   AdminSNSTopicName:
     Value: !GetAtt AdminSNSTopic.TopicName
