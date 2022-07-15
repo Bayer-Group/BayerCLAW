@@ -20,16 +20,19 @@ Resources:
     Type: AWS::SQS::Queue
     Properties:
       MessageRetentionPeriod: 1209600
-      KmsMasterKeyId: "alias/aws/sqs"
+      # https://github.com/aws-cloudformation/cloudformation-coverage-roadmap/issues/989
+      SqsManagedSseEnabled: true
+#      KmsMasterKeyId: "alias/aws/sqs"
 
   wfIncomingJobsQueue:
     Type: AWS::SQS::Queue
     Properties:
       MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt wfDeadLetterQueue.Arn
         maxReceiveCount: 3
-      KmsMasterKeyId: "alias/aws/sqs"
+#      KmsMasterKeyId: "alias/aws/sqs"
 
   wfIncomingJobsQueuePolicy:
     Type: AWS::SQS::QueuePolicy
