@@ -187,52 +187,50 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
-  # todo: remove
-  AdminSNSTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      TopicName: !Sub "${InstallationName}-admin-notifs"
-      KmsMasterKeyId: "alias/aws/sns"
+#  AdminSNSTopic:
+#    Type: AWS::SNS::Topic
+#    Properties:
+#      TopicName: !Sub "${InstallationName}-admin-notifs"
+#      KmsMasterKeyId: "alias/aws/sns"
 
-  # todo: remove
-  AdminSNSTopicPolicy:
-    Type: AWS::SNS::TopicPolicy
-    Properties:
-      PolicyDocument:
-        Version: 2012-10-17
-        Id: __default_policy_ID
-        Statement:
-          -
-            Effect: Allow
-            Sid: __default_statement_ID
-            Principal:
-              AWS: "*"
-            Action:
-              - SNS:AddPermission
-              - SNS:DeleteTopic
-              - SNS:GetTopicAttributes
-              - SNS:ListSubscriptionsByTopic
-              - SNS:Publish
-              - SNS:Receive
-              - SNS:RemovePermission
-              - SNS:SetTopicAttributes
-              - SNS:Subscribe
-            Resource:
-              !Ref AdminSNSTopic
-            Condition:
-              StringEquals:
-                AWS:SourceOwner:
-                  Ref: AWS::AccountId
-          -
-            Effect: Allow
-            Sid: yada_yada
-            Principal:
-              Service:
-                - codestar-notifications.amazonaws.com
-            Action: "SNS:Publish"
-            Resource: !Ref AdminSNSTopic
-      Topics:
-        - !Ref AdminSNSTopic
+#  AdminSNSTopicPolicy:
+#    Type: AWS::SNS::TopicPolicy
+#    Properties:
+#      PolicyDocument:
+#        Version: 2012-10-17
+#        Id: __default_policy_ID
+#        Statement:
+#          -
+#            Effect: Allow
+#            Sid: __default_statement_ID
+#            Principal:
+#              AWS: "*"
+#            Action:
+#              - SNS:AddPermission
+#              - SNS:DeleteTopic
+#              - SNS:GetTopicAttributes
+#              - SNS:ListSubscriptionsByTopic
+#              - SNS:Publish
+#              - SNS:Receive
+#              - SNS:RemovePermission
+#              - SNS:SetTopicAttributes
+#              - SNS:Subscribe
+#            Resource:
+#              !Ref AdminSNSTopic
+#            Condition:
+#              StringEquals:
+#                AWS:SourceOwner:
+#                  Ref: AWS::AccountId
+#          -
+#            Effect: Allow
+#            Sid: yada_yada
+#            Principal:
+#              Service:
+#                - codestar-notifications.amazonaws.com
+#            Action: "SNS:Publish"
+#            Resource: !Ref AdminSNSTopic
+#      Topics:
+#        - !Ref AdminSNSTopic
 
   CoreStackCodebuildProject:
     Type: AWS::CodeBuild::Project
@@ -417,7 +415,6 @@ Resources:
                 Effect: Allow
                 Resource: "*"
 
-# todo: remove
-Outputs:
-  AdminSNSTopicName:
-    Value: !GetAtt AdminSNSTopic.TopicName
+#Outputs:
+#  AdminSNSTopicName:
+#    Value: !GetAtt AdminSNSTopic.TopicName
