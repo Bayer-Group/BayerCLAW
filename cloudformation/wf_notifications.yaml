@@ -20,6 +20,24 @@ Resources:
       TopicName: !Sub "${WorkflowName}-notifications"
       KmsMasterKeyId: "alias/aws/sns"
 
+  wfOutputSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref wfOutputSNSTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: "wfOutputSNSTopicPolicy"
+        Statement:
+          -
+            Effect: Deny
+            Principal: "*"
+            Action: "sns:Publish"
+            Resource: !Ref wfOutputSNSTopic
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
   wfSFNtoLambdaRule:
     Type: AWS::Events::Rule
     Properties:
