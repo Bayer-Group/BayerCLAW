@@ -28,10 +28,10 @@ def compile_template(wf_spec: dict, state_machine_out=None) -> dict:
     sm.add_definition_substitutions(state_machine, resources)
 
     # create substacks
-    launcher_substack = launcher_substack_rc(core_stack, state_machine.name)
     notifications_substack = notifications_substack_rc(core_stack, state_machine.name)
+    launcher_substack = launcher_substack_rc(core_stack, state_machine.name, notifications_substack)
 
-    resources.update([launcher_substack, notifications_substack])
+    resources.update([notifications_substack, launcher_substack])
 
     # create cloudformation template fragment to return
     ret = {

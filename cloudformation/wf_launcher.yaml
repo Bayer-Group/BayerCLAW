@@ -13,7 +13,8 @@ Parameters:
   NamerLambdaArn:
     Type: String
 
-# todo: notifications topic
+  NotificationsTopicArn:
+    Type: String
 
 Resources:
   wfDeadLetterQueue:
@@ -188,3 +189,46 @@ Resources:
             Condition:
               ArnEquals:
                 "aws:SourceArn": !GetAtt wfEventRule.Arn
+
+  wfDLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref NotificationsTopicArn
+      AlarmDescription: "this is the alarm description"
+      ComparisonOperator: GreaterThanThreshold
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Metrics:
+        -
+          Id: m1
+          MetricStat:
+            Metric:
+              Namespace: AWS/SQS
+              MetricName: ApproximateNumberOfMessaagesVisible
+              Dimensions:
+                - Name: QueueName
+                  Value: !GetAtt wfDeadLetterQueue.QueueName
+            Period: 300
+            Stat: Average
+          ReturnData: false
+        -
+          Id: m2
+          MetricStat:
+            Metric:
+              Namespace: AWS/SQS
+              MetricName: ApproximateNumberOfMessagesNotVisible
+              Dimensions:
+                - Name: QueueName
+                  Value: !GetAtt wfDeadLetterQueue.QueueName
+            Period: 300
+            Stat: Average
+          ReturnData: false
+        -
+          Id: e1
+          Expression: "RATE(m1+m2)"
+          Label: "expressionLabel"
+          ReturnData: true
+      Threshold: 0.0
+      TreatMissingData: missing

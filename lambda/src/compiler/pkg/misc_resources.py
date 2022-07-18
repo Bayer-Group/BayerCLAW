@@ -4,7 +4,7 @@ LAUNCHER_STACK_NAME = "launcherStack"
 NOTIFICATIONS_STACK_NAME = "notificationsStack"
 
 
-def launcher_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -> Resource:
+def launcher_substack_rc(core_stack: CoreStack, state_machine_logical_name: str, notifs_subsstack: Resource) -> Resource:
     rc_bucket = core_stack.output("ResourceBucketName")
     template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/wf_launcher.yaml"
 
@@ -16,6 +16,7 @@ def launcher_substack_rc(core_stack: CoreStack, state_machine_logical_name: str)
                 "StateMachineArn": {"Ref": state_machine_logical_name},
                 "LauncherBucketName": core_stack.output("LauncherBucketName"),
                 "NamerLambdaArn": core_stack.output("NamerLambdaArn"),
+                "NotificationsTopicArn": {"Fn::GetAtt": [notifs_subsstack.name, "Outputs.wfOutputTopicArn"]},
             },
             "TemplateURL": template_url,
         }
