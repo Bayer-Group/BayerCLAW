@@ -189,13 +189,6 @@ Resources:
             Condition:
               ArnEquals:
                 "aws:SourceArn": !GetAtt wfEventRule.Arn
-#          -
-#            Effect: Allow
-#            Principal:
-#              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
-#            Action: "SQS:*"
-#            Resource:
-#              - !GetAtt wfDeadLetterQueue.Arn
 
   wfDLQAlarm:
     Type: AWS::CloudWatch::Alarm
@@ -213,7 +206,7 @@ Resources:
           MetricStat:
             Metric:
               Namespace: AWS/SQS
-              MetricName: ApproximateNumberOfMessaagesVisible
+              MetricName: ApproximateNumberOfMessagesVisible
               Dimensions:
                 - Name: QueueName
                   Value: !GetAtt wfDeadLetterQueue.QueueName
