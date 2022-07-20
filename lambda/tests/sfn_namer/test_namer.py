@@ -77,7 +77,7 @@ def mock_state_machine():
     ("replay789ABCDEF", "replay789A_one-two-three-file_01234567")
 ])
 def test_lambda_handler(mock_state_machine, replay, expected_name):
-    body = {
+    event = {
         "job_file": {
             "bucket": "bucket-name",
             "key": "wf-name/one/two/three/file.txt",
@@ -86,12 +86,6 @@ def test_lambda_handler(mock_state_machine, replay, expected_name):
         "index": "main",
         "replay": replay,
         "sfn_arn": mock_state_machine,
-    }
-
-    event = {
-        "Records": [
-            {"body": json.dumps(body)}
-        ]
     }
 
     lambda_handler(event, {})
@@ -117,7 +111,7 @@ def test_lambda_handler(mock_state_machine, replay, expected_name):
 
 
 def test_lambda_handler_duplicate_event(mock_state_machine):
-    body = {
+    event1 = {
         "job_file": {
             "bucket": "bucket-name",
             "key": "wf-name/four/five/six/file.txt",
@@ -126,11 +120,6 @@ def test_lambda_handler_duplicate_event(mock_state_machine):
         "index": "main",
         "replay": "",
         "sfn_arn": mock_state_machine,
-    }
-    event1 = {
-        "Records": [
-            {"body": json.dumps(body)}
-        ]
     }
     event2 = event1.copy()
 
