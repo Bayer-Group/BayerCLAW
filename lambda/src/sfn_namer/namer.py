@@ -25,15 +25,6 @@ def make_execution_name(s3_key: str, version: str, replay: str) -> str:
 
 def lambda_handler(event: dict, context: object) -> None:
     # event = {
-    #   "Records": [
-    #     {
-    #       "body": <json string>,
-    #       ...and other sqs stuff
-    #     }
-    #   ]
-    # }
-
-    # record = {
     #   "job_file": {
     #     "bucket": "...",
     #     "key": "...",
@@ -46,33 +37,30 @@ def lambda_handler(event: dict, context: object) -> None:
 
     print(str(event))
 
-    for record_str in event["Records"]:
-        record = json.loads(record_str["body"])
+    # todo: remove
+    assert "_DIE_DIE_DIE_" not in event["job_file"]["key"]
 
-        # todo: remove
-        assert "_DIE_DIE_DIE_" not in record["job_file"]["key"]
+    state_machine_arn = event.pop("sfn_arn")
+    replay = event.pop("replay")
+    exec_name = make_execution_name(event["job_file"]["key"],
+                                    event["job_file"]["version"],
+                                    replay)
 
-        state_machine_arn = record.pop("sfn_arn")
-        replay = record.pop("replay")
-        exec_name = make_execution_name(record["job_file"]["key"],
-                                        record["job_file"]["version"],
-                                        replay)
+    sfn = boto3.client("stepfunctions")
 
-        sfn = boto3.client("stepfunctions")
+    try:
+        while True:
+            response = sfn.start_execution(
+                stateMachineArn=state_machine_arn,
+                name=exec_name,
+                input=json.dumps(event)
+            )
 
-        try:
-            while True:
-                response = sfn.start_execution(
-                    stateMachineArn=state_machine_arn,
-                    name=exec_name,
-                    input=json.dumps(record)
-                )
+            print(str(response))
 
-                print(str(response))
+            if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
+                break
 
-                if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
-                    break
-
-        except sfn.exceptions.ExecutionAlreadyExists:
-            # duplicated s3 events are way more likely than bona fide name collisions
-            print(f"duplicate event: {exec_name}")
+    except sfn.exceptions.ExecutionAlreadyExists:
+        # duplicated s3 events are way more likely than bona fide name collisions
+        print(f"duplicate event: {exec_name}")
