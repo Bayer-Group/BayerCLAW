@@ -42,8 +42,15 @@ def lambda_handler(event: dict, context: object) -> None:
     #   "sfn_arn": "..."
     # }
 
-    with custom_lambda_logs():
-        logger.info(f"event = ")
+    with custom_lambda_logs(branch=event["index"],
+                            job_file_bucket=event["job_file"]["bucket"],
+                            job_file_key=event["job_file"]["key"],
+                            job_file_version=event["job_file"]["version"],
+                            job_file_s3_request_id="DEPRECATED",
+                            sfn_execution_id="unassigned",
+                            step_name="pre-launch",
+                            workflow_name="todo"):
+        logger.info(f"{event = }")
 
         # todo: remove
         assert "_DIE_DIE_DIE_" not in event["job_file"]["key"]
@@ -64,7 +71,7 @@ def lambda_handler(event: dict, context: object) -> None:
                     input=json.dumps(event)
                 )
 
-                logger.info(f"response = ")
+                logger.info(f"{response = }")
 
                 if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
                     break
