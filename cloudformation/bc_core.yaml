@@ -387,6 +387,8 @@ Resources:
       CodeUri: lambda/src/sfn_namer
       MemorySize: 128
       Timeout: 5
+      Layers:
+        - !Ref CommonLayer
       Policies:
         -
           Version: "2012-10-17"
