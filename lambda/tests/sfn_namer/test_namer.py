@@ -1,9 +1,26 @@
 import json
+import logging
+import os
 import re
+import sys
 
 import boto3
 import moto
 import pytest
+
+# make common layer modules available
+sys.path.append(
+    os.path.realpath(
+        os.path.join(
+            os.path.dirname(__file__),  # (home)/lambda/tests/sfn_namer
+            os.pardir,                  # (home)/lambda/tests
+            os.pardir,                  # (home)/lambda
+            "src", "common", "python"
+        )
+    )
+)
+
+logging.basicConfig(level=logging.INFO)
 
 from ...src.sfn_namer.namer import normalize, make_execution_name, lambda_handler
 

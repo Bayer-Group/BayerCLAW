@@ -1,8 +1,15 @@
 import json
+import logging
 import os
 import re
 
 import boto3
+
+from lambda_logs import JSONFormatter, custom_lambda_logs
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logger.handlers[0].setFormatter(JSONFormatter())
 
 
 def normalize(key: str) -> str:
@@ -35,32 +42,33 @@ def lambda_handler(event: dict, context: object) -> None:
     #   "sfn_arn": "..."
     # }
 
-    print(str(event))
+    with custom_lambda_logs():
+        logger.info(f"event = ")
 
-    # todo: remove
-    assert "_DIE_DIE_DIE_" not in event["job_file"]["key"]
+        # todo: remove
+        assert "_DIE_DIE_DIE_" not in event["job_file"]["key"]
 
-    state_machine_arn = event.pop("sfn_arn")
-    replay = event.pop("replay")
-    exec_name = make_execution_name(event["job_file"]["key"],
-                                    event["job_file"]["version"],
-                                    replay)
+        state_machine_arn = event.pop("sfn_arn")
+        replay = event.pop("replay")
+        exec_name = make_execution_name(event["job_file"]["key"],
+                                        event["job_file"]["version"],
+                                        replay)
 
-    sfn = boto3.client("stepfunctions")
+        sfn = boto3.client("stepfunctions")
 
-    try:
-        while True:
-            response = sfn.start_execution(
-                stateMachineArn=state_machine_arn,
-                name=exec_name,
-                input=json.dumps(event)
-            )
+        try:
+            while True:
+                response = sfn.start_execution(
+                    stateMachineArn=state_machine_arn,
+                    name=exec_name,
+                    input=json.dumps(event)
+                )
 
-            print(str(response))
+                logger.info(f"response = ")
 
-            if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
-                break
+                if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
+                    break
 
-    except sfn.exceptions.ExecutionAlreadyExists:
-        # duplicated s3 events are way more likely than bona fide name collisions
-        print(f"duplicate event: {exec_name}")
+        except sfn.exceptions.ExecutionAlreadyExists:
+            # duplicated s3 events are way more likely than bona fide name collisions
+            logger.info(f"duplicate event: {exec_name}")
