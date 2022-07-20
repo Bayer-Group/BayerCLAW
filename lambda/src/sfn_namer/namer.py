@@ -42,33 +42,47 @@ def lambda_handler(event: dict, context: object) -> None:
     #   "sfn_arn": "..."
     # }
 
-    with custom_lambda_logs(branch=event["index"],
-                            job_file_bucket=event["job_file"]["bucket"],
-                            job_file_key=event["job_file"]["key"],
-                            job_file_version=event["job_file"]["version"],
-                            job_file_s3_request_id="DEPRECATED",
-                            sfn_execution_id="unassigned",
-                            step_name="pre-launch",
-                            workflow_name="todo"):
+    # with custom_lambda_logs(branch=event["index"],
+    #                         job_file_bucket=event["job_file"]["bucket"],
+    #                         job_file_key=event["job_file"]["key"],
+    #                         job_file_version=event["job_file"]["version"],
+    #                         job_file_s3_request_id="DEPRECATED",
+    #                         sfn_execution_id="unassigned",
+    #                         step_name="pre-launch",
+    #                         workflow_name="todo"):
+    with custom_lambda_logs(**event):
         logger.info(f"{event = }")
 
-        # todo: remove
-        assert "_DIE_DIE_DIE_" not in event["job_file"]["key"]
-
-        state_machine_arn = event.pop("sfn_arn")
-        replay = event.pop("replay")
-        exec_name = make_execution_name(event["job_file"]["key"],
-                                        event["job_file"]["version"],
-                                        replay)
-
-        sfn = boto3.client("stepfunctions")
-
         try:
+            # todo: remove
+            assert "_DIE_DIE_DIE_" not in event["job_file"]["key"]
+
+            # state_machine_arn = event["sfn_arn"]
+            # replay = event["replay"]
+            exec_name = make_execution_name(event["job_file_key"],
+                                            event["job_file_version"],
+                                            event["replay"])
+
+            logger.info(f"{exec_name =}")
+
+            input_obj = {
+                "job_file": {
+                    "bucket": event["job_file_bucket"],
+                    "key": event["job_file_key"],
+                    "version": event["job_file_version"],
+                    "s3_request_id": "DEPRECATED",
+                },
+                "index": event["branch"],
+            }
+
+            sfn = boto3.client("stepfunctions")
+
             while True:
                 response = sfn.start_execution(
-                    stateMachineArn=state_machine_arn,
+                    stateMachineArn=event["sfn_arn"],
                     name=exec_name,
-                    input=json.dumps(event)
+                    input=json.dumps(input_obj)
+                    # input=json.dumps(event)
                 )
 
                 logger.info(f"{response = }")
@@ -79,3 +93,6 @@ def lambda_handler(event: dict, context: object) -> None:
         except sfn.exceptions.ExecutionAlreadyExists:
             # duplicated s3 events are way more likely than bona fide name collisions
             logger.info(f"duplicate event: {exec_name}")
+
+        except Exception:
+            logger.exception("failed: ")

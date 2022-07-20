@@ -71,16 +71,28 @@ Resources:
             InputTemplate:
               !Sub >-
                 {
-                  "job_file": {
-                    "bucket": <bucket>,
-                    "key": <key>,
-                    "version": <version>,
-                    "s3_request_id": "DEPRECATED"
-                  },
+                  "branch": "main",
+                  "job_file_bucket": <bucket>,
+                  "job_file_key": <key>,
+                  "job_file_version": <version>,
+                  "job_file_s3_request_id": "DEPRECATED",
+                  "workflow_name": "${WorkflowName}",
                   "replay": <replay>,
-                  "index": "main",
-                  "sfn_arn": "${StateMachineArn}"
+                  "sfn_arn: "${StateMachineArn}"
                 }
+#            InputTemplate0:
+#              !Sub >-
+#                {
+#                  "job_file": {
+#                    "bucket": <bucket>,
+#                    "key": <key>,
+#                    "version": <version>,
+#                    "s3_request_id": "DEPRECATED"
+#                  },
+#                  "replay": <replay>,
+#                  "index": "main",
+#                  "sfn_arn": "${StateMachineArn}"
+#                }
 
   wfEventArchive:
     Type: AWS::Events::Archive
