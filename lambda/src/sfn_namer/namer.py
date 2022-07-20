@@ -52,6 +52,7 @@ def lambda_handler(event: dict, context: object) -> None:
     #                         workflow_name="todo"):
     with custom_lambda_logs(**event):
         logger.info(f"{event = }")
+        sfn = boto3.client("stepfunctions")
 
         try:
             # todo: remove
@@ -74,8 +75,6 @@ def lambda_handler(event: dict, context: object) -> None:
                 },
                 "index": event["branch"],
             }
-
-            sfn = boto3.client("stepfunctions")
 
             while True:
                 response = sfn.start_execution(
