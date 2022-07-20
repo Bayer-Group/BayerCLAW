@@ -77,7 +77,7 @@ Resources:
                     "version": <version>,
                     "s3_request_id": "DEPRECATED"
                   },
-                  "replay": <replay>
+                  "replay": <replay>,
                   "index": "main",
                   "sfn_arn": "${StateMachineArn}"
                 }
