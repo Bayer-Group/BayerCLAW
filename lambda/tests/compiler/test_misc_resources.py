@@ -6,9 +6,8 @@ from ...src.compiler.pkg.util import CoreStack, Resource
 def test_launcher_substack_rc(monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
-    notifs = Resource("fake_notifs", {})
 
-    result = launcher_substack_rc(core_stack, "FakeStateMachine", notifs)
+    result = launcher_substack_rc(core_stack, "FakeStateMachine")
     expect = {
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
@@ -17,7 +16,6 @@ def test_launcher_substack_rc(monkeypatch, mock_core_stack):
                 "StateMachineArn": {"Ref": "FakeStateMachine"},
                 "LauncherBucketName": "launcher_bucket_name",
                 "NamerLambdaArn": "namer_lambda_arn",
-                "NotificationsTopicArn": {"Fn::GetAtt": [notifs.name, "Outputs.wfOutputTopicArn"]}
             },
             "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/wf_launcher.yaml",
         },
