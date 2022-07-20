@@ -78,7 +78,7 @@ Resources:
                   "job_file_s3_request_id": "DEPRECATED",
                   "workflow_name": "${WorkflowName}",
                   "replay": <replay>,
-                  "sfn_arn: "${StateMachineArn}"
+                  "sfn_arn": "${StateMachineArn}"
                 }
 #            InputTemplate0:
 #              !Sub >-
