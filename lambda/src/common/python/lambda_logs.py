@@ -28,7 +28,8 @@ def custom_lambda_logs(branch: str = "unknown",
                        job_file_s3_request_id: str = "unknown",
                        sfn_execution_id: str = "unknown",
                        step_name: str = "unknown",
-                       workflow_name: str = "unknown") -> None:
+                       workflow_name: str = "unknown",
+                       **kwargs) -> None:
     old_factory = logging.getLogRecordFactory()
 
     def record_factory(*args, **kwargs):

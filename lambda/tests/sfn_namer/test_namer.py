@@ -94,13 +94,23 @@ def mock_state_machine():
     ("replay789ABCDEF", "replay789A_one-two-three-file_01234567")
 ])
 def test_lambda_handler(mock_state_machine, replay, expected_name):
+    # event = {
+    #     "job_file": {
+    #         "bucket": "bucket-name",
+    #         "key": "wf-name/one/two/three/file.txt",
+    #         "version": "0123456789ABCDEF0123456789abcdef"
+    #     },
+    #     "index": "main",
+    #     "replay": replay,
+    #     "sfn_arn": mock_state_machine,
+    # }
     event = {
-        "job_file": {
-            "bucket": "bucket-name",
-            "key": "wf-name/one/two/three/file.txt",
-            "version": "0123456789ABCDEF0123456789abcdef"
-        },
-        "index": "main",
+        "branch": "main",
+        "job_file_bucket": "bucket-name",
+        "job_file_key": "wf-name/one/two/three/file.txt",
+        "job_file_version": "0123456789ABCDEF0123456789abcdef",
+        "job_file_s3_request_id": "DEPRECATED",
+        "workflow_name": "wf_name",
         "replay": replay,
         "sfn_arn": mock_state_machine,
     }
@@ -120,7 +130,8 @@ def test_lambda_handler(mock_state_machine, replay, expected_name):
         "job_file": {
             "bucket": "bucket-name",
             "key": "wf-name/one/two/three/file.txt",
-            "version": "0123456789ABCDEF0123456789abcdef"
+            "version": "0123456789ABCDEF0123456789abcdef",
+            "s3_request_id": "DEPRECATED",
         },
         "index": "main",
     }
@@ -129,12 +140,12 @@ def test_lambda_handler(mock_state_machine, replay, expected_name):
 
 def test_lambda_handler_duplicate_event(mock_state_machine):
     event1 = {
-        "job_file": {
-            "bucket": "bucket-name",
-            "key": "wf-name/four/five/six/file.txt",
-            "version": "abcdef0123456789ABCDEF0123456789"
-        },
-        "index": "main",
+        "branch": "main",
+        "job_file_bucket": "bucket-name",
+        "job_file_key": "wf-name/four/five/six/file.txt",
+        "job_file_version": "abcdef0123456789ABCDEF0123456789",
+        "job_file_s3_request_id": "DEPRECATED",
+        "workflow_name": "wf-name",
         "replay": "",
         "sfn_arn": mock_state_machine,
     }

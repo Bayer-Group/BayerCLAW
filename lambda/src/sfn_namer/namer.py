@@ -55,7 +55,7 @@ def lambda_handler(event: dict, context: object) -> None:
 
         try:
             # todo: remove
-            assert "_DIE_DIE_DIE_" not in event["job_file"]["key"]
+            assert "_DIE_DIE_DIE_" not in event["job_file_key"]
 
             # state_machine_arn = event["sfn_arn"]
             # replay = event["replay"]
