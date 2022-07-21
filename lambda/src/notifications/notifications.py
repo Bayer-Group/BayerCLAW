@@ -27,6 +27,7 @@ def make_state_change_message(event: dict) -> str:
             "sfn_execution_id": execution_id,
             "job_status": status,
             "job_data": f"s3://{input_obj['job_file']['bucket']}/{input_obj['job_file']['key']}",
+            "job_data_version": input_obj["job_file"]["version"],
             "s3_request_id": input_obj["job_file"]["s3_request_id"],
             "sfn_console_link": console_url,
         },
@@ -51,10 +52,10 @@ def make_state_change_message(event: dict) -> str:
         raise RuntimeError(f"status {status} not recognized")
 
     # execution_handle = execution_id.split("-", 1)[0]
-    # job_file_name = input_obj["job_file"]["key"].rsplit("/", 1)[-1]
+    job_file_name = input_obj["job_file"]["key"].rsplit("/", 1)[-1]
 
-    # text = f"Job {execution_handle} ('{job_file_name}') on workflow {workflow_name} {action}."
-    text = f"Job {execution_id} on workflow {workflow_name} {action}."
+    text = f"Job {execution_id} ('{job_file_name}') on workflow {workflow_name} {action}."
+    # text = f"Job {execution_id} on workflow {workflow_name} {action}."
     message = yaml.safe_dump_all([text, details])
 
     return message
