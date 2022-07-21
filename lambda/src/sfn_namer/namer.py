@@ -12,21 +12,27 @@ logger.setLevel(logging.INFO)
 logger.handlers[0].setFormatter(JSONFormatter())
 
 
-def normalize(key: str) -> str:
+def shorten_filename(key: str) -> str:
     # assume the filename extension is something uninformative like ".json"
-    root0 = os.path.splitext(key)[0]
+    root = os.path.splitext(key)[0]
     # top level dir is constant for a workflow so discard it
-    root = re.split(r"/+", root0, maxsplit=1)[-1]
-    ret = re.sub(r"[^A-Za-z0-9]+", "-", root)
+    ret = re.split(r"/+", root, maxsplit=1)[-1]
+    return ret
+
+
+def normalize(string: str) -> str:
+    ret = re.sub(r"[^A-Za-z0-9]+", "-", string)
     return ret
 
 
 def make_execution_name(s3_key: str, version: str, replay: str) -> str:
-    norm_key = normalize(s3_key)
+    norm_key = normalize(shorten_filename(s3_key))
+    norm_version = normalize(version)
     if replay == "":
-        ret = f"{norm_key:.71}_{version:.8}"
+        ret = f"{norm_key:.71}_{norm_version:.8}"
     else:
-        ret = f"{replay:.10}_{norm_key:.60}_{version:.8}"
+        norm_replay = normalize(replay)
+        ret = f"{norm_replay:.10}_{norm_key:.60}_{norm_version:.8}"
     return ret
 
 

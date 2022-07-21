@@ -22,20 +22,23 @@ sys.path.append(
 
 logging.basicConfig(level=logging.INFO)
 
-from ...src.sfn_namer.namer import normalize, make_execution_name, lambda_handler
+from ...src.sfn_namer.namer import shorten_filename, normalize, make_execution_name, lambda_handler
 
 
-def test_normalize():
-    key = "DISCARD///two//three/four99+five____zireau88*six&^%$#.seven.DISCARD"
-    expect = "two-three-four99-five-zireau88-six-seven"
-    result = normalize(key)
+@pytest.mark.parametrize("string, expect", [
+    ("DISCARD///two//three/four99+five____zireau88*six&^%$#.seven.DISCARD", "two//three/four99+five____zireau88*six&^%$#.seven"),
+    ("antidisestablishmentarianism", "antidisestablishmentarianism")
+])
+def test_shorten_filename(string, expect):
+    result = shorten_filename(string)
     assert result == expect
 
 
-def test_normalize_nothing_to_discard():
-    key = "antidisestablishmentarianism"
+def test_normalize():
+    key = "two//three/four99+five____zireau88*six&^%$#.seven"
+    expect = "two-three-four99-five-zireau88-six-seven"
     result = normalize(key)
-    assert result == key
+    assert result == expect
 
 
 @pytest.mark.parametrize("replay", ["", "replay789ABCDEF"])
@@ -56,13 +59,13 @@ def test_make_execution_name_long_key(replay):
 def test_make_execution_name_normalize(replay):
     key = "DISCARD/one!@#$%/TWO)(*&tHrEe<>?/456___789/file-name.DISCARD"
     exp_norm = "one-TWO-tHrEe-456-789-file-name"
-    version = "12345678abcdefghijklmnopqrstuvwxyz"
+    version = "12_34.5678_abcdefghijklmnopqrstuvwxyz"
     result = make_execution_name(key, version, replay)
 
     assert len(result) <= 80
     assert re.match(r"^[A-Za-z0-9_-]{1,80}$", result)
 
-    assert result.endswith(version[:8])
+    assert result.endswith("12-34-56")
     assert exp_norm in result
     if replay != "":
         assert result.startswith(replay[:10])
