@@ -397,9 +397,6 @@ Resources:
               Effect: Allow
               Action:
                 - "states:StartExecution"
-                - "sqs:ReceiveMessage"
-                - "sqs:GetQueueAttributes"
-                - "sqs:DeleteMessage"
               Resource: "*"
       DeploymentPreference:
         Enabled: False
