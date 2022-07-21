@@ -34,7 +34,7 @@ def run_subpipe_step(step: Step, retrieve_step_name: str) -> dict:
         "Resource": "arn:aws:states:::states:startExecution.sync",
         "Parameters": {
             "Input": {
-                "id_prefix.$": "$.id_prefix",
+                # "id_prefix.$": "$.id_prefix",
                 "index": "main",
                 "job_file.$": "$.job_file",
                 "prev_outputs": {},

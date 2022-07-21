@@ -85,7 +85,7 @@ def handle_s3_launch(event: dict) -> dict:
     src_key = event["input_obj"]["job_file"]["key"]
     src_version = event["input_obj"]["job_file"]["version"]
 
-    id_prefix = event["logging"]["sfn_execution_id"].split("-", 1)[0]
+    # id_prefix = event["logging"]["sfn_execution_id"].split("-", 1)[0]
 
     # if bucket versioning is suspended,version will be an empty string
     job_data = read_s3_object(src_bucket, src_key, src_version)
@@ -100,7 +100,7 @@ def handle_s3_launch(event: dict) -> dict:
     write_execution_record(event, repo_bucket, repo_prefix)
 
     ret = {
-        "id_prefix": id_prefix,
+        # "id_prefix": id_prefix,
         "index": event["input_obj"]["index"],
         "job_file": {
             "bucket": src_bucket,

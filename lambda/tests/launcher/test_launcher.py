@@ -194,7 +194,7 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
     # return value to send to step functions
     expect = {
         "index": "main",
-        "id_prefix": "test",
+        # "id_prefix": "test",
         "job_file": {
             "bucket": launcher_bucket,
             "key": job_data_key,
@@ -234,7 +234,7 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
 def test_lambda_handler_subpipe_execution(caplog):
     input_obj = {
         "index": "main",
-        "id_prefix": "testPrefix",
+        # "id_prefix": "testPrefix",
         "job_file": {
             "bucket": "testBucket",
             "key": "path/to/job/file.txt",

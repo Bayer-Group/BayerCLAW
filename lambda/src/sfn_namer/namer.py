@@ -32,24 +32,15 @@ def make_execution_name(s3_key: str, version: str, replay: str) -> str:
 
 def lambda_handler(event: dict, context: object) -> None:
     # event = {
-    #   "job_file": {
-    #     "bucket": "...",
-    #     "key": "...",
-    #     "version": "..."
-    #   },
+    #   "branch": "..."
+    #   "job_file_bucket": "...",
+    #   "job_file_key": "...",
+    #   "job_file_version": "..."
+    #   "workflow_name": "..."
     #   "replay": "...",  # empty string if not an archive replay
-    #   "index": "main",
     #   "sfn_arn": "..."
     # }
 
-    # with custom_lambda_logs(branch=event["index"],
-    #                         job_file_bucket=event["job_file"]["bucket"],
-    #                         job_file_key=event["job_file"]["key"],
-    #                         job_file_version=event["job_file"]["version"],
-    #                         job_file_s3_request_id="DEPRECATED",
-    #                         sfn_execution_id="unassigned",
-    #                         step_name="pre-launch",
-    #                         workflow_name="todo"):
     with custom_lambda_logs(**event):
         logger.info(f"{event = }")
         sfn = boto3.client("stepfunctions")
@@ -81,7 +72,6 @@ def lambda_handler(event: dict, context: object) -> None:
                     stateMachineArn=event["sfn_arn"],
                     name=exec_name,
                     input=json.dumps(input_obj)
-                    # input=json.dumps(event)
                 )
 
                 logger.info(f"{response = }")

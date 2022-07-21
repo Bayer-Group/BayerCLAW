@@ -63,7 +63,7 @@ def test_run_subpipe_step(sample_subpipe_spec):
         "Parameters": {
             "Input": {
                 "index": "main",
-                "id_prefix.$": "$.id_prefix",
+                # "id_prefix.$": "$.id_prefix",
                 "job_file.$": "$.job_file",
                 "prev_outputs": {},
                 "repo.$": "$.subpipe.sub_repo",
