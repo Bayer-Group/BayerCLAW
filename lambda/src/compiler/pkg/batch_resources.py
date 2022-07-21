@@ -258,7 +258,8 @@ def batch_step(core_stack: CoreStack,
         ],
         "Parameters": {
             # "JobName.$": "States.Format('{}__{}__{}__{}', $$.StateMachine.Name, $$.State.Name, $.id_prefix, $.index)",
-            "JobName.$": "States.Format('{}__{}__{}__{}', $$.Execution.Name, $.index, $$.State.Name, $$.StateMachine.Name)",
+            # "JobName.$": "States.Format('{}__{}__{}__{}', $$.Execution.Name, $.index, $$.State.Name, $$.StateMachine.Name)",
+            "JobName.$": "States.Format('{}_{}__{}_{}', $$.StateMachine.Name, $$.State.Name, $$.Execution.Name, $.index)",
             "JobDefinition": f"${{{job_definition_name}}}",
             "JobQueue": get_job_queue(core_stack, step.spec["compute"]),
             "Parameters": {
