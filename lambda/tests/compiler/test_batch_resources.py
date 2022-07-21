@@ -333,7 +333,8 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step,
         ],
         "Parameters": {
             # "JobName.$": "States.Format('{}__{}__{}__{}', $$.StateMachine.Name, $$.State.Name, $.id_prefix, $.index)",
-            "JobName.$": "States.Format('{}__{}__{}__{}', $$.Execution.Name, $.index, $$.State.Name, $$.StateMachine.Name)",
+            # "JobName.$": "States.Format('{}__{}__{}__{}', $$.Execution.Name, $.index, $$.State.Name, $$.StateMachine.Name)",
+            "JobName.$": "States.Format('{}_{}__{}_{}', $$.StateMachine.Name, $$.State.Name, $$.Execution.Name, $.index)",
             "JobDefinition": "${TestJobDef}",
             "JobQueue": "spot_queue_arn",
             "Parameters": {
