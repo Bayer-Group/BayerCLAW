@@ -134,13 +134,12 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
                 with closing(container.logs(stream=True)) as fp:
                     for line in fp:
                         logger.info(line.decode("utf-8"))
-                logger.info("user command subprocess exited")
 
             except Exception:
-                logger.exception("error during subprocess logging: ")
+                logger.exception("----- error during subprocess logging: ")
                 container.reload()
-                logger.info(f"subprocess status is {container.status}")
-                logger.warning("continuing without subprocess logging")
+                logger.info(f"----- subprocess status is {container.status}")
+                logger.warning("----- continuing without subprocess logging")
 
             finally:
                 logger.info("---------- end of user command block ----------")

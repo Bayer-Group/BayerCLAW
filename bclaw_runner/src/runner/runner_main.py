@@ -112,7 +112,7 @@ def cli() -> int:
     with spot_termination_checker():
         args = docopt(__doc__, version=VERSION)
 
-        logger.info(json.dumps(args, indent=4))
+        logger.info(f"{args =}")
 
         commands = json.loads(args["--cmd"])
         image    = args["--image"]
