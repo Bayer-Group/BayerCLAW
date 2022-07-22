@@ -85,21 +85,20 @@ def main(commands: List[str],
             local_job_data = write_job_data_file(job_data_obj, wrk)
 
             # run commands
+            logger.info("---------- starting user command block ----------")
             status = run_commands(jobby_image, subbed_commands, wrk, local_job_data, shell)
             if status == 0:
                 logger.info("command block succeeded")
             else:
                 logger.error(f"command block failed with exit code {status}")
+            logger.info("---------- user command block finished ----------")
 
             # upload outputs
             repo.upload_outputs(jobby_outputs)
 
             # mark job complete on success
             if status == 0:
-                try:
-                    repo.put_run_status()
-                except RuntimeError:
-                    logger.warning("failed to upload run status")
+                repo.put_run_status()
 
         except Exception as e:
             logger.exception("runner failed")

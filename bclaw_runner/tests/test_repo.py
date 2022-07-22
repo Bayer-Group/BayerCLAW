@@ -432,12 +432,37 @@ def test_check_for_previous_run(monkeypatch, mock_buckets, step_name, expect):
     assert result == expect
 
 
-def test_clear_run_status(monkeypatch, mock_buckets):
-    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+def failing_thing(*args, **kwargs):
+    raise RuntimeError("failed")
+
+
+def test_check_for_previous_run_fail(monkeypatch, mock_buckets, caplog):
+    monkeypatch.setenv("BC_STEP_NAME", "nothing")
+    repo = Repository("s3://non_bucket/repo/path")
+    monkeypatch.setattr(repo, "_s3_file_exists", failing_thing)
+    result = repo.check_for_previous_run()
+    assert "unable to query previous run status" in caplog.text
+    assert result == False
+
+
+@pytest.mark.parametrize("step_name, expect", [
+    ("test_step", True),
+    ("un_step", False),
+])
+def test_clear_run_status(monkeypatch, mock_buckets, step_name, expect):
+    monkeypatch.setenv("BC_STEP_NAME", step_name)
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
-    assert repo.check_for_previous_run() is True
+    assert repo.check_for_previous_run() == expect
     repo.clear_run_status()
     assert repo.check_for_previous_run() is False
+
+
+def test_clear_run_status_fail(monkeypatch, mock_buckets, caplog):
+    monkeypatch.setenv("BC_STEP_NAME", "nothing")
+    repo = Repository("s3://non_bucket/repo/path")
+    monkeypatch.setattr(repo, "qualify", failing_thing)
+    repo.clear_run_status()
+    assert "unable to clear previous run status" in caplog.text
 
 
 def test_put_run_status(monkeypatch, mock_buckets):
@@ -446,3 +471,13 @@ def test_put_run_status(monkeypatch, mock_buckets):
     assert repo.check_for_previous_run() is False
     repo.put_run_status()
     assert repo.check_for_previous_run() is True
+
+
+def test_put_run_status_fail(monkeypatch, mock_buckets, caplog):
+    monkeypatch.setenv("BC_STEP_NAME", "nothing")
+    repo = Repository("s3://non_bucket/repo/path")
+    monkeypatch.setattr(repo, "qualify", failing_thing)
+    repo.put_run_status()
+    assert "failed to upload run status" in caplog.text
+
+
