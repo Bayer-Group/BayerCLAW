@@ -61,7 +61,7 @@ def lambda_handler(event: dict, context: object) -> None:
                                             event["job_file_version"],
                                             event["replay"])
 
-            logger.info(f"{exec_name =}")
+            logger.info(f"{exec_name = }")
 
             input_obj = {
                 "job_file": {
