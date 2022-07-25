@@ -313,11 +313,15 @@ def test_get_skip_behavior(spec, expect):
     assert result == expect
 
 
+@pytest.mark.parametrize("scattered, job_name", [
+    (True, "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)"),
+    (False, "States.Format('{}__{}', $$.Execution.Name, $$.State.Name)")
+])
 @pytest.mark.parametrize("next_step_name, next_or_end", [
     ("next_step", {"Next": "next_step"}),
     ("", {"End": True}),
 ])
-def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step, mock_core_stack):
+def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step, mock_core_stack, scattered, job_name):
     step = Step("step_name", sample_batch_step, next_step_name)
 
     expected_body = {
@@ -332,7 +336,7 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step,
             }
         ],
         "Parameters": {
-            "JobName.$": "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)",
+            "JobName.$": job_name,
             "JobDefinition": "${TestJobDef}",
             "JobQueue": "spot_queue_arn",
             "Parameters": {
@@ -379,7 +383,7 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step,
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()
 
-    result = batch_step(core_stack, step, "TestJobDef")
+    result = batch_step(core_stack, step, "TestJobDef", scattered)
     assert result == expected_body
 
 
@@ -405,7 +409,7 @@ def test_handle_batch(wf_params, mock_core_stack, step_task_role_request, monkey
     def helper():
         test_spec = {**sample_batch_step, **step_task_role_request}
         test_step = Step("step_name", test_spec, "next_step_name")
-        states = yield from handle_batch(core_stack, test_step, wf_params)
+        states = yield from handle_batch(core_stack, test_step, wf_params, False)
         assert len(states) == 1
         assert isinstance(states[0], State)
         assert states[0].name == "step_name"
@@ -446,7 +450,7 @@ def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
     }
 
     def helper():
-        states = yield from handle_batch(core_stack, step, {"wf": "params"})
+        states = yield from handle_batch(core_stack, step, {"wf": "params"}, False)
         assert len(states) == 2
         assert all(isinstance(s, State) for s in states)
 
@@ -475,7 +479,7 @@ def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_ste
     step.spec["inputs"] = None
 
     def helper():
-        states = yield from handle_batch(core_stack, step, {"wf": "params"})
+        states = yield from handle_batch(core_stack, step, {"wf": "params"}, False)
         assert states[0].spec["Parameters"]["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())
@@ -493,7 +497,7 @@ def test_handle_batch_shell_opt(monkeypatch, mock_core_stack, sample_batch_step,
     step.spec["compute"]["shell"] = step_shell
 
     def helper():
-        _ = yield from handle_batch(core_stack, step, {"shell": "sh"})
+        _ = yield from handle_batch(core_stack, step, {"shell": "sh"}, False)
 
     rc = dict(helper())
     assert rc["StepNameJobDef"]["Properties"]["Parameters"]["shell"] == expect

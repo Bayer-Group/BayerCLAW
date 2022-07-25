@@ -74,9 +74,11 @@ def process_step(core_stack: CoreStack,
 
     elif "image" in step.spec:
         normalized_step = validate_batch_step(step)
+        scattered = depth > 0
         states_to_add = yield from b.handle_batch(core_stack,
                                                   normalized_step,
-                                                  wf_params)
+                                                  wf_params,
+                                                  scattered)
 
     elif "subpipe" in step.spec:
         normalized_step = validate_subpipe_step(step)

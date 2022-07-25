@@ -239,11 +239,17 @@ def get_skip_behavior(spec: dict) -> str:
 def batch_step(core_stack: CoreStack,
                step: Step,
                job_definition_name: str,
+               scattered: bool,
                next_step_override: str = None,
                attempts: int = 3,
                interval: str = "3s",
                backoff_rate: float = 1.5) -> dict:
     skip_behavior = get_skip_behavior(step.spec)
+
+    if scattered:
+        job_name = "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)"
+    else:
+        job_name = "States.Format('{}__{}', $$.Execution.Name, $$.State.Name)"
 
     ret = {
         "Type": "Task",
@@ -257,7 +263,7 @@ def batch_step(core_stack: CoreStack,
             }
         ],
         "Parameters": {
-            "JobName.$": "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)",
+            "JobName.$": job_name,
             "JobDefinition": f"${{{job_definition_name}}}",
             "JobQueue": get_job_queue(core_stack, step.spec["compute"]),
             "Parameters": {
@@ -313,7 +319,8 @@ def batch_step(core_stack: CoreStack,
 
 def handle_batch(core_stack: CoreStack,
                  step: Step,
-                 wf_params: dict) -> Generator[Resource, None, List[State]]:
+                 wf_params: dict,
+                 scattered: bool) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
     logger.info(f"making batch step {step.name}")
 
@@ -327,11 +334,13 @@ def handle_batch(core_stack: CoreStack,
 
     if subbed_spec["qc_check"] is not None:
         qc_state = handle_qc_check(core_stack, subbed_step)
-        ret0 = batch_step(core_stack, subbed_step, job_def_name, **subbed_step.spec["retry"],
+        ret0 = batch_step(core_stack, subbed_step, job_def_name, scattered,
+                          **subbed_step.spec["retry"],
                           next_step_override=qc_state.name)
         ret = [State(step.name, ret0), qc_state]
 
     else:
-        ret = [State(step.name, batch_step(core_stack, subbed_step, job_def_name, **subbed_step.spec["retry"]))]
+        ret = [State(step.name, batch_step(core_stack, subbed_step, job_def_name,
+                                           **subbed_step.spec["retry"], scattered=scattered))]
 
     return ret
