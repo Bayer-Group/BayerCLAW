@@ -28,7 +28,7 @@ def make_state_change_message(event: dict) -> str:
             "job_status": status,
             "job_data": f"s3://{input_obj['job_file']['bucket']}/{input_obj['job_file']['key']}",
             "job_data_version": input_obj["job_file"]["version"],
-            "s3_request_id": input_obj["job_file"]["s3_request_id"],
+            # "s3_request_id": input_obj["job_file"]["s3_request_id"],
             "sfn_console_link": console_url,
         },
     }
@@ -89,10 +89,10 @@ def make_message_attributes(event: dict) -> dict:
             "DataType": "String",
             "StringValue": input_obj["job_file"]["version"],
         },
-        "s3_request_id": {
-            "DataType": "String",
-            "StringValue": input_obj["job_file"]["s3_request_id"],
-        },
+        # "s3_request_id": {
+        #     "DataType": "String",
+        #     "StringValue": input_obj["job_file"]["s3_request_id"],
+        # },
     }
 
     return ret
@@ -109,7 +109,7 @@ def make_sns_payload(message: str, event: dict) -> dict:
 
 
 def lambda_handler(event: dict, context: object) -> dict:
-    print(str(event))
+    print(f"{event = }")
 
     message = make_state_change_message(event)
     payload = make_sns_payload(message, event)
