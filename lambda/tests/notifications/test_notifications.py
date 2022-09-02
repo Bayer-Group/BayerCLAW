@@ -94,7 +94,6 @@ def test_make_state_change_message(state_change_event_factory, status, action):
             "job_status": status,
             "job_data": JOB_DATA_URI,
             "job_data_version": JOB_DATA_VERSION,
-            "s3_request_id": REQUEST_ID,
             "sfn_console_link": f"{URL_BASE}?region={REGION}#/executions/details/{EXECUTION_ARN}",
         },
     }
@@ -140,10 +139,6 @@ def test_make_message_attributes(state_change_event_factory):
         "job_file_version": {
             "DataType": "String",
             "StringValue": JOB_DATA_VERSION,
-        },
-        "s3_request_id": {
-            "DataType": "String",
-            "StringValue": REQUEST_ID,
         },
     }
     assert result == expect

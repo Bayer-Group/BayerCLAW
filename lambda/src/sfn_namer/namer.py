@@ -28,7 +28,7 @@ def normalize(string: str) -> str:
 
 def make_execution_name(s3_key: str, version: str, replay: str) -> str:
     norm_key = normalize(shorten_filename(s3_key))
-    norm_version = normalize(version)
+    norm_version = normalize(version) or "NULL"
     if replay == "":
         ret = f"{norm_key:.71}_{norm_version:.8}"
     else:
@@ -43,6 +43,7 @@ def lambda_handler(event: dict, context: object) -> None:
     #   "job_file_bucket": "...",
     #   "job_file_key": "...",
     #   "job_file_version": "..."  # empty string if launcher bucket versioning is suspended
+    #   "job_file_s3_request_id": "..."
     #   "workflow_name": "..."
     #   "replay": "...",  # empty string if not an archive replay
     #   "sfn_arn": "..."
@@ -66,7 +67,7 @@ def lambda_handler(event: dict, context: object) -> None:
                     "bucket": event["job_file_bucket"],
                     "key": event["job_file_key"],
                     "version": event["job_file_version"],
-                    "s3_request_id": "DEPRECATED",
+                    "s3_request_id": event["job_file_s3_request_id"],
                 },
                 "index": event["branch"],
             }

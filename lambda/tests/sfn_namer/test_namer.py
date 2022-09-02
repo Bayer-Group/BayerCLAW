@@ -71,6 +71,19 @@ def test_make_execution_name_normalize(replay):
         assert result.startswith(replay[:10])
 
 
+@pytest.mark.parametrize("s3_key, version, expect", [
+    ("bucket/.leading_dot", "12345", "leading-dot_12345"),
+    ("bucket/.....dots.ext", "12345", "dots_12345"),
+    ("bucket/_____.linz", "12345", "_12345"),
+    ("bucket/unversioned", "", "unversioned_NULL"),
+    ("bucket/base64.nightmare", "._._._._._", "base64_NULL"),
+    ("bucket/_____.horrifying", "._._._._._", "_NULL"),
+])
+def test_make_execution_name_pathological(s3_key, version, expect):
+    result = make_execution_name(s3_key, version, "")
+    assert result == expect
+
+
 @pytest.fixture(scope="function")
 def mock_state_machine():
     with moto.mock_iam():

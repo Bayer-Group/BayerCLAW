@@ -29,8 +29,8 @@ Job 51acb9d5 ('input_file.json') on workflow sample-workflow has finished.
 ---
 details:
   job_data: s3://bclaw-main-launcher-123456789012/sample-workflow/input_file.json
+  job_data_version: 09876543211234567890
   job_status: SUCCEEDED
-  s3_request_id: 2DDFA85DB421B187
   sfn_console_link: https://console.aws.amazon.com/states/.../sample-workflow-main:51acb9d5...
   sfn_execution_id: 51acb9d5-5f52-4087-1147-64470e76ec39_ed811136-c845-265c-e9d4-f4150191658c
   workflow_name: sample-workflow
@@ -62,7 +62,6 @@ message above. The possible values of `status` are:
 - `execution_id`: The ID of the Step Functions execution that sent the notification.
 - `launcher_bucket`, `job_file` and `job_file_version`: Together, these specify the job data file that
 launched the execution in question.
-- `s3_request_id`: An identifier for the S3 upload event that launched the job.
 
 Filter policies are JSON-formatted documents.
 As an example, a filter policy that only allows messages from jobs that failed or were aborted
@@ -101,8 +100,8 @@ Job 51acb9d5 ('input_file.json') on workflow sample-workflow has finished.
 details:
   execution_id: 51acb9d5-5f52-4087-1147-64470e76ec39_ed811136-c845-265c-e9d4-f4150191658c
   job_data: s3://bclaw-main-launcher-123456789012/sample-workflow/input_file.json
+  job_data_version: 09876543211234567890
   job_status: SUCCEEDED
-  s3_request_id: 2DDFA85DB421B187
   sfn_console_link: https://console.aws.amazon.com/states/.../sample-workflow-main:51acb9d5...
   workflow_name: sample-workflow
 ```
@@ -116,8 +115,8 @@ will become a data structure that looks like this:
         "details": {
             "execution_id": "51acb9d5-5f52-4087-1147-64470e76ec39_ed811136-c845-265c-e9d4-f4150191658c",
             "job_data": "s3://bclaw-main-launcher-123456789012/sample-workflow/input_file.json",
+            "job_data_version": "09876543211234567890",
             "job_status": "SUCCEEDED",
-            "s3_request_id": "2DDFA85DB421B187",
             "sfn_console_link": "https://console.aws.amazon.com/states/...",
             "workflow_name": "sample-workflow"
         }

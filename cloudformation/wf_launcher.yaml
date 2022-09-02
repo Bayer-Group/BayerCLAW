@@ -68,6 +68,7 @@ Resources:
               key: "$.detail.object.key"
               version: "$.detail.object.version-id"
               replay: "$.replay-name"
+              requestID: "$.detail.request-id"  # deprecated
             InputTemplate:
               !Sub >-
                 {
@@ -75,24 +76,11 @@ Resources:
                   "job_file_bucket": <bucket>,
                   "job_file_key": <key>,
                   "job_file_version": <version>,
-                  "job_file_s3_request_id": "DEPRECATED",
+                  "job_file_s3_request_id": <requestID>,
                   "workflow_name": "${WorkflowName}",
                   "replay": <replay>,
                   "sfn_arn": "${StateMachineArn}"
                 }
-#            InputTemplate0:
-#              !Sub >-
-#                {
-#                  "job_file": {
-#                    "bucket": <bucket>,
-#                    "key": <key>,
-#                    "version": <version>,
-#                    "s3_request_id": "DEPRECATED"
-#                  },
-#                  "replay": <replay>,
-#                  "index": "main",
-#                  "sfn_arn": "${StateMachineArn}"
-#                }
 
   wfEventArchive:
     Type: AWS::Events::Archive
