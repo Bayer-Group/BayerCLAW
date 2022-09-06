@@ -115,9 +115,18 @@ Resources:
             Effect: Allow
             Principal:
               AWS: "*"
-            Action: "SQS:SendMessage"
+            Action: "sqs:SendMessage"
             Resource:
               - !GetAtt wfDeadLetterQueue.Arn
             Condition:
               ArnEquals:
                 "aws:SourceArn": !GetAtt wfEventRule.Arn
+          -
+            Effect: Deny
+            Principal: "*"
+            Action: "sqs:SendMessage"
+            Resource:
+              - !GetAtt wfDeadLetterQueue.Arn
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
