@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/python:3.9.9-alpine3.15 AS base
+FROM public.ecr.aws/docker/library/python:3.10.6-alpine3.16 AS base
 
 LABEL maintainer="jack.tabaska@bayer.com"
 
