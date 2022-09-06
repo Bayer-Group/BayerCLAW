@@ -17,10 +17,7 @@ Resources:
   wfDeadLetterQueue:
     Type: AWS::SQS::Queue
     Properties:
-#      MessageRetentionPeriod: 1209600
-      # https://github.com/aws-cloudformation/cloudformation-coverage-roadmap/issues/989
-#      SqsManagedSseEnabled: true
-      KmsMasterKeyId: "alias/aws/sqs"
+      SqsManagedSseEnabled: true
 
   wfEventRuleRole:
     Type: AWS::IAM::Role

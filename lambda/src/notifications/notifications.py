@@ -50,11 +50,9 @@ def make_state_change_message(event: dict) -> str:
     else:
         raise RuntimeError(f"status {status} not recognized")
 
-    # execution_handle = execution_id.split("-", 1)[0]
     job_file_name = input_obj["job_file"]["key"].rsplit("/", 1)[-1]
 
     text = f"Job {execution_id} ('{job_file_name}') on workflow {workflow_name} {action}."
-    # text = f"Job {execution_id} on workflow {workflow_name} {action}."
     message = yaml.safe_dump_all([text, details])
 
     return message
@@ -104,7 +102,7 @@ def make_sns_payload(message: str, event: dict) -> dict:
 
 
 def lambda_handler(event: dict, context: object) -> dict:
-    print(f"{event = }")
+    print(f"{event=}")
 
     message = make_state_change_message(event)
     payload = make_sns_payload(message, event)

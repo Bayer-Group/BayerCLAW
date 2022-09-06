@@ -234,7 +234,6 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
 def test_lambda_handler_subpipe_execution(caplog):
     input_obj = {
         "index": "main",
-        # "id_prefix": "testPrefix",
         "job_file": {
             "bucket": "testBucket",
             "key": "path/to/job/file.txt",

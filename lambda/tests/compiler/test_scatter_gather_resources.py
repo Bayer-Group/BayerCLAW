@@ -59,7 +59,6 @@ def test_map_step():
         "Type": "Map",
         "ItemsPath": "$.items",
         "Parameters": {
-            # "id_prefix.$": "$.id_prefix",
             "index.$": "States.Format('{}', $$.Map.Item.Index)",
             "job_file.$": "$.job_file",
             "prev_outputs": {},

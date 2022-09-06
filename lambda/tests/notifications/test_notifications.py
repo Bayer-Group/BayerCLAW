@@ -98,15 +98,12 @@ def test_make_state_change_message(state_change_event_factory, status, action):
         },
     }
 
-    # expected_job_handle = EXECUTION_NAME.split("-", 1)[0]
-
     message = make_state_change_message(event)
     text, details = yaml.safe_load_all(message)
 
     assert WORKFLOW_NAME in text
     assert EXECUTION_NAME in text
     assert "job.json" in text
-    # assert expected_job_handle in text
     assert text.endswith(action)
 
     assert details == expected_details
