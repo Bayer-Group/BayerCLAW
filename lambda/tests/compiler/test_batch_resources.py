@@ -341,7 +341,7 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step,
             "JobName.$": job_name,
             "JobDefinition": "${TestJobDef}",
             "JobQueue": "spot_queue_arn",
-            "ShareIdentifier": {"Ref": "AWS::StackName"},
+            "ShareIdentifier": "${WorkflowName}",
             "Parameters": {
                 "repo.$": "$.repo",
                 "references": json.dumps(step.spec["references"]),

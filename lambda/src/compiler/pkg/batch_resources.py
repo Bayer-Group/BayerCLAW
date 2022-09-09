@@ -269,7 +269,7 @@ def batch_step(core_stack: CoreStack,
             "JobDefinition": f"${{{job_definition_name}}}",
             "JobQueue": get_job_queue(core_stack, step.spec["compute"]),
             # 20220909
-            "ShareIdentifier": {"Ref": "AWS::StackName"},
+            "ShareIdentifier": "${WorkflowName}",
             "Parameters": {
                 "repo.$": "$.repo",
                 **step.input_field,
