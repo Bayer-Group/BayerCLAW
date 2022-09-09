@@ -242,11 +242,11 @@ Resources:
         SecurityGroupIds: !Ref SecurityGroupIds
         Subnets: !Ref Subnets
 
-  # 20220909
-  SchedulingPolicy:
-    Type: AWS::Batch::SchedulingPolicy
-    Properties:
-      Name: !Sub "${QueueName}-scheduling-policy"
+  # 20220909: save for v1.2
+#  SchedulingPolicy:
+#    Type: AWS::Batch::SchedulingPolicy
+#    Properties:
+#      Name: !Sub "${QueueName}-scheduling-policy"
 
   BatchQueue:
     Type: AWS::Batch::JobQueue
@@ -257,8 +257,8 @@ Resources:
       ComputeEnvironmentOrder:
         - Order: 1
           ComputeEnvironment: !Ref ComputeEnvironment
-      # 20220909
-      SchedulingPolicyArn: !Ref SchedulingPolicy
+      # 20220909: save for v1.2
+#      SchedulingPolicyArn: !Ref SchedulingPolicy
 
 Outputs:
   BatchQueueArn:

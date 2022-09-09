@@ -217,8 +217,8 @@ def job_definition_rc(core_stack: CoreStack,
                 **get_resource_requirements(step),
                 **get_volume_info(step),
             },
-            # 20220909
-            "SchedulingPriority": 1,
+            # 20220909: save for v1.2
+            # "SchedulingPriority": 1,
             **get_timeout(step)
         },
     }
@@ -268,8 +268,8 @@ def batch_step(core_stack: CoreStack,
             "JobName.$": job_name,
             "JobDefinition": f"${{{job_definition_name}}}",
             "JobQueue": get_job_queue(core_stack, step.spec["compute"]),
-            # 20220909
-            "ShareIdentifier": "${WorkflowName}",
+            # 20220909: save for v1.2
+            # "ShareIdentifier": "${WorkflowName}",
             "Parameters": {
                 "repo.$": "$.repo",
                 **step.input_field,
