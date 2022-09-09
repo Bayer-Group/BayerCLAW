@@ -286,7 +286,8 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                      }}
                 ],
             },
-            "SchedulingPriority": 1,
+            # 20220909: save for v1.2
+            # "SchedulingPriority": 1,
             "Timeout": {
                 "AttemptDurationSeconds": 3600,
             },
@@ -341,7 +342,8 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step,
             "JobName.$": job_name,
             "JobDefinition": "${TestJobDef}",
             "JobQueue": "spot_queue_arn",
-            "ShareIdentifier": "${WorkflowName}",
+            # 20220909: save for v1.2
+            # "ShareIdentifier": "${WorkflowName}",
             "Parameters": {
                 "repo.$": "$.repo",
                 "references": json.dumps(step.spec["references"]),
