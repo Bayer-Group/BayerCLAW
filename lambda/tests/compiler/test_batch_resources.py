@@ -196,6 +196,7 @@ def sample_batch_step():
             trim_log: ${sample_id}-fastP.json
           references:
             reference1: s3://ref-bucket/path/to/reference.file
+          # params: {}
           params:
             outdir: outt
             sample_id: ${job.SAMPLE_ID}
@@ -285,6 +286,7 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                      }}
                 ],
             },
+            "SchedulingPriority": 1,
             "Timeout": {
                 "AttemptDurationSeconds": 3600,
             },
@@ -339,6 +341,7 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step,
             "JobName.$": job_name,
             "JobDefinition": "${TestJobDef}",
             "JobQueue": "spot_queue_arn",
+            "ShareIdentifier": {"Ref": "AWS::StackName"},
             "Parameters": {
                 "repo.$": "$.repo",
                 "references": json.dumps(step.spec["references"]),
