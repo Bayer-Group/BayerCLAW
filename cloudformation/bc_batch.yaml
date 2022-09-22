@@ -147,6 +147,7 @@ Resources:
         - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
         - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
         - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+        - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 
   EcsInstanceProfile:
     Type: AWS::IAM::InstanceProfile
