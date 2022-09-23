@@ -30,6 +30,7 @@ Resources:
         Id: "wfOutputSNSTopicPolicy"
         Statement:
           -
+            Sid: OwnerAccessOnly
             Effect: Allow
             Principal:
               AWS: "*"
@@ -48,6 +49,7 @@ Resources:
               StringEquals:
                 "AWS:SourceOwner": !Ref AWS::AccountId
           -
+            Sid: SecureTransport
             Effect: Deny
             Principal: "*"
             Action: "sns:Publish"
