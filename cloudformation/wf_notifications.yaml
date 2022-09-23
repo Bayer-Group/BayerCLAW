@@ -30,6 +30,24 @@ Resources:
         Id: "wfOutputSNSTopicPolicy"
         Statement:
           -
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - "SNS:AddPermission"
+              - "SNS:DeleteTopic"
+              - "SNS:GetTopicAttributes"
+              - "SNS:ListSubscriptionsByTopic"
+              - "SNS:Publish"
+              - "SNS:Receive"
+              - "SNS:RemovePermission"
+              - "SNS:SetTopicAttributes"
+              - "SNS:Subscribe"
+            Resource: !Ref wfOutputSNSTopic
+            Condition:
+              StringEquals:
+                "AWS:SourceOwner": !Ref AWS::AccountId
+          -
             Effect: Deny
             Principal: "*"
             Action: "sns:Publish"
