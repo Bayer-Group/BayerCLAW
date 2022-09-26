@@ -110,16 +110,6 @@ def mock_state_machine():
     ("replay789ABCDEF", "replay789A_one-two-three-file_01234567")
 ])
 def test_lambda_handler(mock_state_machine, replay, expected_name):
-    # event = {
-    #     "job_file": {
-    #         "bucket": "bucket-name",
-    #         "key": "wf-name/one/two/three/file.txt",
-    #         "version": "0123456789ABCDEF0123456789abcdef"
-    #     },
-    #     "index": "main",
-    #     "replay": replay,
-    #     "sfn_arn": mock_state_machine,
-    # }
     event = {
         "branch": "main",
         "job_file_bucket": "bucket-name",
