@@ -164,5 +164,3 @@ def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logg
 
     if logging_crash:
         assert "continuing without subprocess logging" in caplog.text
-    else:
-        assert "subprocess exited" in caplog.text

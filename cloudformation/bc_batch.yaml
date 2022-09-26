@@ -147,6 +147,7 @@ Resources:
         - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
         - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
         - "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+        - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 
   EcsInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -242,6 +243,12 @@ Resources:
         SecurityGroupIds: !Ref SecurityGroupIds
         Subnets: !Ref Subnets
 
+  # 20220909: save for v1.2
+#  SchedulingPolicy:
+#    Type: AWS::Batch::SchedulingPolicy
+#    Properties:
+#      Name: !Sub "${QueueName}-scheduling-policy"
+
   BatchQueue:
     Type: AWS::Batch::JobQueue
     Properties:
@@ -251,6 +258,8 @@ Resources:
       ComputeEnvironmentOrder:
         - Order: 1
           ComputeEnvironment: !Ref ComputeEnvironment
+      # 20220909: save for v1.2
+#      SchedulingPolicyArn: !Ref SchedulingPolicy
 
 Outputs:
   BatchQueueArn:

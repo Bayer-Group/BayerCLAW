@@ -116,6 +116,8 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
     ret = 255
     with closing(docker.client.from_env()) as docker_client:
         child_image = pull_image(docker_client, image_tag)
+
+        logger.info("---------- starting user command block ----------")
         container = docker_client.containers.run(child_image.tags[0], command,
                                                  cpu_shares=cpu_shares,
                                                  detach=True,
@@ -132,15 +134,15 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
                 with closing(container.logs(stream=True)) as fp:
                     for line in fp:
                         logger.info(line.decode("utf-8"))
-                logger.info("subprocess exited")
 
             except Exception:
-                logger.exception("error during subprocess logging: ")
+                logger.exception("----- error during subprocess logging: ")
                 container.reload()
-                logger.info(f"subprocess status is {container.status}")
-                logger.warning("continuing without subprocess logging")
+                logger.info(f"----- subprocess status is {container.status}")
+                logger.warning("----- continuing without subprocess logging")
 
             finally:
+                logger.info("---------- end of user command block ----------")
                 response = container.wait()
                 container.remove()
                 ret = response.get("StatusCode", 1)

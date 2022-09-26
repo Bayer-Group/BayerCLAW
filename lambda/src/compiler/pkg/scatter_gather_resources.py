@@ -29,7 +29,6 @@ def map_step(sub_branch: dict, gather_step_name: str) -> dict:
         "Type": "Map",
         "ItemsPath": "$.items",
         "Parameters": {
-            "id_prefix.$": "$.id_prefix",
             "index.$": "States.Format('{}', $$.Map.Item.Index)",  # stringify the index
             "job_file.$": "$.job_file",
             "prev_outputs": {},

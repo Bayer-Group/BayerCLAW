@@ -25,10 +25,10 @@ def custom_lambda_logs(branch: str = "unknown",
                        job_file_bucket: str = "unknown",
                        job_file_key: str = "unknown",
                        job_file_version: str = "unknown",
-                       job_file_s3_request_id: str = "unknown",
                        sfn_execution_id: str = "unknown",
                        step_name: str = "unknown",
-                       workflow_name: str = "unknown") -> None:
+                       workflow_name: str = "unknown",
+                       **kwargs) -> None:
     old_factory = logging.getLogRecordFactory()
 
     def record_factory(*args, **kwargs):
@@ -41,7 +41,6 @@ def custom_lambda_logs(branch: str = "unknown",
                 "bucket": job_file_bucket,
                 "key": job_file_key,
                 "version": job_file_version,
-                "s3_request_id": job_file_s3_request_id,
             },
             "sfn_execution_id": sfn_execution_id,
             "branch": branch,

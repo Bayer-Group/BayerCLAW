@@ -20,6 +20,44 @@ Resources:
       TopicName: !Sub "${WorkflowName}-notifications"
       KmsMasterKeyId: "alias/aws/sns"
 
+  wfOutputSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref wfOutputSNSTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: "wfOutputSNSTopicPolicy"
+        Statement:
+          -
+            Sid: OwnerAccessOnly
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - "SNS:AddPermission"
+              - "SNS:DeleteTopic"
+              - "SNS:GetTopicAttributes"
+              - "SNS:ListSubscriptionsByTopic"
+              - "SNS:Publish"
+              - "SNS:Receive"
+              - "SNS:RemovePermission"
+              - "SNS:SetTopicAttributes"
+              - "SNS:Subscribe"
+            Resource: !Ref wfOutputSNSTopic
+            Condition:
+              StringEquals:
+                "AWS:SourceOwner": !Ref AWS::AccountId
+          -
+            Sid: SecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "sns:Publish"
+            Resource: !Ref wfOutputSNSTopic
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
   wfSFNtoLambdaRule:
     Type: AWS::Events::Rule
     Properties:

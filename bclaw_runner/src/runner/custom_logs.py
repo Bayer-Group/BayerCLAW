@@ -17,7 +17,6 @@ class JSONFormatter(logging.Formatter):
                 "bucket": os.environ.get("BC_LAUNCH_BUCKET"),
                 "key": os.environ.get("BC_LAUNCH_KEY"),
                 "version": os.environ.get("BC_LAUNCH_VERSION"),
-                "s3_request_id": os.environ.get("BC_LAUNCH_S3_REQUEST_ID"),
             },
             "sfn_execution_id": os.environ.get("BC_EXECUTION_ID"),
             "branch": os.environ.get("BC_BRANCH_IDX"),

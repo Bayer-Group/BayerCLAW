@@ -11,7 +11,6 @@ def test_JSONFormatter(monkeypatch):
     monkeypatch.setenv("BC_LAUNCH_KEY", "testJobFile")
     monkeypatch.setenv("BC_LAUNCH_VERSION", "testVersion")
     monkeypatch.setenv("BC_LAUNCH_BUCKET", "testLaunchBucket")
-    monkeypatch.setenv("BC_LAUNCH_S3_REQUEST_ID", "1234567890")
     monkeypatch.setenv("BC_STEP_NAME", "testStepName")
     monkeypatch.setenv("BC_WORKFLOW_NAME", "testWorkflowName")
     monkeypatch.setenv("AWS_BATCH_JOB_ID", "0987654321")
@@ -38,7 +37,6 @@ def test_JSONFormatter(monkeypatch):
             "bucket": "testLaunchBucket",
             "key": "testJobFile",
             "version": "testVersion",
-            "s3_request_id": "1234567890",
         },
         "level": logging.getLevelName(10),
         "message": "test message",

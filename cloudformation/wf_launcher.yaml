@@ -10,12 +10,14 @@ Parameters:
   LauncherBucketName:
     Type: String
 
+  NamerLambdaArn:
+    Type: String
 
 Resources:
   wfDeadLetterQueue:
     Type: AWS::SQS::Queue
     Properties:
-      KmsMasterKeyId: "alias/aws/sqs"
+      SqsManagedSseEnabled: true
 
   wfEventRuleRole:
     Type: AWS::IAM::Role
@@ -29,7 +31,6 @@ Resources:
               Service: events.amazonaws.com
             Action: "sts:AssumeRole"
       ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AWSStepFunctionsFullAccess"
         - "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
 
   wfEventRule:
@@ -54,27 +55,29 @@ Resources:
       RoleArn: !GetAtt wfEventRuleRole.Arn
       Targets:
         -
-          Arn: !Ref StateMachineArn
+          Arn: !Ref NamerLambdaArn
           DeadLetterConfig:
             Arn: !GetAtt wfDeadLetterQueue.Arn
-          Id: state-machine-target
-          RoleArn: !GetAtt wfEventRuleRole.Arn
+          Id: namer-lambda-target
           InputTransformer:
             InputPathsMap:
               bucket: "$.detail.bucket.name"
               key: "$.detail.object.key"
-              requestID: "$.detail.request-id"
               version: "$.detail.object.version-id"
-            InputTemplate: >-
-              {
-                "job_file": {
-                  "bucket": <bucket>,
-                  "key": <key>,
-                  "version": <version>,
-                  "s3_request_id": <requestID>
-                },
-                "index": "main"
-              }
+              replay: "$.replay-name"
+              requestID: "$.detail.request-id"  # deprecated
+            InputTemplate:
+              !Sub >-
+                {
+                  "branch": "main",
+                  "job_file_bucket": <bucket>,
+                  "job_file_key": <key>,
+                  "job_file_version": <version>,
+                  "job_file_s3_request_id": <requestID>,
+                  "workflow_name": "${WorkflowName}",
+                  "replay": <replay>,
+                  "sfn_arn": "${StateMachineArn}"
+                }
 
   wfEventArchive:
     Type: AWS::Events::Archive
@@ -109,9 +112,18 @@ Resources:
             Effect: Allow
             Principal:
               AWS: "*"
-            Action: "SQS:SendMessage"
+            Action: "sqs:SendMessage"
             Resource:
               - !GetAtt wfDeadLetterQueue.Arn
             Condition:
               ArnEquals:
                 "aws:SourceArn": !GetAtt wfEventRule.Arn
+          -
+            Effect: Deny
+            Principal: "*"
+            Action: "sqs:SendMessage"
+            Resource:
+              - !GetAtt wfDeadLetterQueue.Arn
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"

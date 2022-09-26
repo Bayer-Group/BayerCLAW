@@ -14,7 +14,8 @@ def test_launcher_substack_rc(monkeypatch, mock_core_stack):
             "Parameters": {
                 "WorkflowName": {"Ref": "AWS::StackName"},
                 "StateMachineArn": {"Ref": "FakeStateMachine"},
-                "LauncherBucketName": "launcher_bucket_name"
+                "LauncherBucketName": "launcher_bucket_name",
+                "NamerLambdaArn": "namer_lambda_arn",
             },
             "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/wf_launcher.yaml",
         },

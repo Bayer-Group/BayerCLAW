@@ -32,7 +32,6 @@ def test_qc_checker_step(next_step_name, next_or_end, monkeypatch, mock_core_sta
                 "job_file_bucket.$": "$.job_file.bucket",
                 "job_file_key.$": "$.job_file.key",
                 "job_file_version.$": "$.job_file.version",
-                "job_file_s3_request_id.$": "$.job_file.s3_request_id",
                 "sfn_execution_id.$": "$$.Execution.Name",
                 "step_name": "test_step",
                 "workflow_name": "${WorkflowName}",

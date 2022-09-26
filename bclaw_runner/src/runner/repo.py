@@ -169,15 +169,25 @@ class Repository(object):
         Returns:
             True if this step has been run before
         """
-        ret = self._s3_file_exists(self.qualify(self.run_status_obj))
+        try:
+            ret = self._s3_file_exists(self.qualify(self.run_status_obj))
+        except Exception:
+            logger.warning("unable to query previous run status, assuming none")
+            ret = False
         return ret
 
     def clear_run_status(self) -> None:
-        s3 = boto3.resource("s3")
-        status_obj = s3.Object(self.bucket, self.qualify(self.run_status_obj))
-        status_obj.delete()
+        try:
+            s3 = boto3.resource("s3")
+            status_obj = s3.Object(self.bucket, self.qualify(self.run_status_obj))
+            status_obj.delete()
+        except Exception:
+            logger.warning("unable to clear previous run status")
 
     def put_run_status(self) -> None:
-        s3 = boto3.resource("s3")
-        status_obj = s3.Object(self.bucket, self.qualify(self.run_status_obj))
-        status_obj.put(Body=b"", Metadata=_file_metadata())
+        try:
+            s3 = boto3.resource("s3")
+            status_obj = s3.Object(self.bucket, self.qualify(self.run_status_obj))
+            status_obj.put(Body=b"", Metadata=_file_metadata())
+        except Exception:
+            logger.warning("failed to upload run status")

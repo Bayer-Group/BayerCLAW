@@ -89,7 +89,6 @@ def lambda_logging_block(step_name: str) -> dict:
             "job_file_bucket.$": "$.job_file.bucket",
             "job_file_key.$": "$.job_file.key",
             "job_file_version.$": "$.job_file.version",
-            "job_file_s3_request_id.$": "$.job_file.s3_request_id",
             "sfn_execution_id.$": "$$.Execution.Name",
             "step_name": step_name,
             "workflow_name": "${WorkflowName}",

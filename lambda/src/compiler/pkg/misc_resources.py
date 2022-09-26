@@ -15,6 +15,7 @@ def launcher_substack_rc(core_stack: CoreStack, state_machine_logical_name: str)
                 "WorkflowName": {"Ref": "AWS::StackName"},
                 "StateMachineArn": {"Ref": state_machine_logical_name},
                 "LauncherBucketName": core_stack.output("LauncherBucketName"),
+                "NamerLambdaArn": core_stack.output("NamerLambdaArn"),
             },
             "TemplateURL": template_url,
         }
