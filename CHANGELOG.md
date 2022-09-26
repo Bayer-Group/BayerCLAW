@@ -1,5 +1,21 @@
 # Changelog for BayerCLAW
 
+## [v1.1.4] 2022-09-26 Feature release
+
+### Added
+- Step function executions are now named after the input file and the files S3 version ID. The step function
+execution ID is also built into batch job IDs.
+
+### Other changes
+- Added log messages to clarify the start and end of user command messages.
+- Only allow SNS and SQS resources to recieve messages by SSL/TLS. Previously this had been enforced by
+encrypting the resources, now it is enforced by IAM policies.
+- Use of the S3 request ID is deprecated. To obtain a unique run identifier, you can use the step function
+execution ID or the input file's S3 version ID.
+- Removed the unused admin notifications SNS topic.
+- Improvements to checkpointing code.
+- Updated Python to 3.10.7 and Alpine Linux to 3.16 in the bclaw_runner Docker image.
+
 ## [v1.1.3] 2022-06-29 Feature release
 
 ### Added
