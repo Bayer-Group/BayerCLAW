@@ -14,9 +14,9 @@ phases:
 
   pre_build:
     commands:
-      - echo $CODEBUILD_RESOLVED_SOURCE_VERSION
-      - echo $CODEBUILD_SOURCE_VERSION
-      - git describe --tags
+#      - echo $CODEBUILD_RESOLVED_SOURCE_VERSION  # full sha hash
+#      - echo $CODEBUILD_SOURCE_VERSION  # s3 object arn
+#      - git describe --tags  # working dir is not a git repo
       - pytest -s -vvv lambda/tests/
       - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
       - export ECR_REPO_NAME=${CORE_STACK_NAME}/bclaw_runner
