@@ -183,6 +183,14 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
+  ChooserLambdaVersion:
+    Type: AWS::Lambda::Version
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: !Ref ChooserLambda
+
+  # todo: alias?
+
   ChooserLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -219,12 +227,21 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
+  CompilerLambdaVersion:
+    Type: AWS::Lambda::Version
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: !Ref CompilerLambda
+
+  # todo: alias?
+
   CompilerLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${CompilerLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  # todo: rename
   LauncherLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -248,6 +265,14 @@ Resources:
               Resource: "*"
       DeploymentPreference:
         Enabled: false
+
+  LauncherLambdaVersion:
+    Type: AWS::Lambda::Version
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: !Ref LauncherLambda
+
+  # todo: alias?
 
   LauncherLambdaLogGroup:
     Type: AWS::Logs::LogGroup
@@ -279,6 +304,14 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
+  ScatterLambdaVersion:
+    Type: AWS::Lambda::Version
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: !Ref ScatterLambda
+
+  # todo: alias?
+
   ScatterLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -308,6 +341,14 @@ Resources:
               Resource: "*"
       DeploymentPreference:
         Enabled: false
+
+  GatherLambdaVersion:
+    Type: AWS::Lambda::Version
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: !Ref GatherLambda
+
+  # todo: alias?
 
   GatherLambdaLogGroup:
     Type: AWS::Logs::LogGroup
@@ -343,6 +384,14 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
+  QCCheckerLambdaVersion:
+    Type: AWS::Lambda::Version
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: !Ref QCCheckerLambda
+
+  # todo: alias?
+
   QCCheckerLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -373,12 +422,21 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
+  SubpipesLambdaVersion:
+    Type: AWS::Lambda::Version
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: !Ref SubpipesLambda
+
+  # todo: alias?
+
   SubpipesLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${SubpipesLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  # todo: remove, build into wf stacks
   NamerLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -415,6 +473,7 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${NamerLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  # todo: rename
   EventHandlerLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -437,6 +496,14 @@ Resources:
       DeploymentPreference:
         Enabled: False
 
+  EventHandlerLambdaVersion:
+    Type: AWS::Lambda::Version
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: !Ref EventHandlerLambda
+
+  # todo: alias?
+
   PermissionToInvokeEventHandler:
     Type: AWS::Lambda::Permission
     Properties:
@@ -451,6 +518,7 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${EventHandlerLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  # todo: remove
   JobStatusLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -490,6 +558,8 @@ Resources:
     Properties:
       LogGroupName: !Sub "/aws/lambda/${JobStatusLambda}"
       RetentionInDays: !Ref LogRetentionDays
+
+  # todo: versionator lambda
 
   CompilerMacro:
     Type: AWS::CloudFormation::Macro
@@ -682,7 +752,8 @@ Resources:
 
 Outputs:
   ChooserLambdaArn:
-    Value: !GetAtt ChooserLambda.Arn
+#    Value: !GetAtt ChooserLambda.Arn
+    Value: !Ref ChooserLambdaVersion
 
   ChooserLambdaLogGroupName:
     Value: !Ref ChooserLambdaLogGroup
@@ -691,13 +762,15 @@ Outputs:
     Value: !GetAtt EcsTaskRole.Arn
 
   EventHandlerLambdaArn:
-    Value: !GetAtt EventHandlerLambda.Arn
+#    Value: !GetAtt EventHandlerLambda.Arn
+    Value: !Ref EventHandlerLambdaVersion
 
   GatherLambdaArn:
-    Value: !GetAtt GatherLambda.Arn
+#    Value: !GetAtt GatherLambda.Arn
+    Value: !Ref GatherLambda
 
   GatherLambdaLogGroupName:
-    Value: !Ref GatherLambdaLogGroup
+    Value: !Ref GatherLambdaVersion
 
   JobStatusLambdaArn:
     Value: !GetAtt JobStatusLambda.Arn
@@ -709,7 +782,8 @@ Outputs:
     Value: !Ref LauncherBucket
 
   LauncherLambdaArn:
-    Value: !GetAtt LauncherLambda.Arn
+#    Value: !GetAtt LauncherLambda.Arn
+    Value: !Ref LauncherLambdaVersion
 
   LauncherLambdaLogGroupName:
     Value: !Ref LauncherLambdaLogGroup
@@ -727,7 +801,8 @@ Outputs:
     Value: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
 
   QCCheckerLambdaArn:
-    Value: !GetAtt QCCheckerLambda.Arn
+#    Value: !GetAtt QCCheckerLambda.Arn
+    Value: !Ref QCCheckerLambdaVersion
 
   QCCheckerLambdaLogGroupName:
     Value: !Ref QCCheckerLambdaLogGroup
@@ -739,7 +814,8 @@ Outputs:
     Value: !Ref RunnerImageURI
 
   ScatterLambdaArn:
-    Value: !GetAtt ScatterLambda.Arn
+#    Value: !GetAtt ScatterLambda.Arn
+    Value: !Ref ScatterLambdaVersion
 
   ScatterLambdaLogGroupName:
     Value: !Ref ScatterLambdaLogGroup
@@ -754,7 +830,8 @@ Outputs:
     Value: !GetAtt StatesExecutionRole.Arn
 
   SubpipesLambdaArn:
-    Value: !GetAtt SubpipesLambda.Arn
+#    Value: !GetAtt SubpipesLambda.Arn
+    Value: !Ref SubpipesLambdaVersion
 
   SubpipesLambdaLogGroupName:
     Value: !Ref SubpipesLambdaLogGroup
