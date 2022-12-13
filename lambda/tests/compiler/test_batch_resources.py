@@ -228,6 +228,7 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
 
     expected_job_def = {
         "Type": "AWS::Batch::JobDefinition",
+        "UpdateReplacePolicy": "Retain",
         "Properties": {
             "Type": "container",
             "Parameters": {
