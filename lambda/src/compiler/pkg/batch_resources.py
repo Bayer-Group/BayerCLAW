@@ -184,6 +184,7 @@ def job_definition_rc(core_stack: CoreStack,
 
     job_def = {
         "Type": "AWS::Batch::JobDefinition",
+        "UpdateReplacePolicy": "Retain",
         "Properties": {
             "Type": "container",
             "Parameters": {
