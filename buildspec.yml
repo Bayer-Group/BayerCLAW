@@ -16,7 +16,8 @@ phases:
     commands:
       - pytest -s -vvv lambda/tests/
       - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
-      - export ECR_REPO_NAME=${CORE_STACK_NAME}/bclaw_runner:${CODEBUILD_BUILD_NUMBER}
+      - export ECR_REPO_NAME=${CORE_STACK_NAME}/bclaw_runner
+      - echo $ECR_REPO_NAME
       - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
       - aws ecr create-repository --repository-name $ECR_REPO_NAME || true
       - >
@@ -24,12 +25,15 @@ phases:
         --repository-name $ECR_REPO_NAME
         --query "repositories[0].repositoryUri"
         --output text)
+      - echo $ECR_REPO_URI
+      - export IMAGE_TAG=${ECR_REPO_URI}:${CODEBUILD_BUILD_NUMBER}
+      - echo $IMAGE_TAG
 
   build:
     commands:
       - cd bclaw_runner
       - docker build --target test -f Dockerfile.alpine .
-      - docker build -t $ECR_REPO_URI -f Dockerfile.alpine .
+      - docker build -t $IMAGE_TAG -f Dockerfile.alpine .
 
       - cd $CODEBUILD_SRC_DIR
       - sam build -b ./build -s . -t cloudformation/bc_core.yaml
@@ -68,7 +72,7 @@ phases:
       - >
         aws ecr get-login-password --region ${AWS_REGION} |
         docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-      - docker push ${ECR_REPO_URI}
+      - docker push ${IMAGE_TAG}
 
 artifacts:
   discard-paths: yes
