@@ -761,7 +761,7 @@ Resources:
 Outputs:
   ChooserLambdaArn:
 #    Value: !GetAtt ChooserLambda.Arn
-    Value: !GetAtt ChooserLambda.Version
+    Value: !Ref ChooserLambda.Version
 
   ChooserLambdaLogGroupName:
     Value: !Ref ChooserLambdaLogGroup
@@ -771,14 +771,14 @@ Outputs:
 
   EventHandlerLambdaArn:
 #    Value: !GetAtt EventHandlerLambda.Arn
-    Value: !GetAtt EventHandlerLambda.Version
+    Value: !Ref EventHandlerLambda.Version
 
   GatherLambdaArn:
 #    Value: !GetAtt GatherLambda.Arn
-    Value: !Ref GatherLambda
+    Value: !Ref GatherLambda.Version
 
   GatherLambdaLogGroupName:
-    Value: !GetAtt GatherLambda.Version
+    Value: !Ref GatherLambdaLogGroup
 
   JobStatusLambdaArn:
     Value: !GetAtt JobStatusLambda.Arn
@@ -791,7 +791,7 @@ Outputs:
 
   LauncherLambdaArn:
 #    Value: !GetAtt LauncherLambda.Arn
-    Value: !GetAtt LauncherLambda.Version
+    Value: !Ref LauncherLambda.Version
 
   LauncherLambdaLogGroupName:
     Value: !Ref LauncherLambdaLogGroup
@@ -810,7 +810,7 @@ Outputs:
 
   QCCheckerLambdaArn:
 #    Value: !GetAtt QCCheckerLambda.Arn
-    Value: !GetAtt QCCheckerLambda.Version
+    Value: !Ref QCCheckerLambda.Version
 
   QCCheckerLambdaLogGroupName:
     Value: !Ref QCCheckerLambdaLogGroup
@@ -823,7 +823,7 @@ Outputs:
 
   ScatterLambdaArn:
 #    Value: !GetAtt ScatterLambda.Arn
-    Value: !GetAtt ScatterLambda.Version
+    Value: !Ref ScatterLambda.Version
 
   ScatterLambdaLogGroupName:
     Value: !Ref ScatterLambdaLogGroup
@@ -839,7 +839,7 @@ Outputs:
 
   SubpipesLambdaArn:
 #    Value: !GetAtt SubpipesLambda.Arn
-    Value: !GetAtt SubpipesLambda.Version
+    Value: !Ref SubpipesLambda.Version
 
   SubpipesLambdaLogGroupName:
     Value: !Ref SubpipesLambdaLogGroup
