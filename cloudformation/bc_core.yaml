@@ -184,14 +184,6 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-#  ChooserLambdaVersion:
-#    Type: AWS::Lambda::Version
-#    DeletionPolicy: Retain
-#    Properties:
-#      FunctionName: !Ref ChooserLambda
-
-  # todo: alias?
-
   ChooserLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -229,14 +221,6 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-#  CompilerLambdaVersion:
-#    Type: AWS::Lambda::Version
-#    DeletionPolicy: Retain
-#    Properties:
-#      FunctionName: !Ref CompilerLambda
-
-  # todo: alias?
-
   CompilerLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -269,14 +253,6 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-#  LauncherLambdaVersion:
-#    Type: AWS::Lambda::Version
-#    DeletionPolicy: Retain
-#    Properties:
-#      FunctionName: !Ref LauncherLambda
-
-  # todo: alias?
-
   LauncherLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -308,14 +284,6 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-#  ScatterLambdaVersion:
-#    Type: AWS::Lambda::Version
-#    DeletionPolicy: Retain
-#    Properties:
-#      FunctionName: !Ref ScatterLambda
-
-  # todo: alias?
-
   ScatterLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -346,14 +314,6 @@ Resources:
               Resource: "*"
       DeploymentPreference:
         Enabled: false
-
-#  GatherLambdaVersion:
-#    Type: AWS::Lambda::Version
-#    DeletionPolicy: Retain
-#    Properties:
-#      FunctionName: !Ref GatherLambda
-
-  # todo: alias?
 
   GatherLambdaLogGroup:
     Type: AWS::Logs::LogGroup
@@ -390,14 +350,6 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-#  QCCheckerLambdaVersion:
-#    Type: AWS::Lambda::Version
-#    DeletionPolicy: Retain
-#    Properties:
-#      FunctionName: !Ref QCCheckerLambda
-
-  # todo: alias?
-
   QCCheckerLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -428,14 +380,6 @@ Resources:
               Resource: "*"
       DeploymentPreference:
         Enabled: false
-
-#  SubpipesLambdaVersion:
-#    Type: AWS::Lambda::Version
-#    DeletionPolicy: Retain
-#    Properties:
-#      FunctionName: !Ref SubpipesLambda
-
-  # todo: alias?
 
   SubpipesLambdaLogGroup:
     Type: AWS::Logs::LogGroup
@@ -503,14 +447,6 @@ Resources:
               Resource: "*"
       DeploymentPreference:
         Enabled: False
-
-#  EventHandlerLambdaVersion:
-#    Type: AWS::Lambda::Version
-#    DeletionPolicy: Retain
-#    Properties:
-#      FunctionName: !Ref EventHandlerLambda
-
-  # todo: alias?
 
   PermissionToInvokeEventHandler:
     Type: AWS::Lambda::Permission
@@ -760,7 +696,6 @@ Resources:
 
 Outputs:
   ChooserLambdaArn:
-#    Value: !GetAtt ChooserLambda.Arn
     Value: !Ref ChooserLambda.Version
 
   ChooserLambdaLogGroupName:
@@ -770,11 +705,9 @@ Outputs:
     Value: !GetAtt EcsTaskRole.Arn
 
   EventHandlerLambdaArn:
-#    Value: !GetAtt EventHandlerLambda.Arn
     Value: !Ref EventHandlerLambda.Version
 
   GatherLambdaArn:
-#    Value: !GetAtt GatherLambda.Arn
     Value: !Ref GatherLambda.Version
 
   GatherLambdaLogGroupName:
@@ -790,7 +723,6 @@ Outputs:
     Value: !Ref LauncherBucket
 
   LauncherLambdaArn:
-#    Value: !GetAtt LauncherLambda.Arn
     Value: !Ref LauncherLambda.Version
 
   LauncherLambdaLogGroupName:
@@ -809,7 +741,6 @@ Outputs:
     Value: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
 
   QCCheckerLambdaArn:
-#    Value: !GetAtt QCCheckerLambda.Arn
     Value: !Ref QCCheckerLambda.Version
 
   QCCheckerLambdaLogGroupName:
@@ -822,7 +753,6 @@ Outputs:
     Value: !Ref RunnerImageURI
 
   ScatterLambdaArn:
-#    Value: !GetAtt ScatterLambda.Arn
     Value: !Ref ScatterLambda.Version
 
   ScatterLambdaLogGroupName:
@@ -838,7 +768,6 @@ Outputs:
     Value: !GetAtt StatesExecutionRole.Arn
 
   SubpipesLambdaArn:
-#    Value: !GetAtt SubpipesLambda.Arn
     Value: !Ref SubpipesLambda.Version
 
   SubpipesLambdaLogGroupName:
