@@ -18,7 +18,8 @@ class QCFailed(Exception):
 
 def lambda_handler(event: dict, context: object):
     with custom_lambda_logs(**event["logging"]):
-        logger.info(f"event: {str(event)}")
+        # logger.info(f"event: {str(event)}")
+        logger.info(f"{event=}")
 
         s3_path = f"{event['repo']}/{event['qc_result_file']}"
         bucket, key = s3_path.split("/", 3)[2:]
