@@ -166,6 +166,7 @@ Resources:
       Handler: multichooser.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/chooser
+      AutoPublishAlias: current
       MemorySize: 128
       Timeout: 60
       Layers:
@@ -183,11 +184,11 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-  ChooserLambdaVersion:
-    Type: AWS::Lambda::Version
-    DeletionPolicy: Retain
-    Properties:
-      FunctionName: !Ref ChooserLambda
+#  ChooserLambdaVersion:
+#    Type: AWS::Lambda::Version
+#    DeletionPolicy: Retain
+#    Properties:
+#      FunctionName: !Ref ChooserLambda
 
   # todo: alias?
 
@@ -203,6 +204,7 @@ Resources:
       Handler: handler.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/compiler
+      AutoPublishAlias: current
       Environment:
         Variables:
           CORE_STACK_NAME: !Ref "AWS::StackName"
@@ -227,11 +229,11 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-  CompilerLambdaVersion:
-    Type: AWS::Lambda::Version
-    DeletionPolicy: Retain
-    Properties:
-      FunctionName: !Ref CompilerLambda
+#  CompilerLambdaVersion:
+#    Type: AWS::Lambda::Version
+#    DeletionPolicy: Retain
+#    Properties:
+#      FunctionName: !Ref CompilerLambda
 
   # todo: alias?
 
@@ -248,6 +250,7 @@ Resources:
       Handler: launcher.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/launcher
+      AutoPublishAlias: current
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -266,11 +269,11 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-  LauncherLambdaVersion:
-    Type: AWS::Lambda::Version
-    DeletionPolicy: Retain
-    Properties:
-      FunctionName: !Ref LauncherLambda
+#  LauncherLambdaVersion:
+#    Type: AWS::Lambda::Version
+#    DeletionPolicy: Retain
+#    Properties:
+#      FunctionName: !Ref LauncherLambda
 
   # todo: alias?
 
@@ -286,6 +289,7 @@ Resources:
       Handler: scatter.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/scatter
+      AutoPublishAlias: current
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -304,11 +308,11 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-  ScatterLambdaVersion:
-    Type: AWS::Lambda::Version
-    DeletionPolicy: Retain
-    Properties:
-      FunctionName: !Ref ScatterLambda
+#  ScatterLambdaVersion:
+#    Type: AWS::Lambda::Version
+#    DeletionPolicy: Retain
+#    Properties:
+#      FunctionName: !Ref ScatterLambda
 
   # todo: alias?
 
@@ -324,6 +328,7 @@ Resources:
       Handler: gather.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/gather
+      AutoPublishAlias: current
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -342,11 +347,11 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-  GatherLambdaVersion:
-    Type: AWS::Lambda::Version
-    DeletionPolicy: Retain
-    Properties:
-      FunctionName: !Ref GatherLambda
+#  GatherLambdaVersion:
+#    Type: AWS::Lambda::Version
+#    DeletionPolicy: Retain
+#    Properties:
+#      FunctionName: !Ref GatherLambda
 
   # todo: alias?
 
@@ -362,6 +367,7 @@ Resources:
       Handler: qc_checker.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/qc_checker
+      AutoPublishAlias: current
       MemorySize: 128
       Timeout: 60
       Layers:
@@ -384,11 +390,11 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-  QCCheckerLambdaVersion:
-    Type: AWS::Lambda::Version
-    DeletionPolicy: Retain
-    Properties:
-      FunctionName: !Ref QCCheckerLambda
+#  QCCheckerLambdaVersion:
+#    Type: AWS::Lambda::Version
+#    DeletionPolicy: Retain
+#    Properties:
+#      FunctionName: !Ref QCCheckerLambda
 
   # todo: alias?
 
@@ -404,6 +410,7 @@ Resources:
       Handler: subpipes.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/subpipes
+      AutoPublishAlias: current
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -422,11 +429,11 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-  SubpipesLambdaVersion:
-    Type: AWS::Lambda::Version
-    DeletionPolicy: Retain
-    Properties:
-      FunctionName: !Ref SubpipesLambda
+#  SubpipesLambdaVersion:
+#    Type: AWS::Lambda::Version
+#    DeletionPolicy: Retain
+#    Properties:
+#      FunctionName: !Ref SubpipesLambda
 
   # todo: alias?
 
@@ -480,6 +487,7 @@ Resources:
       Handler: notifications.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/notifications
+      AutoPublishAlias: current
       MemorySize: 128
       Timeout: 60
       Layers:
@@ -496,11 +504,11 @@ Resources:
       DeploymentPreference:
         Enabled: False
 
-  EventHandlerLambdaVersion:
-    Type: AWS::Lambda::Version
-    DeletionPolicy: Retain
-    Properties:
-      FunctionName: !Ref EventHandlerLambda
+#  EventHandlerLambdaVersion:
+#    Type: AWS::Lambda::Version
+#    DeletionPolicy: Retain
+#    Properties:
+#      FunctionName: !Ref EventHandlerLambda
 
   # todo: alias?
 
@@ -753,7 +761,7 @@ Resources:
 Outputs:
   ChooserLambdaArn:
 #    Value: !GetAtt ChooserLambda.Arn
-    Value: !Ref ChooserLambdaVersion
+    Value: !GetAtt ChooserLambda.Version
 
   ChooserLambdaLogGroupName:
     Value: !Ref ChooserLambdaLogGroup
@@ -763,14 +771,14 @@ Outputs:
 
   EventHandlerLambdaArn:
 #    Value: !GetAtt EventHandlerLambda.Arn
-    Value: !Ref EventHandlerLambdaVersion
+    Value: !GetAtt EventHandlerLambda.Version
 
   GatherLambdaArn:
 #    Value: !GetAtt GatherLambda.Arn
     Value: !Ref GatherLambda
 
   GatherLambdaLogGroupName:
-    Value: !Ref GatherLambdaVersion
+    Value: !GetAtt GatherLambda.Version
 
   JobStatusLambdaArn:
     Value: !GetAtt JobStatusLambda.Arn
@@ -783,7 +791,7 @@ Outputs:
 
   LauncherLambdaArn:
 #    Value: !GetAtt LauncherLambda.Arn
-    Value: !Ref LauncherLambdaVersion
+    Value: !GetAtt LauncherLambda.Version
 
   LauncherLambdaLogGroupName:
     Value: !Ref LauncherLambdaLogGroup
@@ -802,7 +810,7 @@ Outputs:
 
   QCCheckerLambdaArn:
 #    Value: !GetAtt QCCheckerLambda.Arn
-    Value: !Ref QCCheckerLambdaVersion
+    Value: !GetAtt QCCheckerLambda.Version
 
   QCCheckerLambdaLogGroupName:
     Value: !Ref QCCheckerLambdaLogGroup
@@ -815,7 +823,7 @@ Outputs:
 
   ScatterLambdaArn:
 #    Value: !GetAtt ScatterLambda.Arn
-    Value: !Ref ScatterLambdaVersion
+    Value: !GetAtt ScatterLambda.Version
 
   ScatterLambdaLogGroupName:
     Value: !Ref ScatterLambdaLogGroup
@@ -831,7 +839,7 @@ Outputs:
 
   SubpipesLambdaArn:
 #    Value: !GetAtt SubpipesLambda.Arn
-    Value: !Ref SubpipesLambdaVersion
+    Value: !GetAtt SubpipesLambda.Version
 
   SubpipesLambdaLogGroupName:
     Value: !Ref SubpipesLambdaLogGroup
