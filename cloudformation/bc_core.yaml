@@ -74,6 +74,9 @@ Parameters:
       and HTTPS traffic. Enter "Auto" to automatically create a suitable security group.
     Default: Auto
 
+  SourceVersion:
+    Type: String
+
   Subnets:
     Type: CommaDelimitedList
     Description: >
@@ -698,6 +701,7 @@ Resources:
   RunnerRepo:
     Type: AWS::ECR::Repository
     Properties:
+      # todo: change name, this will fail if uprading from a previous installation
       RepositoryName: !Sub "${AWS::StackName}/bclaw_runner"
       ImageTagMutability: IMMUTABLE
 
@@ -741,8 +745,12 @@ Outputs:
   LauncherLambdaLogGroupName:
     Value: !Ref LauncherLambdaLogGroup
 
-  LauncherRepoUri:
-    Value: !GetAtt LauncherRepo.RepositoryUri
+  LauncherImageUri:
+    Value: !Sub
+      - "${repo}:${tag}"
+      - repo: !GetAtt LauncherRepo.RepositoryUri
+        tag: !Ref SourceVersion
+#    Value: !GetAtt LauncherRepo.RepositoryUri
 
   LogRetentionDays:
     Value: !Ref LogRetentionDays
@@ -765,11 +773,14 @@ Outputs:
   ResourceBucketName:
     Value: !Ref ResourceBucketName
 
-#  RunnerImageURI:
-#    Value: !Ref RunnerImageURI
+  RunnerImageURI:
+    Value: !Sub
+      - "${repo}:${tag}"
+      - repo: !GetAtt RunnerRepo.RepositoryUri
+        tag: !Ref SourceVersion
 
-  RunnerRepoUri:
-    Value: !GetAtt RunnerRepo.RepositoryUri
+#  RunnerRepoUri:
+#    Value: !GetAtt RunnerRepo.RepositoryUri
 
   ScatterLambdaArn:
     Value: !Ref ScatterLambda.Version
