@@ -22,28 +22,9 @@ phases:
       - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
       - export SOURCE_VERSION=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
 
-      # todo: run describe-stacks once, store in file, query with jq
-      - export RUNNER_REPO_URI=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='RunnerRepoUri'].OutputValue" --output text)
-      - echo $RUNNER_REPO_URI
-      - export LAUNCHER_REPO_URI=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='LauncherRepoUri'].OutputValue" --output text)
-      - echo $LAUNCHER_REPO_URI
-#      - export ECR_REPO_NAME=${CORE_STACK_NAME}/bclaw_runner
-#      - aws ecr create-repository --repository-name $ECR_REPO_NAME || true
-#      - >
-#        export ECR_REPO_URI=$(aws ecr describe-repositories
-#        --repository-name $ECR_REPO_NAME
-#        --query "repositories[0].repositoryUri"
-#        --output text)
-      - export RUNNER_IMAGE_TAG=${RUNNER_REPO_URI}:${SOURCE_VERSION}
-      - export LAUNCHER_IMAGE_TAG=${LAUNCHER_REPO_URI}:${SOURCE_VERSION}
-
   build:
     commands:
-      - cd bclaw_runner
-      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --target test -f Dockerfile.alpine .
-      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $RUNNER_IMAGE_TAG -f Dockerfile.alpine .
-
-      - cd $CODEBUILD_SRC_DIR
+#      - cd $CODEBUILD_SRC_DIR
       - sam build -b ./build -s . -t cloudformation/bc_core.yaml
       - >
         sam package
@@ -74,6 +55,26 @@ phases:
         Subnets=${SUBNETS}
         Uniqifier=$(date | md5sum | head -c 16)
         VpcId=${VPC_ID}
+
+      # todo: run describe-stacks once, store in file, query with jq
+      - export RUNNER_REPO_URI=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='RunnerRepoUri'].OutputValue" --output text)
+      - echo $RUNNER_REPO_URI
+      - export LAUNCHER_REPO_URI=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='LauncherRepoUri'].OutputValue" --output text)
+      - echo $LAUNCHER_REPO_URI
+#      - export ECR_REPO_NAME=${CORE_STACK_NAME}/bclaw_runner
+#      - aws ecr create-repository --repository-name $ECR_REPO_NAME || true
+#      - >
+#        export ECR_REPO_URI=$(aws ecr describe-repositories
+#        --repository-name $ECR_REPO_NAME
+#        --query "repositories[0].repositoryUri"
+#        --output text)
+      - export RUNNER_IMAGE_TAG=${RUNNER_REPO_URI}:${SOURCE_VERSION}
+      - export LAUNCHER_IMAGE_TAG=${LAUNCHER_REPO_URI}:${SOURCE_VERSION}
+
+      - cd $CODEBUILD_SRC_DIR/bclaw_runner
+      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --target test -f Dockerfile.alpine .
+      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $RUNNER_IMAGE_TAG -f Dockerfile.alpine .
+
 
   post_build:
     commands:
