@@ -2,7 +2,7 @@ version: 0.2
 
 env:
   variables:
-    - DOCKER_BUILDKIT: 1
+    DOCKER_BUILDKIT: 1
   exported-variables:
     - CORE_STACK_NAME
 
