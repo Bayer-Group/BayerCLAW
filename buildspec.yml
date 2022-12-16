@@ -1,6 +1,8 @@
 version: 0.2
 
 env:
+  variables:
+    - DOCKER_BUILDKIT: 1
   exported-variables:
     - CORE_STACK_NAME
 
@@ -14,23 +16,32 @@ phases:
 
   pre_build:
     commands:
-      - pytest -s -vvv lambda/tests/
-      - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
-      - export ECR_REPO_NAME=${CORE_STACK_NAME}/bclaw_runner
+      - # todo: restore tests
+#      - pytest -s -vvv lambda/tests/
       - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
-      - aws ecr create-repository --repository-name $ECR_REPO_NAME || true
-      - >
-        export ECR_REPO_URI=$(aws ecr describe-repositories
-        --repository-name $ECR_REPO_NAME
-        --query "repositories[0].repositoryUri"
-        --output text)
-      - export IMAGE_TAG=${ECR_REPO_URI}:${CODEBUILD_BUILD_NUMBER}
+      - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
+      - export SOURCE_VERSION=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
+
+      # todo: run describe-stacks once, store in file, query with jq
+      - export RUNNER_REPO_URI=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='RunnerRepoUri'].OutputValue" --output text)
+      - echo $RUNNER_REPO_URI
+      - export LAUNCHER_REPO_URI=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='LauncherRepoUri'].OutputValue" --output text)
+      - echo $LAUNCHER_REPO_URI
+#      - export ECR_REPO_NAME=${CORE_STACK_NAME}/bclaw_runner
+#      - aws ecr create-repository --repository-name $ECR_REPO_NAME || true
+#      - >
+#        export ECR_REPO_URI=$(aws ecr describe-repositories
+#        --repository-name $ECR_REPO_NAME
+#        --query "repositories[0].repositoryUri"
+#        --output text)
+      - export RUNNER_IMAGE_TAG=${RUNNER_REPO_URI}:${SOURCE_VERSION}
+      - export LAUNCHER_IMAGE_TAG=${LAUNCHER_REPO_URI}:${SOURCE_VERSION}
 
   build:
     commands:
       - cd bclaw_runner
-      - docker build --target test -f Dockerfile.alpine .
-      - docker build -t $IMAGE_TAG -f Dockerfile.alpine .
+      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --target test -f Dockerfile.alpine .
+      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $RUNNER_IMAGE_TAG -f Dockerfile.alpine .
 
       - cd $CODEBUILD_SRC_DIR
       - sam build -b ./build -s . -t cloudformation/bc_core.yaml
@@ -69,7 +80,7 @@ phases:
       - >
         aws ecr get-login-password --region ${AWS_REGION} |
         docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-      - docker push ${IMAGE_TAG}
+      - docker push ${RUNNER_IMAGE_TAG}
 
 artifacts:
   discard-paths: yes

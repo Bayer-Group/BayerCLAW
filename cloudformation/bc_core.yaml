@@ -694,6 +694,19 @@ Resources:
         Enabled: true
       BillingMode: PAY_PER_REQUEST
 
+  # ecr repositories
+  RunnerRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}/bclaw_runner"
+      ImageTagMutability: IMMUTABLE
+
+  LauncherRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}/bclaw_launcher"
+      ImageTagMutability: IMMUTABLE
+
 Outputs:
   ChooserLambdaArn:
     Value: !Ref ChooserLambda.Version
@@ -728,6 +741,9 @@ Outputs:
   LauncherLambdaLogGroupName:
     Value: !Ref LauncherLambdaLogGroup
 
+  LauncherRepoUri:
+    Value: !GetAtt LauncherRepo.RepositoryUri
+
   LogRetentionDays:
     Value: !Ref LogRetentionDays
 
@@ -751,6 +767,9 @@ Outputs:
 
   RunnerImageURI:
     Value: !Ref RunnerImageURI
+
+  RunnerRepoUri:
+    Value: !GetAtt RunnerRepo.RepositoryUri
 
   ScatterLambdaArn:
     Value: !Ref ScatterLambda.Version
