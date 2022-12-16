@@ -49,7 +49,6 @@ phases:
         MinvCpus=${MIN_VCPUS}
         ResourceBucketName=${RESOURCE_BUCKET_NAME}
         RootVolumeSize=${ROOT_VOLUME_SIZE}
-        RunnerImageURI=${IMAGE_TAG}
         ScratchVolumeSize=${SCRATCH_VOLUME_SIZE}
         SecurityGroups=${SECURITY_GROUPS}
         Subnets=${SUBNETS}

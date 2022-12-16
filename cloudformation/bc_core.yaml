@@ -58,9 +58,9 @@ Parameters:
     Description: Size (in GB) of the EBS root volume used by Batch jobs
     Default: 100
 
-  RunnerImageURI:
-    Type: String
-    Description: URI of the Docker image containing bclaw_runner
+#  RunnerImageURI:
+#    Type: String
+#    Description: URI of the Docker image containing bclaw_runner
 
   ScratchVolumeSize:
     Type: Number
@@ -765,8 +765,8 @@ Outputs:
   ResourceBucketName:
     Value: !Ref ResourceBucketName
 
-  RunnerImageURI:
-    Value: !Ref RunnerImageURI
+#  RunnerImageURI:
+#    Value: !Ref RunnerImageURI
 
   RunnerRepoUri:
     Value: !GetAtt RunnerRepo.RepositoryUri
