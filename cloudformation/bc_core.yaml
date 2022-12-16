@@ -750,7 +750,6 @@ Outputs:
       - "${repo}:${tag}"
       - repo: !GetAtt LauncherRepo.RepositoryUri
         tag: !Ref SourceVersion
-#    Value: !GetAtt LauncherRepo.RepositoryUri
 
   LogRetentionDays:
     Value: !Ref LogRetentionDays
@@ -773,14 +772,11 @@ Outputs:
   ResourceBucketName:
     Value: !Ref ResourceBucketName
 
-  RunnerImageURI:
+  RunnerImageUri:
     Value: !Sub
       - "${repo}:${tag}"
       - repo: !GetAtt RunnerRepo.RepositoryUri
         tag: !Ref SourceVersion
-
-#  RunnerRepoUri:
-#    Value: !GetAtt RunnerRepo.RepositoryUri
 
   ScatterLambdaArn:
     Value: !Ref ScatterLambda.Version
