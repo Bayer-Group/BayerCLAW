@@ -38,12 +38,12 @@ def mock_core_stack(aws_credentials):
           Value: event_handler_lambda_arn
         GatherLambdaArn:
           Value: gather_lambda_arn
+        InitializerLambdaArn:
+          Value: initializer_lambda_arn
         JobStatusLambdaArn:
           Value: job_status_lambda_arn
         LauncherBucketName:
           Value: launcher_bucket_name
-        LauncherLambdaArn:
-          Value: launcher_lambda_arn
         LogRetentionDays:
           Value: "99"
         NamerLambdaArn:
@@ -54,7 +54,7 @@ def mock_core_stack(aws_credentials):
           Value: qc_checker_lambda_arn
         ResourceBucketName:
           Value: resource_bucket_name
-        RunnerImageURI:
+        RunnerImageUri:
           Value: runner_image_uri
         ScatterLambdaArn:
           Value: scatter_lambda_arn

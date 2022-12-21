@@ -230,13 +230,12 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${CompilerLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
-  # todo: rename
-  LauncherLambda:
+  InitializerLambda:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: launcher.lambda_handler
+      Handler: initializer.lambda_handler
       Runtime: python3.9
-      CodeUri: lambda/src/launcher
+      CodeUri: lambda/src/initializer
       AutoPublishAlias: current
       MemorySize: 128
       Timeout: 900
@@ -256,10 +255,10 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-  LauncherLambdaLogGroup:
+  InitializerLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${LauncherLambda}"
+      LogGroupName: !Sub "/aws/lambda/${InitializerLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
   ScatterLambda:
@@ -730,6 +729,12 @@ Outputs:
   GatherLambdaLogGroupName:
     Value: !Ref GatherLambdaLogGroup
 
+  InitializerLambdaArn:
+    Value: !Ref InitializerLambda.Version
+
+  InitializerLambdaLogGroupName:
+    Value: !Ref InitializerLambdaLogGroup
+
   JobStatusLambdaArn:
     Value: !GetAtt JobStatusLambda.Arn
 
@@ -738,12 +743,6 @@ Outputs:
 
   LauncherBucketName:
     Value: !Ref LauncherBucket
-
-  LauncherLambdaArn:
-    Value: !Ref LauncherLambda.Version
-
-  LauncherLambdaLogGroupName:
-    Value: !Ref LauncherLambdaLogGroup
 
   LauncherImageUri:
     Value: !Sub

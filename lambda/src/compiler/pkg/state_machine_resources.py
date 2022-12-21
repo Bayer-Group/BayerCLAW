@@ -17,17 +17,17 @@ from .validation import validate_batch_step, validate_native_step, validate_para
     validate_subpipe_step, validate_chooser_step
 
 
-def make_launcher_step(core_stack: CoreStack, wf_params: dict) -> dict:
-    launch_step_name = "Launch"
+def make_initializer_step(core_stack: CoreStack, wf_params: dict) -> dict:
+    initialize_step_name = "Initialize"
 
     ret = {
-        launch_step_name: {
+        initialize_step_name: {
             "Type": "Task",
-            "Resource": core_stack.output("LauncherLambdaArn"),
+            "Resource": core_stack.output("InitializerLambdaArn"),
             "Parameters": {
                 "repo_template": wf_params["repository"],
                 "input_obj.$": "$",
-                **lambda_logging_block(launch_step_name),
+                **lambda_logging_block(initialize_step_name),
             },
             **lambda_retry(),
             "ResultPath": "$",
@@ -113,13 +113,13 @@ def process_step(core_stack: CoreStack,
 def make_branch(core_stack: CoreStack,
                 raw_steps: list,
                 wf_params: dict,
-                include_launcher: bool = False,
+                include_initializer: bool = False,
                 depth: int = 0) -> Generator[Resource, None, dict]:
     logger = logging.getLogger(__name__)
 
-    if include_launcher:
-        launcher_step = make_launcher_step(core_stack, wf_params)
-        raw_steps.insert(0, launcher_step)
+    if include_initializer:
+        initializer_step = make_initializer_step(core_stack, wf_params)
+        raw_steps.insert(0, initializer_step)
 
     steps = make_step_list(raw_steps)
     states = {}
@@ -178,7 +178,7 @@ def handle_state_machine(core_stack: CoreStack,
                          raw_steps: List[Dict],
                          wf_params: dict,
                          dst_fh=None) -> Generator[Resource, None, str]:
-    state_machine_def = yield from make_branch(core_stack, raw_steps, wf_params, include_launcher=True)
+    state_machine_def = yield from make_branch(core_stack, raw_steps, wf_params, include_initializer=True)
 
     if dst_fh is None:
         state_machine_location = write_state_machine_to_s3(state_machine_def, core_stack)

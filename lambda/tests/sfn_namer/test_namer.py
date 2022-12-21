@@ -97,7 +97,7 @@ def mock_state_machine():
         with moto.mock_stepfunctions():
             sfn = boto3.client("stepfunctions")
             state_machine = sfn.create_state_machine(
-                name="test_sfn",
+                name="test_sfn--99",
                 definition="{}",
                 roleArn=role.arn
             )
@@ -105,23 +105,31 @@ def mock_state_machine():
             yield state_machine["stateMachineArn"]
 
 
+class MockContext():
+    def __init__(self):
+        self.function_version = 99
+
+
 @pytest.mark.parametrize("replay, expected_name", [
     ("", "one-two-three-file_01234567"),
     ("replay789ABCDEF", "replay789A_one-two-three-file_01234567")
 ])
-def test_lambda_handler(mock_state_machine, replay, expected_name):
+def test_lambda_handler(mock_state_machine, replay, expected_name, monkeypatch):
+    monkeypatch.setenv("REGION", "us-east-1")
+    monkeypatch.setenv("ACCT_NUM", "123456789012")
+    monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
+
     event = {
         "branch": "main",
         "job_file_bucket": "bucket-name",
         "job_file_key": "wf-name/one/two/three/file.txt",
         "job_file_version": "0123456789ABCDEF0123456789abcdef",
-        "job_file_s3_request_id": "DEPRECATED",
-        "workflow_name": "wf_name",
         "replay": replay,
-        "sfn_arn": mock_state_machine,
     }
 
-    lambda_handler(event, {})
+    ctx = MockContext()
+
+    lambda_handler(event, ctx)
 
     sfn = boto3.client("stepfunctions")
     result = sfn.list_executions(stateMachineArn=mock_state_machine)
@@ -137,28 +145,30 @@ def test_lambda_handler(mock_state_machine, replay, expected_name):
             "bucket": "bucket-name",
             "key": "wf-name/one/two/three/file.txt",
             "version": "0123456789ABCDEF0123456789abcdef",
-            "s3_request_id": "DEPRECATED",
         },
         "index": "main",
     }
     assert desc_input == expect
 
 
-def test_lambda_handler_duplicate_event(mock_state_machine):
+def test_lambda_handler_duplicate_event(mock_state_machine, monkeypatch):
+    monkeypatch.setenv("REGION", "us-east-1")
+    monkeypatch.setenv("ACCT_NUM", "123456789012")
+    monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
+
     event1 = {
         "branch": "main",
         "job_file_bucket": "bucket-name",
         "job_file_key": "wf-name/four/five/six/file.txt",
         "job_file_version": "abcdef0123456789ABCDEF0123456789",
-        "job_file_s3_request_id": "DEPRECATED",
-        "workflow_name": "wf-name",
         "replay": "",
-        "sfn_arn": mock_state_machine,
     }
     event2 = event1.copy()
 
-    lambda_handler(event1, {})
-    lambda_handler(event2, {})
+    ctx = MockContext()
+
+    lambda_handler(event1, ctx)
+    lambda_handler(event2, ctx)
 
     sfn = boto3.client("stepfunctions")
     result = sfn.list_executions(stateMachineArn=mock_state_machine)

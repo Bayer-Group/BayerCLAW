@@ -43,10 +43,7 @@ def lambda_handler(event: dict, context: object) -> None:
     #   "job_file_bucket": "...",
     #   "job_file_key": "...",
     #   "job_file_version": "..."  # empty string if launcher bucket versioning is suspended
-    #   "job_file_s3_request_id": "..."
-    #   "workflow_name": "..."
     #   "replay": "...",  # empty string if not an archive replay
-    #   "sfn_arn": "..."
     # }
 
     with custom_lambda_logs(**event):
@@ -67,17 +64,23 @@ def lambda_handler(event: dict, context: object) -> None:
                     "bucket": event["job_file_bucket"],
                     "key": event["job_file_key"],
                     "version": event["job_file_version"],
-                    "s3_request_id": event["job_file_s3_request_id"],
                 },
                 "index": event["branch"],
             }
 
-            response = sfn.start_execution(
-                stateMachineArn=event["sfn_arn"],
-                name=exec_name,
-                input=json.dumps(input_obj)
-            )
-            logger.info(f"{response=}")
+            region = os.environ["REGION"]
+            acct_num = os.environ["ACCT_NUM"]
+            root = os.environ["SFN_NAME_ROOT"]
+            version = context.function_version
+            state_machine_arn = f"arn:aws:states:{region}:{acct_num}:stateMachine:{root}--{version}"
+
+            if "dry_run" not in event:
+                response = sfn.start_execution(
+                    stateMachineArn=state_machine_arn,
+                    name=exec_name,
+                    input=json.dumps(input_obj)
+                )
+                logger.info(f"{response=}")
 
         except sfn.exceptions.ExecutionAlreadyExists:
             # duplicated s3 events are way more likely than bona fide name collisions

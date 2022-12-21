@@ -23,7 +23,7 @@ sys.path.append(
 
 logging.basicConfig(level=logging.INFO)
 
-from ...src.launcher.launcher import read_s3_object, lookup, substitute_job_data, check_recursive_launch, \
+from ...src.initializer.initializer import read_s3_object, lookup, substitute_job_data, check_recursive_launch, \
     copy_job_data_to_repo, write_extended_job_data_object, write_execution_record, lambda_handler
 
 
