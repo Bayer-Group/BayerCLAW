@@ -22,7 +22,7 @@ sys.path.append(
 
 logging.basicConfig(level=logging.INFO)
 
-from ...src.sfn_namer.namer import shorten_filename, normalize, make_execution_name, lambda_handler
+from ...src.job_launcher.job_launcher import shorten_filename, normalize, make_execution_name, lambda_handler
 
 
 @pytest.mark.parametrize("string, expect", [

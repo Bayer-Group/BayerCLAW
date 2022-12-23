@@ -390,41 +390,41 @@ Resources:
       RetentionInDays: !Ref LogRetentionDays
 
   # todo: remove, build into wf stacks
-  NamerLambda:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: namer.lambda_handler
-      Runtime: python3.9
-      CodeUri: lambda/src/sfn_namer
-      MemorySize: 128
-      Timeout: 5
-      Layers:
-        - !Ref CommonLayer
-      Policies:
-        -
-          Version: "2012-10-17"
-          Statement:
-            -
-              Effect: Allow
-              Action:
-                - "states:StartExecution"
-              Resource: "*"
-      DeploymentPreference:
-        Enabled: False
+#  NamerLambda:
+#    Type: AWS::Serverless::Function
+#    Properties:
+#      Handler: namer.lambda_handler
+#      Runtime: python3.9
+#      CodeUri: lambda/src/sfn_namer
+#      MemorySize: 128
+#      Timeout: 5
+#      Layers:
+#        - !Ref CommonLayer
+#      Policies:
+#        -
+#          Version: "2012-10-17"
+#          Statement:
+#            -
+#              Effect: Allow
+#              Action:
+#                - "states:StartExecution"
+#              Resource: "*"
+#      DeploymentPreference:
+#        Enabled: False
 
-  PermissionToInvokeNamer:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref NamerLambda
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
+#  PermissionToInvokeNamer:
+#    Type: AWS::Lambda::Permission
+#    Properties:
+#      FunctionName: !Ref NamerLambda
+#      Action: lambda:InvokeFunction
+#      Principal: events.amazonaws.com
+#      SourceAccount: !Ref AWS::AccountId
 
-  NamerLambdaLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/lambda/${NamerLambda}"
-      RetentionInDays: !Ref LogRetentionDays
+#  NamerLambdaLogGroup:
+#    Type: AWS::Logs::LogGroup
+#    Properties:
+#      LogGroupName: !Sub "/aws/lambda/${NamerLambda}"
+#      RetentionInDays: !Ref LogRetentionDays
 
   # todo: rename
   EventHandlerLambda:
@@ -704,7 +704,7 @@ Resources:
       RepositoryName: !Sub "${AWS::StackName}/bclaw_runner"
       ImageTagMutability: IMMUTABLE
 
-  LauncherRepo:
+  JobLauncherRepo:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: !Sub "${AWS::StackName}/bclaw_launcher"
@@ -735,6 +735,12 @@ Outputs:
   InitializerLambdaLogGroupName:
     Value: !Ref InitializerLambdaLogGroup
 
+  JobLauncherImageUri:
+    Value: !Sub
+      - "${repo}:${tag}"
+      - repo: !GetAtt JobLauncherRepo.RepositoryUri
+        tag: !Ref SourceVersion
+
   JobStatusLambdaArn:
     Value: !GetAtt JobStatusLambda.Arn
 
@@ -744,20 +750,14 @@ Outputs:
   LauncherBucketName:
     Value: !Ref LauncherBucket
 
-  LauncherImageUri:
-    Value: !Sub
-      - "${repo}:${tag}"
-      - repo: !GetAtt LauncherRepo.RepositoryUri
-        tag: !Ref SourceVersion
-
   LogRetentionDays:
     Value: !Ref LogRetentionDays
 
-  NamerLambdaArn:
-    Value: !GetAtt NamerLambda.Arn
+#  NamerLambdaArn:
+#    Value: !GetAtt NamerLambda.Arn
 
-  NamerLambdaLogGroupName:
-    Value: !Ref NamerLambdaLogGroup
+#  NamerLambdaLogGroupName:
+#    Value: !Ref NamerLambdaLogGroup
 
   OnDemandQueueArn:
     Value: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn

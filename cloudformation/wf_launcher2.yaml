@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  LauncherImageUri:
+    Type: String
+
+  LogRetentionDays:
+    Type: Number
+
+  Uniqifier:
+    Type: String
+
+  VersionatorUri:
+    Type: String
+
+  WorkflowName:
+    Type: String
+
+Resources:
+  wfLauncherLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: LauncherPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "states:StartExecution"
+                Resource: !Sub "${WorkflowName}*"
+
+
+  wfLauncherLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${WorkflowName}-launcher"
+      PackageType: Image
+      Code:
+        ImageUri: !Ref LauncherImageUri
+      Environment:
+        Variables:
+          REGION: !Ref AWS::Region
+          ACCT_NUM: !Ref AWS::AccountId
+          SFN_NAME_ROOT: !Ref WorkflowName
+          UNIQIFIER: !Ref Uniqifier
+      Role: !GetAtt wfLauncherLambdaRole.Arn
+
+  wfLauncherLambdaVersion:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !Ref VersionatorUri
+      FunctionName: !Ref wfLauncherLambda
+      Uniqifier: !Ref Uniqifier
+
+  wfLauncherLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${wfLauncherLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
+Outputs:
+  LauncherLambdaName:
+    Value: !Ref wfLauncherLambda
+
+  LauncherLambdaVersion:
+    Value: !GetAtt wfLauncherLambdaVersion.Version
