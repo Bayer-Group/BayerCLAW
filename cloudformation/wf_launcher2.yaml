@@ -10,7 +10,7 @@ Parameters:
   Uniqifier:
     Type: String
 
-  VersionatorUri:
+  VersionatorArn:
     Type: String
 
   WorkflowName:
@@ -60,7 +60,7 @@ Resources:
   wfLauncherLambdaVersion:
     Type: AWS::CloudFormation::CustomResource
     Properties:
-      ServiceToken: !Ref VersionatorUri
+      ServiceToken: !Ref VersionatorArn
       FunctionName: !Ref wfLauncherLambda
       Uniqifier: !Ref Uniqifier
 

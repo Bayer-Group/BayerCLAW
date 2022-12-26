@@ -464,6 +464,35 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${EventHandlerLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  VersionatorLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: versionator.lambda_handler
+      Runtime: python3.9
+      CodeUri: lambda/src/versionator
+      AutoPublishAlias: current
+      MemorySize: 128
+      Timeout: 60
+      Layers:
+        - !Ref CommonLayer
+      Policies:
+        -
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: Allow
+              Action:
+                - "lambda:PublishVersion"
+              Resource: "*"
+      DeploymentPreference:
+        Enabled: False
+
+  VersionatorLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${VersionatorLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
   # todo: remove
   JobStatusLambda:
     Type: AWS::Serverless::Function
@@ -797,3 +826,9 @@ Outputs:
 
   SubpipesLambdaLogGroupName:
     Value: !Ref SubpipesLambdaLogGroup
+
+  VersionatorLambdaArn:
+    Value: !Ref VersionatorLambda.Version
+
+  VersionatorLambdaLogGroupName:
+    Value: !Ref VersionatorLambdaLogGroup
