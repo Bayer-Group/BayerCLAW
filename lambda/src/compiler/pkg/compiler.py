@@ -1,7 +1,7 @@
 import logging
 
 from . import state_machine_resources as sm
-from .misc_resources import launcher_substack_rc, notifications_substack_rc
+from .misc_resources import launcher_substack_rc, deploy_substack_rc #, notifications_substack_rc
 from .util import CoreStack, Resource, merge_params_and_options
 from .validation import workflow_schema
 
@@ -29,9 +29,11 @@ def compile_template(wf_spec: dict, state_machine_out=None) -> dict:
 
     # create substacks
     launcher_substack = launcher_substack_rc(core_stack, state_machine.name)
-    notifications_substack = notifications_substack_rc(core_stack, state_machine.name)
+    deploy_substack = deploy_substack_rc(core_stack, state_machine.name)
+    # notifications_substack = notifications_substack_rc(core_stack, state_machine.name)
 
-    resources.update([launcher_substack, notifications_substack])
+    resources.update([launcher_substack, deploy_substack])
+    # resources.update([launcher_substack, notifications_substack])
 
     # create cloudformation template fragment to return
     ret = {
@@ -44,9 +46,10 @@ def compile_template(wf_spec: dict, state_machine_out=None) -> dict:
             "LauncherBucketName": {
                 "Value": core_stack.output("LauncherBucketName"),
             },
-            "NotificationTopicArn": {
-                "Value": {"Fn::GetAtt": [notifications_substack.name, "Outputs.wfOutputTopicArn"]},
-            },
+            # todo: restore
+            # "NotificationTopicArn": {
+            #     "Value": {"Fn::GetAtt": [notifications_substack.name, "Outputs.wfOutputTopicArn"]},
+            # },
             "StepFunctionsStateMachineArn": {
                 "Value": {"Ref": state_machine.name},
             },

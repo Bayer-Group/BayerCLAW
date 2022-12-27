@@ -56,6 +56,7 @@ phases:
         Subnets=${SUBNETS}
         Uniqifier=$(date | md5sum | head -c 16)
         VpcId=${VPC_ID}
+      # todo: use SOURCE_VERSION for Uniqifier?
 
       - export RUNNER_IMAGE_TAG=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='RunnerImageUri'].OutputValue" --output text)
       - echo $RUNNER_IMAGE_TAG
@@ -70,6 +71,11 @@ phases:
       # todo: test in container
       - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $LAUNCHER_IMAGE_TAG -f src/launcher/Dockerfile .
 
+      - cd $CODEBUILD_SRC_DIR
+      - mkdir -p ${SOURCE_VERSION}
+      - mv wf_launcher2.yaml ${SOURCE_VERSION}/
+      - mv wf_deploy.yaml ${SOURCE_VERSION}/
+
   post_build:
     commands:
       - >
@@ -80,5 +86,7 @@ phases:
 artifacts:
   discard-paths: yes
   files:
-    - cloudformation/wf_launcher.yaml
-    - cloudformation/wf_notifications.yaml
+    - cloudformation/${SOURCE_VERSION}/wf_launcher2.yaml
+    - cloudformation/${SOURCE_VERSION}/wf_deploy.yaml
+#    - cloudformation/wf_launcher.yaml
+#    - cloudformation/wf_notifications.yaml

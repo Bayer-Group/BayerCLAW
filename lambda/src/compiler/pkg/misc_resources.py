@@ -1,12 +1,15 @@
 from .util import CoreStack, Resource
 
+DEPLOY_STACK_NAME = "deployStack"
 LAUNCHER_STACK_NAME = "launcherStack"
 NOTIFICATIONS_STACK_NAME = "notificationsStack"
 
 
 def launcher_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -> Resource:
     rc_bucket = core_stack.output("ResourceBucketName")
-    template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/wf_launcher.yaml"
+    build_id = core_stack.output("TODO")  # todo
+    # template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/wf_launcher.yaml"
+    template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/{build_id}/wf_launcher2.yaml"
 
     ret = {
         "Type": "AWS::CloudFormation::Stack",
@@ -24,6 +27,34 @@ def launcher_substack_rc(core_stack: CoreStack, state_machine_logical_name: str)
     return Resource(LAUNCHER_STACK_NAME, ret)
 
 
+def deploy_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -> Resource:
+    rc_bucket = core_stack.output("ResourceBucketName")
+    build_id = core_stack.output("TODO")  # todo
+    template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/{build_id}/wf_deploy.yaml"
+
+    ret = {
+        "Type": "AWS::Cloudformation::Stack",
+        "Properties": {
+            "Parameters": {
+                "LauncherBucketName": core_stack.output("LauncherBucketName"),
+                "LauncherLambdaName": {
+                    "Fn::GetAtt", [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaName"],
+                },
+                "LauncherLambdaVersion": {
+                    "Fn::GetAtt", [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+                },
+                "NotificationsLambdaArn": core_stack.output("EventHandlerLambdaArn"),  # todo: did this change?
+                "StateMachineArn": {"Ref": state_machine_logical_name},
+                "WorkflowName": {"Ref": "AWS::StackName"},
+            }
+        },
+        "TemplateURL": template_url,
+    }
+
+    return Resource(DEPLOY_STACK_NAME, ret)
+
+
+# todo: defunct
 def notifications_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -> Resource:
     rc_bucket = core_stack.output("ResourceBucketName")
     template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/wf_notifications.yaml"

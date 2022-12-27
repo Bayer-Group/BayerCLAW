@@ -9,6 +9,7 @@ import boto3
 from . import batch_resources as b
 from . import chooser_resources as c
 from . import enhanced_parallel_resources as ep
+from . import misc_resources as m
 from . import native_step_resources as ns
 from . import scatter_gather_resources as sg
 from . import subpipe_resources as sp
@@ -189,8 +190,19 @@ def handle_state_machine(core_stack: CoreStack,
     ret = {
         "Type": "AWS::StepFunctions::StateMachine",
         "Properties": {
+            # "StateMachineName": {
+            #     "Ref": "AWS::StackName",
+            # },
             "StateMachineName": {
-                "Ref": "AWS::StackName",
+                "Fn::Sub", [
+                    "${Root}--${Version}",
+                    {
+                        "Root": {"Ref": "AWS::StackName"},
+                        "Version": {
+                            "Fn::GetAtt", [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]
+                        }
+                    }
+                ]
             },
             "RoleArn": core_stack.output("StatesExecutionRoleArn"),
             "DefinitionS3Location": state_machine_location,
