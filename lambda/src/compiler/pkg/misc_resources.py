@@ -2,7 +2,7 @@ from .util import CoreStack, Resource
 
 DEPLOY_STACK_NAME = "deployStack"
 LAUNCHER_STACK_NAME = "launcherStack"
-NOTIFICATIONS_STACK_NAME = "notificationsStack"
+# NOTIFICATIONS_STACK_NAME = "notificationsStack"
 
 
 def launcher_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -> Resource:
@@ -43,7 +43,7 @@ def deploy_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -
                 "LauncherLambdaVersion": {
                     "Fn::GetAtt", [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
                 },
-                "NotificationsLambdaArn": core_stack.output("EventHandlerLambdaArn"),  # todo: did this change?
+                "NotificationsLambdaArn": core_stack.output("EventHandlerLambdaArn"),
                 "StateMachineArn": {"Ref": state_machine_logical_name},
                 "WorkflowName": {"Ref": "AWS::StackName"},
             }
@@ -54,24 +54,24 @@ def deploy_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -
     return Resource(DEPLOY_STACK_NAME, ret)
 
 
-# todo: defunct
-def notifications_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -> Resource:
-    rc_bucket = core_stack.output("ResourceBucketName")
-    template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/wf_notifications.yaml"
-    handler_lambda_arn = core_stack.output("EventHandlerLambdaArn")
-    job_status_lambda_arn = core_stack.output("JobStatusLambdaArn")
-
-    ret = {
-        "Type": "AWS::CloudFormation::Stack",
-        "Properties": {
-            "Parameters": {
-                "WorkflowName": {"Ref": "AWS::StackName"},
-                "HandlerLambdaArn": handler_lambda_arn,
-                "JobStatusLambdaArn": job_status_lambda_arn,
-                "StateMachineArn": {"Ref": state_machine_logical_name},
-            },
-            "TemplateURL": template_url,
-        },
-    }
-
-    return Resource(NOTIFICATIONS_STACK_NAME, ret)
+# todo: remove
+# def notifications_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -> Resource:
+#     rc_bucket = core_stack.output("ResourceBucketName")
+#     template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/wf_notifications.yaml"
+#     handler_lambda_arn = core_stack.output("EventHandlerLambdaArn")
+#     job_status_lambda_arn = core_stack.output("JobStatusLambdaArn")
+#
+#     ret = {
+#         "Type": "AWS::CloudFormation::Stack",
+#         "Properties": {
+#             "Parameters": {
+#                 "WorkflowName": {"Ref": "AWS::StackName"},
+#                 "HandlerLambdaArn": handler_lambda_arn,
+#                 "JobStatusLambdaArn": job_status_lambda_arn,
+#                 "StateMachineArn": {"Ref": state_machine_logical_name},
+#             },
+#             "TemplateURL": template_url,
+#         },
+#     }
+#
+#     return Resource(NOTIFICATIONS_STACK_NAME, ret)

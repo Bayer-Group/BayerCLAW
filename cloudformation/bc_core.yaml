@@ -534,8 +534,6 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${JobStatusLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
-  # todo: versionator lambda
-
   CompilerMacro:
     Type: AWS::CloudFormation::Macro
     Properties:
