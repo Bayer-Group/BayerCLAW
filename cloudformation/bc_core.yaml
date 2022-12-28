@@ -203,6 +203,7 @@ Resources:
       Environment:
         Variables:
           CORE_STACK_NAME: !Ref "AWS::StackName"
+          SOURCE_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 900
       Layers:

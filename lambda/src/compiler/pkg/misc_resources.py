@@ -1,3 +1,5 @@
+import os
+
 from .util import CoreStack, Resource
 
 DEPLOY_STACK_NAME = "deployStack"
@@ -7,7 +9,8 @@ LAUNCHER_STACK_NAME = "launcherStack"
 
 def launcher_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -> Resource:
     rc_bucket = core_stack.output("ResourceBucketName")
-    build_id = core_stack.output("TODO")  # todo
+    # build_id = core_stack.output("TODO")  # todo
+    build_id = os.environ.get("SOURCE_VERSION")
     # template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/wf_launcher.yaml"
     template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/{build_id}/wf_launcher2.yaml"
 
@@ -29,7 +32,8 @@ def launcher_substack_rc(core_stack: CoreStack, state_machine_logical_name: str)
 
 def deploy_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -> Resource:
     rc_bucket = core_stack.output("ResourceBucketName")
-    build_id = core_stack.output("TODO")  # todo
+    # build_id = core_stack.output("TODO")  # todo
+    build_id = os.environ.get("SOURCE_VERSION")
     template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/{build_id}/wf_deploy.yaml"
 
     ret = {
