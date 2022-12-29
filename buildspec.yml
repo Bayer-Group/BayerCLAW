@@ -71,7 +71,7 @@ phases:
       # todo: test in container
       - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $LAUNCHER_IMAGE_TAG -f src/job_launcher/Dockerfile .
 
-      - cd $CODEBUILD_SRC_DIR
+      - cd $CODEBUILD_SRC_DIR/cloudformation
       - mkdir -p ${SOURCE_VERSION}
       - mv wf_launcher2.yaml ${SOURCE_VERSION}/
       - mv wf_deploy.yaml ${SOURCE_VERSION}/
