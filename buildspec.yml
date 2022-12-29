@@ -60,7 +60,7 @@ phases:
 
       - export RUNNER_IMAGE_TAG=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='RunnerImageUri'].OutputValue" --output text)
       - echo $RUNNER_IMAGE_TAG
-      - export LAUNCHER_IMAGE_TAG=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='LauncherImageUri'].OutputValue" --output text)
+      - export LAUNCHER_IMAGE_TAG=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='JobLauncherImageUri'].OutputValue" --output text)
       - echo $LAUNCHER_IMAGE_TAG
 
       - cd $CODEBUILD_SRC_DIR/bclaw_runner
