@@ -69,7 +69,7 @@ phases:
 
       - cd $CODEBUILD_SRC_DIR/lambda
       # todo: test in container
-      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $LAUNCHER_IMAGE_TAG -f src/launcher/Dockerfile .
+      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $LAUNCHER_IMAGE_TAG -f src/job_launcher/Dockerfile .
 
       - cd $CODEBUILD_SRC_DIR
       - mkdir -p ${SOURCE_VERSION}
