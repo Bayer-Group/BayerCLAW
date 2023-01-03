@@ -103,8 +103,8 @@ def handle_s3_launch(event: dict) -> dict:
             "bucket": src_bucket,
             "key": src_key,
             "version": src_version,
-            # deprecated
-            "s3_request_id": event["input_obj"]["job_file"]["s3_request_id"],
+            # todo: remove
+            # "s3_request_id": event["input_obj"]["job_file"]["s3_request_id"],
         },
         "prev_outputs": {},
         "repo": repo,

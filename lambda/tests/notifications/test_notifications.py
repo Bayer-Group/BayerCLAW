@@ -33,7 +33,7 @@ LAUNCHER_BUCKET = "test-bucket"
 JOB_DATA_KEY = "path/to/job.json"
 JOB_DATA_VERSION = "1234567890"
 JOB_DATA_URI = f"s3://{LAUNCHER_BUCKET}/{JOB_DATA_KEY}"
-REQUEST_ID = "ELVISLIVES"
+# REQUEST_ID = "ELVISLIVES"
 
 
 @pytest.fixture(scope="module")
@@ -43,7 +43,7 @@ def state_change_event_factory():
             "bucket": LAUNCHER_BUCKET,
             "key": JOB_DATA_KEY,
             "version": JOB_DATA_VERSION,
-            "s3_request_id": REQUEST_ID,
+            # "s3_request_id": REQUEST_ID,
         },
         "index": "main",
     }

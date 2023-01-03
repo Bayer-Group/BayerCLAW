@@ -3,21 +3,27 @@ AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   LauncherBucketName:
     Type: String
+#    Default: launcher-bucket
 
   LauncherLambdaName:
     Type: String
+#    Default: template3stak-launcher
 
   LauncherLambdaVersion:
     Type: String
+#    Default: 6
 
   NotificationsLambdaArn:
     Type: String
+#    Default: arn:aws:lambda:us-east-2:934778205429:function:bayerclaw-core-EventHandlerLambda-mGpP7TSiKcHV
 
   StateMachineArn:
     Type: String
+#    Default: state-machine-arn
 
   WorkflowName:
     Type: String
+#    Default: workflow-name
 
 Resources:
   # notifications
@@ -34,7 +40,7 @@ Resources:
         - !Ref wfNotificationsTopic
       PolicyDocument:
         Version: "2012-10-17"
-        Id: "wfOutputSNSTopicPolicy"
+        Id: "wfNotificationsTopicPolicy"
         Statement:
           -
             Sid: OwnerAccessOnly
@@ -65,7 +71,7 @@ Resources:
               Bool:
                 "aws:SecureTransport": "false"
 
-  wfNotificatioonsRule:
+  wfNotificationsRule:
     Type: AWS::Events::Rule
     Properties:
       EventPattern:
@@ -88,7 +94,7 @@ Resources:
               !Sub |-
                 {
                   "workflow_name": "${WorkflowName}",
-                  "sns_topic_arn": "${wfOutputSNSTopic}",
+                  "sns_topic_arn": "${wfNotificationsTopic}",
                   "event": <aws.events.event>,
                   "detail": <detail>
                 }
@@ -125,6 +131,7 @@ Resources:
           - DEPLOYMENT_FAILURE
           - DEPLOYMENT_STOP_ON_ALARM
           - DEPLOYMENT_STOP_ON_REQUEST
+      # todo: all at once
       DeploymentConfigName: CodeDeployDefault.LambdaLinear10PercentEvery1Minute
       DeploymentStyle:
         DeploymentType: BLUE_GREEN
@@ -218,22 +225,21 @@ Resources:
           Arn: !Ref wfLauncherLambdaAliasLive
           DeadLetterConfig:
             Arn: !GetAtt wfDeadLetterQueue.Arn
-          Id: namer-lambda-target
+          Id: launcher-lambda-target
           InputTransformer:
             InputPathsMap:
               bucket: "$.detail.bucket.name"
               key: "$.detail.object.key"
               version: "$.detail.object.version-id"
               replay: "$.replay-name"
-            InputTemplate:
-              !Sub >-
-                {
-                  "branch": "main",
-                  "job_file_bucket": <bucket>,
-                  "job_file_key": <key>,
-                  "job_file_version": <version>,
-                  "replay": <replay>,
-                }
+            InputTemplate: >-
+              {
+                "branch": "main",
+                "job_file_bucket": <bucket>,
+                "job_file_key": <key>,
+                "job_file_version": <version>,
+                "replay": <replay>
+              }
 
   PermissionToInvokeLauncher:
     Type: AWS::Lambda::Permission
