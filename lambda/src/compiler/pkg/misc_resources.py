@@ -42,10 +42,10 @@ def deploy_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -
             "Parameters": {
                 "LauncherBucketName": core_stack.output("LauncherBucketName"),
                 "LauncherLambdaName": {
-                    "Fn::GetAtt", [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaName"],
+                    "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaName"],
                 },
                 "LauncherLambdaVersion": {
-                    "Fn::GetAtt", [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+                    "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
                 },
                 "NotificationsLambdaArn": core_stack.output("EventHandlerLambdaArn"),
                 "StateMachineArn": {"Ref": state_machine_logical_name},

@@ -194,7 +194,7 @@ def handle_state_machine(core_stack: CoreStack,
             #     "Ref": "AWS::StackName",
             # },
             "StateMachineName": {
-                "Fn::Sub", [
+                "Fn::Sub": [
                     "${Root}--${Version}",
                     {
                         "Root": {"Ref": "AWS::StackName"},
