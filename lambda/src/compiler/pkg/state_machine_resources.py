@@ -189,10 +189,8 @@ def handle_state_machine(core_stack: CoreStack,
     state_machine_name = make_logical_name("main.state.machine")
     ret = {
         "Type": "AWS::StepFunctions::StateMachine",
+        "UpdateReplacePolicy": "Retain",
         "Properties": {
-            # "StateMachineName": {
-            #     "Ref": "AWS::StackName",
-            # },
             "StateMachineName": {
                 "Fn::Sub": [
                     "${Root}--${Version}",
