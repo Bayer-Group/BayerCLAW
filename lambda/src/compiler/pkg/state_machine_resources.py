@@ -199,7 +199,7 @@ def handle_state_machine(core_stack: CoreStack,
                     {
                         "Root": {"Ref": "AWS::StackName"},
                         "Version": {
-                            "Fn::GetAtt", [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]
+                            "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]
                         }
                     }
                 ]
