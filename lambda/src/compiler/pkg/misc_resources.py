@@ -1,4 +1,5 @@
 import os
+import uuid
 
 from .util import CoreStack, Resource
 
@@ -18,11 +19,18 @@ def launcher_substack_rc(core_stack: CoreStack, state_machine_logical_name: str)
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
             "Parameters": {
+                "LauncherImageUri": core_stack.output("JobLauncherImageUri"),
+                "LogRetentionDays": core_stack.output("LogRetentionDays"),
+                "Uniqifier": str(uuid.uuid4()),
+                "VersionatorArn": core_stack.output("VersionatorLambdaArn"),
                 "WorkflowName": {"Ref": "AWS::StackName"},
-                "StateMachineArn": {"Ref": state_machine_logical_name},
-                "LauncherBucketName": core_stack.output("LauncherBucketName"),
-                "NamerLambdaArn": core_stack.output("NamerLambdaArn"),
             },
+            # "Parameters": {
+            #     "WorkflowName": {"Ref": "AWS::StackName"},
+            #     "StateMachineArn": {"Ref": state_machine_logical_name},
+            #     "LauncherBucketName": core_stack.output("LauncherBucketName"),
+            #     "NamerLambdaArn": core_stack.output("NamerLambdaArn"),
+            # },
             "TemplateURL": template_url,
         }
     }
