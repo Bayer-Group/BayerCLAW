@@ -58,9 +58,9 @@ def deploy_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -
                 "NotificationsLambdaArn": core_stack.output("EventHandlerLambdaArn"),
                 "StateMachineArn": {"Ref": state_machine_logical_name},
                 "WorkflowName": {"Ref": "AWS::StackName"},
-            }
+            },
+            "TemplateURL": template_url,
         },
-        "TemplateURL": template_url,
     }
 
     return Resource(DEPLOY_STACK_NAME, ret)
