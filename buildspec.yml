@@ -78,9 +78,10 @@ phases:
         aws ecr get-login-password --region ${AWS_REGION} |
         docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
       - docker push ${RUNNER_IMAGE_TAG}
+      - docker push ${LAUNCHER_IMAGE_TAG}
 
 artifacts:
   discard-paths: yes
   files:
-    - cloudformation/wf_launcher.yaml
+    - cloudformation/wf_launcher2.yaml
     - cloudformation/wf_notifications.yaml

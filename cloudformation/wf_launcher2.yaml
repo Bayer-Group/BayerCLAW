@@ -39,7 +39,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - "states:StartExecution"
-                Resource: !Sub "${WorkflowName}*"
+                Resource: "*"
 
 
   wfLauncherLambda:
