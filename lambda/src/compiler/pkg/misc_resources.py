@@ -45,7 +45,7 @@ def deploy_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -
     template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/wf_deploy.yaml"
 
     ret = {
-        "Type": "AWS::Cloudformation::Stack",
+        "Type": "AWS::CloudFormation::Stack",
         "Properties": {
             "Parameters": {
                 "LauncherBucketName": core_stack.output("LauncherBucketName"),
