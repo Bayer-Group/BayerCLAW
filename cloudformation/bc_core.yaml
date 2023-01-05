@@ -597,7 +597,6 @@ Resources:
         MinvCpus: !Ref MinvCpus
         QueueName: !Sub ${AWS::StackName}-spot-queue
         RequestType: "Spot"
-        ResourceBucketName: !Ref ResourceBucketName
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
         SecurityGroupIds:
@@ -615,7 +614,6 @@ Resources:
         MinvCpus: !Ref MinvCpus
         QueueName: !Sub ${AWS::StackName}-on-demand-queue
         RequestType: "On-demand"
-        ResourceBucketName: !Ref ResourceBucketName
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
         SecurityGroupIds:

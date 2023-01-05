@@ -47,6 +47,7 @@ phases:
         LogRetentionDays=${LOG_RETENTION_DAYS}
         MaxvCpus=${MAX_VCPUS}
         MinvCpus=${MIN_VCPUS}
+        ResourceBucketName=${RESOURCE_BUCKET_NAME}
         RootVolumeSize=${ROOT_VOLUME_SIZE}
         ScratchVolumeSize=${SCRATCH_VOLUME_SIZE}
         SecurityGroups=${SECURITY_GROUPS}
