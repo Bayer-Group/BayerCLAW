@@ -5,5 +5,6 @@ jmespath
 jsonpath
 moto[all]==3.1.3
 pytest
+pytest-mock
 pyyaml
 voluptuous
