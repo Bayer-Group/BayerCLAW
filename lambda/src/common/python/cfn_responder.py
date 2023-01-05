@@ -4,7 +4,6 @@ import http.client
 import json
 import urllib.parse
 
-# todo: test
 
 @dataclass()
 class Response:
@@ -21,6 +20,14 @@ class Response:
         self.Data.update(**kwargs)
 
 
+def respond(url: str, body: dict):
+    url_obj = urllib.parse.urlparse(url)
+    body_json = json.dumps(body)
+
+    https = http.client.HTTPSConnection(url_obj.hostname)
+    https.request("PUT", url_obj.path + "?" + url_obj.query, body_json)
+
+
 @contextmanager
 def responder(event, context, no_echo=False):
     response = Response(
@@ -35,10 +42,5 @@ def responder(event, context, no_echo=False):
         response.Status = "SUCCESS"
     except:
         response.Reason = f"see log stream {context.log_stream_name}"
-        raise
     finally:
-        url = urllib.parse.urlparse(event["ResponseURL"])
-        body = json.dumps(asdict(response))
-
-        https = http.client.HTTPSConnection(url.hostname)
-        https.request("PUT", url.path + "?" + url.query, body)
+        respond(event["ResponseURL"], asdict(response))

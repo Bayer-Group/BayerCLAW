@@ -40,13 +40,15 @@ def mock_core_stack(aws_credentials):
           Value: gather_lambda_arn
         InitializerLambdaArn:
           Value: initializer_lambda_arn
+        JobLauncherImageUri:
+          Value: job_launcher_image_uri
         JobStatusLambdaArn:
           Value: job_status_lambda_arn
         LauncherBucketName:
           Value: launcher_bucket_name
         LogRetentionDays:
           Value: "99"
-        NamerLambdaArn:
+        xxxNamerLambdaArn:
           Value: namer_lambda_arn
         OnDemandQueueArn:
           Value: on_demand_queue_arn
@@ -64,6 +66,8 @@ def mock_core_stack(aws_credentials):
           Value: states_execution_role_arn
         SubpipesLambdaArn:
           Value: subpipes_lambda_arn
+        VersionatorLambdaArn:
+          Value: versionator_lambda_arn
     """)
 
     with moto.mock_cloudformation():
