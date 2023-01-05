@@ -300,11 +300,6 @@ def batch_step(core_stack: CoreStack,
                         "Name": "BC_LAUNCH_VERSION",
                         "Value.$": "$.job_file.version",
                     },
-                    # {
-                        # todo: remove
-                        # "Name": "BC_LAUNCH_S3_REQUEST_ID",
-                        # "Value.$": "$.job_file.s3_request_id",
-                    # },
                 ],
             },
         },

@@ -57,6 +57,7 @@ phases:
         Uniqifier=$(date | md5sum | head -c 16)
         VpcId=${VPC_ID}
       # todo: use SOURCE_VERSION for Uniqifier?
+      # todo: rationalize versions & uniqifiers
 
       - export RUNNER_IMAGE_TAG=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='RunnerImageUri'].OutputValue" --output text)
       - echo $RUNNER_IMAGE_TAG
@@ -84,4 +85,4 @@ artifacts:
   discard-paths: yes
   files:
     - cloudformation/wf_launcher2.yaml
-    - cloudformation/wf_notifications.yaml
+    - cloudformation/wf_deploy.yaml

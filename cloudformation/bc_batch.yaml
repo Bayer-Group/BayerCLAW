@@ -9,11 +9,11 @@ Metadata:
         Parameters:
           - QueueName
           - QueuePriority
-      -
-        Label:
-          default: Source
-        Parameters:
-          - ResourceBucketName
+#      -
+#        Label:
+#          default: Source
+#        Parameters:
+#          - ResourceBucketName
       -
         Label:
           default: Compute
@@ -88,11 +88,11 @@ Parameters:
       - On-demand
     Default: Spot
 
-  ResourceBucketName:
-    Type: String
-    Description: >
-      The name of the Resources bucket associated with your BayerCLAW installation. Should be something like
-      "<installation name>-resources-<account id>".
+#  ResourceBucketName:
+#    Type: String
+#    Description: >
+#      The name of the Resources bucket associated with your BayerCLAW installation. Should be something like
+#      "<installation name>-resources-<account id>".
 
   RootVolumeSize:
     Type: Number

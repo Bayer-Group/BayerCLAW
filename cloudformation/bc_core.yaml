@@ -58,10 +58,6 @@ Parameters:
     Description: Size (in GB) of the EBS root volume used by Batch jobs
     Default: 100
 
-#  RunnerImageURI:
-#    Type: String
-#    Description: URI of the Docker image containing bclaw_runner
-
   ScratchVolumeSize:
     Type: Number
     Description: Size (in GB) of the EBS scratch volume used by Batch jobs
@@ -389,43 +385,6 @@ Resources:
     Properties:
       LogGroupName: !Sub "/aws/lambda/${SubpipesLambda}"
       RetentionInDays: !Ref LogRetentionDays
-
-  # todo: remove, build into wf stacks
-#  NamerLambda:
-#    Type: AWS::Serverless::Function
-#    Properties:
-#      Handler: namer.lambda_handler
-#      Runtime: python3.9
-#      CodeUri: lambda/src/sfn_namer
-#      MemorySize: 128
-#      Timeout: 5
-#      Layers:
-#        - !Ref CommonLayer
-#      Policies:
-#        -
-#          Version: "2012-10-17"
-#          Statement:
-#            -
-#              Effect: Allow
-#              Action:
-#                - "states:StartExecution"
-#              Resource: "*"
-#      DeploymentPreference:
-#        Enabled: False
-
-#  PermissionToInvokeNamer:
-#    Type: AWS::Lambda::Permission
-#    Properties:
-#      FunctionName: !Ref NamerLambda
-#      Action: lambda:InvokeFunction
-#      Principal: events.amazonaws.com
-#      SourceAccount: !Ref AWS::AccountId
-
-#  NamerLambdaLogGroup:
-#    Type: AWS::Logs::LogGroup
-#    Properties:
-#      LogGroupName: !Sub "/aws/lambda/${NamerLambda}"
-#      RetentionInDays: !Ref LogRetentionDays
 
   # todo: rename
   EventHandlerLambda:
@@ -780,12 +739,6 @@ Outputs:
 
   LogRetentionDays:
     Value: !Ref LogRetentionDays
-
-#  NamerLambdaArn:
-#    Value: !GetAtt NamerLambda.Arn
-
-#  NamerLambdaLogGroupName:
-#    Value: !Ref NamerLambdaLogGroup
 
   OnDemandQueueArn:
     Value: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn

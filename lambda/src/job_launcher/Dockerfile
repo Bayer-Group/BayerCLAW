@@ -10,7 +10,4 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY src/job_launcher/job_launcher.py ${LAMBDA_TASK_ROOT}
 COPY src/common/python/lambda_logs.py ${LAMBDA_TASK_ROOT}
 
-# todo: need this?
-#ENV PYTHONPATH=/opt/python
-
 CMD ["job_launcher.lambda_handler"]
