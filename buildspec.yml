@@ -16,8 +16,7 @@ phases:
 
   pre_build:
     commands:
-      # todo: restore tests
-#      - pytest -s -vvv lambda/tests/
+      - pytest -s -vvv lambda/tests/
       - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
       - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
       # todo: use build id
@@ -65,8 +64,7 @@ phases:
       - echo $LAUNCHER_IMAGE_TAG
 
       - cd $CODEBUILD_SRC_DIR/bclaw_runner
-      # todo: restore
-#      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --target test -f Dockerfile.alpine .
+      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --target test -f Dockerfile.alpine .
       - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $RUNNER_IMAGE_TAG -f Dockerfile.alpine .
 
       - cd $CODEBUILD_SRC_DIR/lambda
@@ -84,5 +82,5 @@ phases:
 artifacts:
   discard-paths: yes
   files:
-    - cloudformation/wf_launcher2.yaml
+    - cloudformation/wf_launcher.yaml
     - cloudformation/wf_deploy.yaml

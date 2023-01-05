@@ -20,7 +20,7 @@ def test_launcher_substack_rc(monkeypatch, mock_core_stack):
                 "VersionatorArn": "versionator_lambda_arn",
                 "WorkflowName": {"Ref": "AWS::StackName"},
             },
-            "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/wf_launcher2.yaml",
+            "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/wf_launcher.yaml",
         },
     }
     assert isinstance(result, Resource)

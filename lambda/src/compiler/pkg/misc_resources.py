@@ -9,7 +9,7 @@ LAUNCHER_STACK_NAME = "launcherStack"
 def launcher_substack_rc(core_stack: CoreStack) -> Resource:
     rc_bucket = core_stack.output("ResourceBucketName")
     # todo: change to wf_launcher.yaml
-    template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/wf_launcher2.yaml"
+    template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/wf_launcher.yaml"
 
     ret = {
         "Type": "AWS::CloudFormation::Stack",
