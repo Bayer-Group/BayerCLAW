@@ -79,6 +79,7 @@ phases:
       - >
         aws ecr get-login-password --region ${AWS_REGION} |
         docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+      # todo: don't crash on tag collision
       - docker push ${RUNNER_IMAGE_TAG}
       - docker push ${LAUNCHER_IMAGE_TAG}
 

@@ -6,6 +6,7 @@ from ...src.compiler.pkg.util import CoreStack, Resource
 
 def test_launcher_substack_rc(monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
+    monkeypatch.setenv("SOURCE_VERSION", "1234567")
     monkeypatch.setattr(uu, "uuid4", lambda: "fake_uuid")
     core_stack = CoreStack()
 
@@ -20,7 +21,7 @@ def test_launcher_substack_rc(monkeypatch, mock_core_stack):
                 "VersionatorArn": "versionator_lambda_arn",
                 "WorkflowName": {"Ref": "AWS::StackName"},
             },
-            "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/wf_launcher.yaml",
+            "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/1234567/wf_launcher.yaml",
         },
     }
     assert isinstance(result, Resource)
@@ -30,6 +31,7 @@ def test_launcher_substack_rc(monkeypatch, mock_core_stack):
 
 def test_deploy_substack_rc(monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
+    monkeypatch.setenv("SOURCE_VERSION", "1234567")
     core_stack = CoreStack()
     state_machine_logical_name = "FakeStateMachineLogicalName"
 
@@ -49,7 +51,7 @@ def test_deploy_substack_rc(monkeypatch, mock_core_stack):
                 "StateMachineArn": {"Ref": state_machine_logical_name},
                 "WorkflowName": {"Ref": "AWS::StackName"},
             },
-            "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/wf_deploy.yaml"
+            "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/1234567/wf_deploy.yaml"
         },
     }
 
