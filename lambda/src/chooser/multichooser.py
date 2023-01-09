@@ -7,6 +7,8 @@ from typing import Generator, Tuple, Any
 
 import boto3
 from dotted.collection import DottedCollection
+# todo: use box
+# from box import Box, BoxList
 
 from lambda_logs import JSONFormatter, custom_lambda_logs
 from substitutions import substitute_job_data
@@ -48,11 +50,20 @@ def load_vals(inputs_json: str, repo: str) -> Generator[Tuple, None, None]:
     for name, input_file in jobby_inputs.items():
         vals = load_s3_object(repo, input_file)
         yield name, DottedCollection.factory(vals)
+        # todo: use box
+        # if isinstance(vals, list):
+        #     q = BoxList(vals)
+        # else:
+        #     q = Box(vals)
+        # yield name, q
 
         if len(inputs) == 1 and isinstance(vals, dict):
             for name2, val in vals.items():
                 if name2 != name:
                     yield name2, DottedCollection.factory(val)
+                    # todo: use box
+                    # q2 = Box(vals)
+                    # yield name2, q2
 
 
 def eval_this(expr: str, vals: dict):

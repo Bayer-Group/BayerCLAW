@@ -266,6 +266,7 @@ Resources:
                 DetectChanges: false
               OutputArtifacts:
                 - Name: coreSrc
+              Namespace: CoreNS
               RunOrder: 1
         -
           Name: BuildCore
@@ -299,7 +300,7 @@ Resources:
                 Version: "1"
               Configuration:
                 BucketName: !Ref ResourceBucket
-                ObjectKey: cloudformation
+                ObjectKey: cloudformation/#{CoreNS.CommitId}
                 Extract: true
               InputArtifacts:
                 - Name: coreStackArtifacts

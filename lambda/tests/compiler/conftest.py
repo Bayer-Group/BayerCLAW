@@ -42,14 +42,12 @@ def mock_core_stack(aws_credentials):
           Value: initializer_lambda_arn
         JobLauncherImageUri:
           Value: job_launcher_image_uri
-        JobStatusLambdaArn:
+        xxxJobStatusLambdaArn:
           Value: job_status_lambda_arn
         LauncherBucketName:
           Value: launcher_bucket_name
         LogRetentionDays:
           Value: "99"
-        xxxNamerLambdaArn:
-          Value: namer_lambda_arn
         OnDemandQueueArn:
           Value: on_demand_queue_arn
         QCCheckerLambdaArn:
