@@ -5,13 +5,10 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.scatter_gather_resources import scatter_step, map_step, gather_step, handle_scatter_gather
-from ...src.compiler.pkg.util import CoreStack, Step, lambda_retry
+from ...src.compiler.pkg.util import Step, lambda_retry
 
 
-def test_scatter_step(monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_scatter_step(compiler_env):
     spec = {
         "scatter": {
             "stuff": "test*.txt",
@@ -27,7 +24,7 @@ def test_scatter_step(monkeypatch, mock_core_stack):
     }
 
     test_step = Step("test_step", spec, "unused")
-    result = scatter_step(core_stack, test_step, "map_step_name")
+    result = scatter_step(test_step, "map_step_name")
     expect = {
         "Type": "Task",
         "Resource": "scatter_lambda_arn",
@@ -75,10 +72,7 @@ def test_map_step():
     ("next_step", {"Next": "next_step"}),
     ("", {"End": True}),
 ])
-def test_gather_step(next_step_name, next_or_end, monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_gather_step(next_step_name, next_or_end, compiler_env):
     spec = {
         "params": {
             "a": 1,
@@ -113,7 +107,7 @@ def test_gather_step(next_step_name, next_or_end, monkeypatch, mock_core_stack):
         "OutputPath": "$",
         **next_or_end,
     }
-    result = gather_step(core_stack, test_step)
+    result = gather_step(test_step)
     assert result == expect
 
 
@@ -154,15 +148,12 @@ def sample_scatter_step():
     yield ret
 
 
-def test_handle_scatter_gather(monkeypatch, mock_core_stack, sample_scatter_step):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_handle_scatter_gather(sample_scatter_step, compiler_env):
     wf_params = {"wf": "params"}
 
     def helper():
         step = Step("step_name", sample_scatter_step, "next_step_name")
-        states = yield from handle_scatter_gather(core_stack, step, wf_params, 0)
+        states = yield from handle_scatter_gather(step, wf_params, 0)
 
         assert len(states) == 3
 
@@ -201,20 +192,17 @@ def test_handle_scatter_gather_too_deep():
     def helper():
         fake_step = Step("fake", {"fake": ""}, "fake_next_step")
         with pytest.raises(RuntimeError, match=r"Nested Scatter steps are not supported"):
-            _ = yield from handle_scatter_gather("fake_core_stack", fake_step, {"wf": "params"}, 1)
+            _ = yield from handle_scatter_gather(fake_step, {"wf": "params"}, 1)
 
     _ = list(helper())
 
 
-def test_handle_scatter_gather_auto_inputs(monkeypatch, mock_core_stack, sample_scatter_step):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_handle_scatter_gather_auto_inputs(sample_scatter_step, compiler_env):
     sample_scatter_step["inputs"] = None
 
     def helper():
         test_step = Step("step_name", sample_scatter_step, "next_step_name")
-        states = yield from handle_scatter_gather(core_stack, test_step, {"wf": "params"}, 0)
+        states = yield from handle_scatter_gather(test_step, {"wf": "params"}, 0)
         assert states[0].spec["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())

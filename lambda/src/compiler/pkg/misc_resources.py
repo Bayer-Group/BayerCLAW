@@ -1,14 +1,14 @@
 import os
 import uuid
 
-from .util import CoreStack, Resource
+from .util import Resource
 
 DEPLOY_STACK_NAME = "deployStack"
 LAUNCHER_STACK_NAME = "launcherStack"
 
 
-def launcher_substack_rc(core_stack: CoreStack) -> Resource:
-    rc_bucket = core_stack.output("ResourceBucketName")
+def launcher_substack_rc() -> Resource:
+    rc_bucket = os.environ["RESOURCE_BUCKET_NAME"]
     source_version = os.environ["SOURCE_VERSION"]
     template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/{source_version}/wf_launcher.yaml"
 
@@ -16,10 +16,10 @@ def launcher_substack_rc(core_stack: CoreStack) -> Resource:
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
             "Parameters": {
-                "LauncherImageUri": core_stack.output("JobLauncherImageUri"),
-                "LogRetentionDays": core_stack.output("LogRetentionDays"),
+                "LauncherImageUri": os.environ["JOB_LAUNCHER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
+                "LogRetentionDays": os.environ["LOG_RETENTION_DAYS"],
                 "Uniqifier": str(uuid.uuid4()),
-                "VersionatorArn": core_stack.output("VersionatorLambdaArn"),
+                "VersionatorArn": os.environ["VERSIONATOR_LAMBDA_ARN"],
                 "WorkflowName": {"Ref": "AWS::StackName"},
             },
             "TemplateURL": template_url,
@@ -29,8 +29,8 @@ def launcher_substack_rc(core_stack: CoreStack) -> Resource:
     return Resource(LAUNCHER_STACK_NAME, ret)
 
 
-def deploy_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -> Resource:
-    rc_bucket = core_stack.output("ResourceBucketName")
+def deploy_substack_rc(state_machine_logical_name: str) -> Resource:
+    rc_bucket = os.environ["RESOURCE_BUCKET_NAME"]
     source_version = os.environ["SOURCE_VERSION"]
     template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/{source_version}/wf_deploy.yaml"
 
@@ -38,14 +38,14 @@ def deploy_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
             "Parameters": {
-                "LauncherBucketName": core_stack.output("LauncherBucketName"),
+                "LauncherBucketName": os.environ["LAUNCHER_BUCKET_NAME"],
                 "LauncherLambdaName": {
                     "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaName"],
                 },
                 "LauncherLambdaVersion": {
                     "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
                 },
-                "NotificationsLambdaArn": core_stack.output("EventHandlerLambdaArn"),
+                "NotificationsLambdaArn": os.environ["EVENT_HANDLER_LAMBDA_ARN"],
                 "StateMachineArn": {"Ref": state_machine_logical_name},
                 "WorkflowName": {"Ref": "AWS::StackName"},
             },

@@ -7,7 +7,7 @@ from voluptuous.error import Invalid
 logging.basicConfig(level=logging.INFO)
 
 from ...src.compiler.pkg.chooser_resources import choice_spec, handle_chooser_step
-from ...src.compiler.pkg.util import CoreStack, Step, State, lambda_logging_block, lambda_retry
+from ...src.compiler.pkg.util import Step, State, lambda_logging_block, lambda_retry
 
 
 def test_choice_spec():
@@ -23,10 +23,7 @@ def test_choice_spec():
     assert result == expect
 
 
-def test_make_chooser_steps(monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_make_chooser_steps(mock_core_stack, compiler_env):
     spec = {
         "inputs": {
             "infile1": "file1.json",
@@ -91,7 +88,7 @@ def test_make_chooser_steps(monkeypatch, mock_core_stack):
         "Default": "next_step"
     }
 
-    result = handle_chooser_step(core_stack, test_step)
+    result = handle_chooser_step(test_step)
     assert len(result) == 2
     assert all(isinstance(s, State) for s in result)
 
@@ -104,7 +101,7 @@ def test_make_chooser_steps(monkeypatch, mock_core_stack):
     assert choice_state.spec == expected_choice_spec
 
 
-def test_make_chooser_steps_terminal_state_fail(monkeypatch, mock_core_stack):
+def test_make_chooser_steps_terminal_state_fail():
     test_step = Step("step_name", {"not": "used"}, "")
     with pytest.raises(Invalid, match="chooser steps cannot be terminal"):
-        _ = handle_chooser_step("core_stack_placeholder", test_step)
+        _ = handle_chooser_step(test_step)

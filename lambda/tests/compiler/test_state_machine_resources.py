@@ -1,16 +1,13 @@
 import pytest
 
 from ...src.compiler.pkg.state_machine_resources import make_initializer_step, make_step_list
-from ...src.compiler.pkg.util import CoreStack, Step, lambda_logging_block, lambda_retry
+from ...src.compiler.pkg.util import Step, lambda_logging_block, lambda_retry
 
 
-def test_make_initializer_step(monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_make_initializer_step(compiler_env):
     wf_params = {"repository": "s3://bucket/repo/path/${template}"}
 
-    result = make_initializer_step(core_stack, wf_params)
+    result = make_initializer_step(wf_params)
     expect = {
         "Initialize": {
             "Type": "Task",

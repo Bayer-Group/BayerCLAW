@@ -1,10 +1,11 @@
 import jmespath
 import logging
+import os
 from typing import List
 
 from voluptuous.error import Invalid
 
-from .util import CoreStack, Step, State, lambda_logging_block, lambda_retry
+from .util import Step, State, lambda_logging_block, lambda_retry
 
 
 def choice_spec(expr_str: str, next_step: str) -> dict:
@@ -16,7 +17,7 @@ def choice_spec(expr_str: str, next_step: str) -> dict:
     return ret
 
 
-def handle_chooser_step(core_stack: CoreStack, step: Step) -> List[State]:
+def handle_chooser_step(step: Step) -> List[State]:
     logger = logging.getLogger(__name__)
     logger.info(f"making chooser step {step.name}")
 
@@ -32,7 +33,7 @@ def handle_chooser_step(core_stack: CoreStack, step: Step) -> List[State]:
 
     task_step = {
         "Type": "Task",
-        "Resource": core_stack.output("ChooserLambdaArn"),
+        "Resource": os.environ["CHOOSER_LAMBDA_ARN"],
         "Parameters": {
             "repo.$": "$.repo",
             **step.input_field,

@@ -1,7 +1,7 @@
 import json
 import pytest
 
-from ...src.compiler.pkg.util import CoreStack, Step, make_logical_name, _param_subber, \
+from ...src.compiler.pkg.util import Step, make_logical_name, _param_subber, \
     do_param_substitution, time_string_to_seconds, merge_params_and_options
 
 
@@ -34,12 +34,12 @@ def test_step_input_field(step, expect):
     assert result == expect
 
 
-@pytest.mark.skip(reason="going away")
-def test_core_stack_output(monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-    result = core_stack.output("SpotQueueArn")
-    assert result == "spot_queue_arn"
+# @pytest.mark.skip(reason="going away")
+# def test_core_stack_output(monkeypatch, mock_core_stack):
+#     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
+#     core_stack = CoreStack()
+#     result = core_stack.output("SpotQueueArn")
+#     assert result == "spot_queue_arn"
 
 
 def test_make_logical_name():

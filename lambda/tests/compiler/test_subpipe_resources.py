@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.subpipe_resources import file_submit_step, run_subpipe_step, file_retrieve_step, handle_subpipe
-from ...src.compiler.pkg.util import CoreStack, Step, lambda_retry
+from ...src.compiler.pkg.util import Step, lambda_retry
 
 
 @pytest.fixture(scope="module")
@@ -23,12 +23,9 @@ def sample_subpipe_spec() -> dict:
     return ret
 
 
-def test_file_submit_step(sample_subpipe_spec, monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_file_submit_step(sample_subpipe_spec, compiler_env):
     test_step = Step("step_name", sample_subpipe_spec, "next_step_name")
-    result = file_submit_step(core_stack, test_step, "run_subpipe_step_name")
+    result = file_submit_step(test_step, "run_subpipe_step_name")
     expect = {
         "Type": "Task",
         "Resource": "subpipes_lambda_arn",
@@ -80,12 +77,9 @@ def test_run_subpipe_step(sample_subpipe_spec):
     ("next_step", {"Next": "next_step"}),
     ("", {"End": True}),
 ])
-def test_file_retrieve_step(next_step_name, next_or_end, sample_subpipe_spec, monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_file_retrieve_step(next_step_name, next_or_end, sample_subpipe_spec, compiler_env):
     test_step = Step("step_name", sample_subpipe_spec, next_step_name)
-    result = file_retrieve_step(core_stack, test_step)
+    result = file_retrieve_step(test_step)
     expect = {
         "Type": "Task",
         "Resource": "subpipes_lambda_arn",
@@ -114,12 +108,9 @@ def test_file_retrieve_step(next_step_name, next_or_end, sample_subpipe_spec, mo
     assert result == expect
 
 
-def test_handle_subpipe(sample_subpipe_spec, monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_handle_subpipe(sample_subpipe_spec, compiler_env):
     test_step = Step("step_name", sample_subpipe_spec, "next_step_name")
-    states = handle_subpipe(core_stack, test_step)
+    states = handle_subpipe(test_step)
     assert len(states) == 3
 
     assert states[0].name == "step_name"

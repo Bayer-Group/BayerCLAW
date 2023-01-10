@@ -8,6 +8,8 @@ import logging
 import yaml
 import sys
 
+from dotenv import load_dotenv
+
 from pkg.compiler import compile_template
 
 if __name__ == "__main__":
@@ -17,6 +19,8 @@ if __name__ == "__main__":
     parser.add_argument("sfn_file", type=argparse.FileType("w"), nargs="?", default=sys.stderr)
     parser.add_argument("--verbose", "-v", action="count")
     args = parser.parse_args()
+
+    load_dotenv()
 
     logging.basicConfig(level=(logging.DEBUG if args.verbose else logging.INFO))
 

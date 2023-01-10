@@ -8,7 +8,7 @@ from ...src.compiler.pkg.batch_resources import URI_PARSER, expand_image_uri, ge
     get_memory_in_mibs, get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, \
     get_timeout, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH
 from ...src.compiler.pkg.misc_resources import LAUNCHER_STACK_NAME
-from ...src.compiler.pkg.util import CoreStack, Step, Resource, State
+from ...src.compiler.pkg.util import Step, Resource, State
 
 
 @pytest.mark.parametrize("uri, expected", [
@@ -219,10 +219,7 @@ def sample_batch_step():
     "arn:task:role",
     {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.EcsTaskRoleArn"]},
 ])
-def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch_step):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_job_definition_rc(task_role, sample_batch_step, compiler_env):
     step_name = "skim3-fastp"
     expected_job_def_name = f"Skim3FastpJobDef"
 
@@ -258,7 +255,7 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                     "--shell", "Ref::shell",
                     "--skip", "Ref::skip",
                 ],
-                "Image": "runner_image_uri",
+                "Image": "runner_repo_uri:1234567",
                 "Environment": [
                     {"Name": "BC_WORKFLOW_NAME",   "Value": {"Ref": "AWS::StackName"}},
                     {"Name": "BC_SCRATCH_PATH",    "Value": SCRATCH_PATH},
@@ -298,7 +295,7 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
     }
 
     def helper():
-        job_def_name1 = yield from job_definition_rc(core_stack, step, task_role, "bash")
+        job_def_name1 = yield from job_definition_rc(step, task_role, "bash")
         assert job_def_name1 == expected_job_def_name
 
     for job_def_rc in helper():
@@ -327,9 +324,7 @@ def test_get_skip_behavior(spec, expect):
     ("next_step", {"Next": "next_step"}),
     ("", {"End": True}),
 ])
-def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step, mock_core_stack, scattered, job_name):
-    monkeypatch.setenv("SPOT_QUEUE_ARN", "spot_queue_arn")
-
+def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, job_name, compiler_env):
     step = Step("step_name", sample_batch_step, next_step_name)
 
     expected_body = {
@@ -390,10 +385,8 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step,
         "OutputPath": "$",
         **next_or_end
     }
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
 
-    result = batch_step(core_stack, step, "TestJobDef", scattered)
+    result = batch_step(step, "TestJobDef", scattered)
     assert result == expected_body
 
 
@@ -405,11 +398,7 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step,
     {},
     {"task_role": "arn:from:step:spec"}
 ])
-def test_handle_batch(wf_params, mock_core_stack, step_task_role_request, monkeypatch, sample_batch_step):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    monkeypatch.setenv("SPOT_QUEUE_ARN", "spot_queue_arn")
-    core_stack = CoreStack()
-
+def test_handle_batch(wf_params, step_task_role_request, sample_batch_step, compiler_env):
     if "task_role" in step_task_role_request:
         expected_job_role_arn = step_task_role_request["task_role"]
     elif "task_role" in wf_params:
@@ -420,7 +409,7 @@ def test_handle_batch(wf_params, mock_core_stack, step_task_role_request, monkey
     def helper():
         test_spec = {**sample_batch_step, **step_task_role_request}
         test_step = Step("step_name", test_spec, "next_step_name")
-        states = yield from handle_batch(core_stack, test_step, wf_params, False)
+        states = yield from handle_batch(test_step, wf_params, False)
         assert len(states) == 1
         assert isinstance(states[0], State)
         assert states[0].name == "step_name"
@@ -444,11 +433,7 @@ def test_handle_batch(wf_params, mock_core_stack, step_task_role_request, monkey
         assert " --outdir outt " in resource.spec["Properties"]["Parameters"]["command"]
 
 
-def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    monkeypatch.setenv("SPOT_QUEUE_ARN", "spot_queue_arn")
-    core_stack = CoreStack()
-
+def test_handle_batch_with_qc(sample_batch_step, compiler_env):
     step = Step("step_name", sample_batch_step, "next_step_name")
 
     step.spec["qc_check"] = {
@@ -462,7 +447,7 @@ def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
     }
 
     def helper():
-        states = yield from handle_batch(core_stack, step, {"wf": "params"}, False)
+        states = yield from handle_batch(step, {"wf": "params"}, False)
         assert len(states) == 2
         assert all(isinstance(s, State) for s in states)
 
@@ -483,16 +468,12 @@ def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
     assert resource_dict["StepNameJobDef"]["Type"] == "AWS::Batch::JobDefinition"
 
 
-def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_step):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    monkeypatch.setenv("SPOT_QUEUE_ARN", "spot_queue_arn")
-    core_stack = CoreStack()
-
+def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):
     step = Step("step_name", sample_batch_step, "next_step")
     step.spec["inputs"] = None
 
     def helper():
-        states = yield from handle_batch(core_stack, step, {"wf": "params"}, False)
+        states = yield from handle_batch(step, {"wf": "params"}, False)
         assert states[0].spec["Parameters"]["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())
@@ -502,16 +483,12 @@ def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_ste
     (None, "sh"),
     ("bash", "bash"),
 ])
-def test_handle_batch_shell_opt(monkeypatch, mock_core_stack, sample_batch_step, step_shell, expect):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    monkeypatch.setenv("SPOT_QUEUE_ARN", "spot_queue_arn")
-    core_stack = CoreStack()
-
+def test_handle_batch_shell_opt(sample_batch_step, step_shell, expect, compiler_env):
     step = Step("step_name", sample_batch_step, "next_step")
     step.spec["compute"]["shell"] = step_shell
 
     def helper():
-        _ = yield from handle_batch(core_stack, step, {"shell": "sh"}, False)
+        _ = yield from handle_batch(step, {"shell": "sh"}, False)
 
     rc = dict(helper())
     assert rc["StepNameJobDef"]["Properties"]["Parameters"]["shell"] == expect

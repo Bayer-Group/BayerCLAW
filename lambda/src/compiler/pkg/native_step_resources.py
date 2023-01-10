@@ -2,11 +2,10 @@ import logging
 from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import CoreStack, Step, Resource, State
+from .util import Step, Resource, State
 
 
-def handle_native_step(core_stack: CoreStack,
-                       step: Step,
+def handle_native_step(step: Step,
                        wf_params: dict,
                        map_depth: int) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
@@ -20,7 +19,7 @@ def handle_native_step(core_stack: CoreStack,
         sub_branches = []
 
         for branch in step.spec["Branches"]:
-            sub_branch = yield from sm.make_branch(core_stack, branch["steps"], wf_params, depth=map_depth)
+            sub_branch = yield from sm.make_branch(branch["steps"], wf_params, depth=map_depth)
             sub_branches.append(sub_branch)
 
         ret.update({"Branches": sub_branches})

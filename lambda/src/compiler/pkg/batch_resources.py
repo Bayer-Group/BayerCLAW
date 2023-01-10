@@ -8,8 +8,8 @@ from typing import Generator, List, Tuple, Union
 import humanfriendly
 
 from .qc_resources import handle_qc_check
-from .util import CoreStack, Step, Resource, State, make_logical_name, do_param_substitution,\
-    time_string_to_seconds
+# from .util import CoreStack, Step, Resource, State, make_logical_name, do_param_substitution,\
+from .util import Step, Resource, State, make_logical_name, do_param_substitution, time_string_to_seconds
 
 SCRATCH_PATH = "/_bclaw_scratch"
 
@@ -179,8 +179,7 @@ def get_timeout(step: Step) -> dict:
     return ret
 
 
-def job_definition_rc(core_stack: CoreStack,
-                      step: Step,
+def job_definition_rc(step: Step,
                       task_role: str,
                       shell_opt: str) -> Generator[Resource, None, str]:
     job_def_name = make_logical_name(f"{step.name}.job.def")
@@ -215,7 +214,8 @@ def job_definition_rc(core_stack: CoreStack,
                     "--shell", "Ref::shell",
                     "--skip", "Ref::skip",
                 ],
-                "Image": core_stack.output("RunnerImageUri"),
+                # "Image": core_stack.output("RunnerImageUri"),
+                "Image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
                 "JobRoleArn": task_role,
                 **get_environment(step),
                 **get_resource_requirements(step),
@@ -242,8 +242,7 @@ def get_skip_behavior(spec: dict) -> str:
     return ret
 
 
-def batch_step(core_stack: CoreStack,
-               step: Step,
+def batch_step(step: Step,
                job_definition_name: str,
                scattered: bool,
                next_step_override: str = None,
@@ -321,30 +320,28 @@ def batch_step(core_stack: CoreStack,
     return ret
 
 
-def handle_batch(core_stack: CoreStack,
-                 step: Step,
+def handle_batch(step: Step,
                  wf_params: dict,
                  scattered: bool) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
     logger.info(f"making batch step {step.name}")
 
-    task_role = step.spec.get("task_role") or wf_params.get("task_role") or core_stack.output("ECSTaskRoleArn")
+    task_role = step.spec.get("task_role") or wf_params.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
     shell_opt = step.spec["compute"]["shell"] or wf_params.get("shell")
 
     subbed_spec = do_param_substitution(step.spec)
     subbed_step = Step(step.name, subbed_spec, step.next)
 
-    job_def_name = yield from job_definition_rc(core_stack, subbed_step, task_role, shell_opt)
+    job_def_name = yield from job_definition_rc(subbed_step, task_role, shell_opt)
 
     if subbed_spec["qc_check"] is not None:
-        qc_state = handle_qc_check(core_stack, subbed_step)
-        ret0 = batch_step(core_stack, subbed_step, job_def_name, scattered,
-                          **subbed_step.spec["retry"],
+        qc_state = handle_qc_check(subbed_step)
+        ret0 = batch_step(subbed_step, job_def_name, scattered, **subbed_step.spec["retry"],
                           next_step_override=qc_state.name)
         ret = [State(step.name, ret0), qc_state]
 
     else:
-        ret = [State(step.name, batch_step(core_stack, subbed_step, job_def_name,
-                                           **subbed_step.spec["retry"], scattered=scattered))]
+        ret = [State(step.name, batch_step(subbed_step, job_def_name, **subbed_step.spec["retry"],
+                                           scattered=scattered))]
 
     return ret

@@ -1,21 +1,18 @@
 from ...src.compiler.pkg.misc_resources import launcher_substack_rc, deploy_substack_rc, \
     LAUNCHER_STACK_NAME, DEPLOY_STACK_NAME
 from ...src.compiler.pkg.misc_resources import uuid as uu
-from ...src.compiler.pkg.util import CoreStack, Resource
+from ...src.compiler.pkg.util import Resource
 
 
-def test_launcher_substack_rc(monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    monkeypatch.setenv("SOURCE_VERSION", "1234567")
+def test_launcher_substack_rc(monkeypatch, compiler_env):
     monkeypatch.setattr(uu, "uuid4", lambda: "fake_uuid")
-    core_stack = CoreStack()
 
-    result = launcher_substack_rc(core_stack)
+    result = launcher_substack_rc()
     expect = {
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
             "Parameters": {
-                "LauncherImageUri": "job_launcher_image_uri",
+                "LauncherImageUri": "job_launcher_repo_uri:1234567",
                 "LogRetentionDays": "99",
                 "Uniqifier": "fake_uuid",
                 "VersionatorArn": "versionator_lambda_arn",
@@ -29,13 +26,10 @@ def test_launcher_substack_rc(monkeypatch, mock_core_stack):
     assert result.spec == expect
 
 
-def test_deploy_substack_rc(monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    monkeypatch.setenv("SOURCE_VERSION", "1234567")
-    core_stack = CoreStack()
+def test_deploy_substack_rc(monkeypatch, compiler_env):
     state_machine_logical_name = "FakeStateMachineLogicalName"
 
-    result = deploy_substack_rc(core_stack, state_machine_logical_name)
+    result = deploy_substack_rc(state_machine_logical_name)
     expect = {
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
