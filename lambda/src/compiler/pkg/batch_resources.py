@@ -1,6 +1,7 @@
 import json
 import logging
 import math
+import os
 import re
 from typing import Generator, List, Tuple, Union
 
@@ -36,13 +37,15 @@ def expand_image_uri(uri: str) -> Union[str, dict]:
     return ret
 
 
-def get_job_queue(core_stack: CoreStack, compute_spec: dict) -> str:
+def get_job_queue(compute_spec: dict) -> str:
     if (queue_name := compute_spec.get("queue_name")) is not None:
         ret = f"arn:aws:batch:${{AWSRegion}}:${{AWSAccountId}}:job-queue/{queue_name}"
     elif compute_spec["spot"]:
-        ret = core_stack.output("SpotQueueArn")
+        ret = os.environ["SPOT_QUEUE_ARN"]
+        # ret = core_stack.output("SpotQueueArn")
     else:
-        ret = core_stack.output("OnDemandQueueArn")
+        # ret = core_stack.output("OnDemandQueueArn")
+        ret = os.environ["ON_DEMAND_QUEUE_ARN"]
     return ret
 
 
@@ -268,7 +271,7 @@ def batch_step(core_stack: CoreStack,
         "Parameters": {
             "JobName.$": job_name,
             "JobDefinition": f"${{{job_definition_name}}}",
-            "JobQueue": get_job_queue(core_stack, step.spec["compute"]),
+            "JobQueue": get_job_queue(step.spec["compute"]),
             # 20220909: save for v1.2
             # "ShareIdentifier": "${WorkflowName}",
             "Parameters": {

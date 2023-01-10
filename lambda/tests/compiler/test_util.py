@@ -34,6 +34,7 @@ def test_step_input_field(step, expect):
     assert result == expect
 
 
+@pytest.mark.skip(reason="going away")
 def test_core_stack_output(monkeypatch, mock_core_stack):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
     core_stack = CoreStack()

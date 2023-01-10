@@ -47,10 +47,12 @@ def test_get_memory_in_mibs(req, mibs):
     ({"spot": False}, "on_demand_queue_arn"),
     ({"spot": True, "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue")
 ])
-def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-    result = get_job_queue(core_stack, spec)
+def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack, compiler_env):
+    # monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
+    # monkeypatch.setenv("ON_DEMAND_QUEUE_ARN", "on_demand_queue_arn")
+    # monkeypatch.setenv("SPOT_QUEUE_ARN", "spot_queue_arn")
+    # core_stack = CoreStack()
+    result = get_job_queue(spec)
     assert result == expected
 
 
@@ -326,6 +328,8 @@ def test_get_skip_behavior(spec, expect):
     ("", {"End": True}),
 ])
 def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step, mock_core_stack, scattered, job_name):
+    monkeypatch.setenv("SPOT_QUEUE_ARN", "spot_queue_arn")
+
     step = Step("step_name", sample_batch_step, next_step_name)
 
     expected_body = {
@@ -403,6 +407,7 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step,
 ])
 def test_handle_batch(wf_params, mock_core_stack, step_task_role_request, monkeypatch, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
+    monkeypatch.setenv("SPOT_QUEUE_ARN", "spot_queue_arn")
     core_stack = CoreStack()
 
     if "task_role" in step_task_role_request:
@@ -441,6 +446,7 @@ def test_handle_batch(wf_params, mock_core_stack, step_task_role_request, monkey
 
 def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
+    monkeypatch.setenv("SPOT_QUEUE_ARN", "spot_queue_arn")
     core_stack = CoreStack()
 
     step = Step("step_name", sample_batch_step, "next_step_name")
@@ -479,6 +485,7 @@ def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
 
 def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_step):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
+    monkeypatch.setenv("SPOT_QUEUE_ARN", "spot_queue_arn")
     core_stack = CoreStack()
 
     step = Step("step_name", sample_batch_step, "next_step")
@@ -497,6 +504,7 @@ def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_ste
 ])
 def test_handle_batch_shell_opt(monkeypatch, mock_core_stack, sample_batch_step, step_shell, expect):
     monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
+    monkeypatch.setenv("SPOT_QUEUE_ARN", "spot_queue_arn")
     core_stack = CoreStack()
 
     step = Step("step_name", sample_batch_step, "next_step")

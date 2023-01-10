@@ -7,6 +7,13 @@ import moto.ec2
 import pytest
 
 
+@pytest.fixture(scope="session")
+def compiler_env():
+    os.environ["CORE_STACK_NAME"] = "bclaw-core"
+    os.environ["ON_DEMAND_QUEUE_ARN"] = "on_demand_queue_arn"
+    os.environ["SPOT_QUEUE_ARN"] = "spot_queue_arn"
+
+
 @pytest.fixture(scope="module")
 def aws_credentials():
     os.environ["AWS_ACCESS_KEY_ID"] = "test-access-key-id"
@@ -48,7 +55,7 @@ def mock_core_stack(aws_credentials):
           Value: launcher_bucket_name
         LogRetentionDays:
           Value: "99"
-        OnDemandQueueArn:
+        xOnDemandQueueArn:
           Value: on_demand_queue_arn
         QCCheckerLambdaArn:
           Value: qc_checker_lambda_arn
@@ -58,7 +65,7 @@ def mock_core_stack(aws_credentials):
           Value: runner_image_uri
         ScatterLambdaArn:
           Value: scatter_lambda_arn
-        SpotQueueArn:
+        xSpotQueueArn:
           Value: spot_queue_arn
         StatesExecutionRoleArn:
           Value: states_execution_role_arn
