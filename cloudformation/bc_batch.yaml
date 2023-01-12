@@ -182,7 +182,7 @@ Resources:
               Encrypted: true
               VolumeSize: !Ref ScratchVolumeSize
               VolumeType: gp3
-        ImageId: !If [UseAmi, !Ref AmiId, AWS::NoValue]
+        ImageId: !If [UseAmi, !Ref AmiId, !Ref AWS::NoValue]
         InstanceInitiatedShutdownBehavior: terminate
         UserData:
           "Fn::Base64":
