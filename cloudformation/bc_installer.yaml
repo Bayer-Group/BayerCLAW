@@ -285,7 +285,6 @@ Resources:
                 ProjectName: !Ref CoreStackCodebuildProject
                 PrimarySource: coreSrc
 #                EnvironmentVariables: '[{"name":"AMI_ID_SSM","value":"/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"}]'
-                EnvironmentVariables: '[{"name":"AMI_ID","value":"auto"}]'
               InputArtifacts:
                 - Name: coreSrc
               OutputArtifacts:

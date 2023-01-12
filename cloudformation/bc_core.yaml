@@ -15,7 +15,7 @@ Parameters:
       The ID of an Amazon Machine Image (AMI) to create EC2 instances with. Enter "Auto" to have Batch
       select an AMI. Otherwise, it is highly recommended that you choose an ECS-optimized Amazon Linux 2
       image to use.
-#    Default: "Auto"
+    Default: "auto"
 
   CompilerMacroName:
     Type: String
