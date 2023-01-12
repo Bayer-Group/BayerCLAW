@@ -43,22 +43,6 @@ class State(NamedTuple):
     spec: dict
 
 
-# class CoreStack(object):
-#     def __init__(self):
-#         self.name = os.environ["CORE_STACK_NAME"]
-#
-#         cfn = boto3.resource("cloudformation")
-#         self.core_stack = cfn.Stack(self.name)
-#
-#     def output(self, output_key: str) -> str:
-#         try:
-#             query = f"[?OutputKey=='{output_key}'].OutputValue"
-#             ret = jmespath.search(query, self.core_stack.outputs)[0]
-#         except IndexError:
-#             raise RuntimeError(f"{output_key} not found in core stack outputs")
-#         return ret
-
-
 def make_logical_name(s: str) -> str:
     words = (w.capitalize() for w in re.split(r"[\W_]+", s))
     ret = "".join(words)

@@ -10,7 +10,7 @@ def qc_checker_step(batch_step: Step,
 
     ret = {
         "Type": "Task",
-        "Resource": os.environ["QC_CHECKER_LAMBDA_ARN"],  # core_stack.output("QCCheckerLambdaArn"),
+        "Resource": os.environ["QC_CHECKER_LAMBDA_ARN"],
         "Parameters": {
             "repo.$": "$.repo",
             "qc_result_file": qc_spec["qc_result_file"],

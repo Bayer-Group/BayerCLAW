@@ -3,27 +3,21 @@ AWSTemplateFormatVersion: "2010-09-09"
 Parameters:
   LauncherBucketName:
     Type: String
-#    Default: launcher-bucket
 
   LauncherLambdaName:
     Type: String
-#    Default: template3stak-launcher
 
   LauncherLambdaVersion:
     Type: String
-#    Default: 6
 
   NotificationsLambdaArn:
     Type: String
-#    Default: arn:aws:lambda:us-east-2:934778205429:function:bayerclaw-core-EventHandlerLambda-mGpP7TSiKcHV
 
   StateMachineArn:
     Type: String
-#    Default: state-machine-arn
 
   WorkflowName:
     Type: String
-#    Default: workflow-name
 
 Resources:
   # notifications

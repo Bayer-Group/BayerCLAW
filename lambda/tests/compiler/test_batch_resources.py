@@ -48,10 +48,6 @@ def test_get_memory_in_mibs(req, mibs):
     ({"spot": True, "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue")
 ])
 def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack, compiler_env):
-    # monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    # monkeypatch.setenv("ON_DEMAND_QUEUE_ARN", "on_demand_queue_arn")
-    # monkeypatch.setenv("SPOT_QUEUE_ARN", "spot_queue_arn")
-    # core_stack = CoreStack()
     result = get_job_queue(spec)
     assert result == expected
 
@@ -373,10 +369,6 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
                         "Name": "BC_LAUNCH_VERSION",
                         "Value.$": "$.job_file.version",
                     },
-                    # {
-                    #     "Name": "BC_LAUNCH_S3_REQUEST_ID",
-                    #     "Value.$": "$.job_file.s3_request_id",
-                    # },
                 ],
             },
         },

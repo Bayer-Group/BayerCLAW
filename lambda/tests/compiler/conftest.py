@@ -29,6 +29,7 @@ def compiler_env():
     os.environ["SUBPIPES_LAMBDA_ARN"] = "subpipes_lambda_arn"
     os.environ["VERSIONATOR_LAMBDA_ARN"] = "versionator_lambda_arn"
 
+# todo: remove?
 @pytest.fixture(scope="module")
 def aws_credentials():
     os.environ["AWS_ACCESS_KEY_ID"] = "test-access-key-id"
@@ -38,6 +39,7 @@ def aws_credentials():
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 
+# todo: remove?
 @pytest.fixture(scope="module")
 def mock_core_stack(aws_credentials):
     ami_gen = moto.ec2.ec2_backend.describe_images()

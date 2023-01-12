@@ -8,7 +8,6 @@ from typing import Generator, List, Tuple, Union
 import humanfriendly
 
 from .qc_resources import handle_qc_check
-# from .util import CoreStack, Step, Resource, State, make_logical_name, do_param_substitution,\
 from .util import Step, Resource, State, make_logical_name, do_param_substitution, time_string_to_seconds
 
 SCRATCH_PATH = "/_bclaw_scratch"
@@ -42,9 +41,7 @@ def get_job_queue(compute_spec: dict) -> str:
         ret = f"arn:aws:batch:${{AWSRegion}}:${{AWSAccountId}}:job-queue/{queue_name}"
     elif compute_spec["spot"]:
         ret = os.environ["SPOT_QUEUE_ARN"]
-        # ret = core_stack.output("SpotQueueArn")
     else:
-        # ret = core_stack.output("OnDemandQueueArn")
         ret = os.environ["ON_DEMAND_QUEUE_ARN"]
     return ret
 
@@ -214,7 +211,6 @@ def job_definition_rc(step: Step,
                     "--shell", "Ref::shell",
                     "--skip", "Ref::skip",
                 ],
-                # "Image": core_stack.output("RunnerImageUri"),
                 "Image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
                 "JobRoleArn": task_role,
                 **get_environment(step),
