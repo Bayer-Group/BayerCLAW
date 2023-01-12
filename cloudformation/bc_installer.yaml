@@ -196,6 +196,9 @@ Resources:
         ComputeType: BUILD_GENERAL1_SMALL
         PrivilegedMode: true
         EnvironmentVariables:
+          - Name: AMI_ID
+            Type: PLAINTEXT
+            Value: "Auto"
           - Name: COMPILER_MACRO_NAME
             Type: PLAINTEXT
             Value: !Ref CompilerMacroName
@@ -281,7 +284,8 @@ Resources:
               Configuration:
                 ProjectName: !Ref CoreStackCodebuildProject
                 PrimarySource: coreSrc
-                EnvironmentVariables: '[{"name":"AMI_ID_SSM","value":"/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"}]'
+#                EnvironmentVariables: '[{"name":"AMI_ID_SSM","value":"/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"}]'
+                EnvironmentVariables: '[{"name":"AMI_ID","value":"auto"}]'
               InputArtifacts:
                 - Name: coreSrc
               OutputArtifacts:

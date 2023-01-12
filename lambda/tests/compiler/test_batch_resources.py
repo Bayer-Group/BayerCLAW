@@ -282,8 +282,7 @@ def test_job_definition_rc(task_role, sample_batch_step, compiler_env):
                      }}
                 ],
             },
-            # 20220909: save for v1.2
-            # "SchedulingPriority": 1,
+            "SchedulingPriority": 1,
             "Timeout": {
                 "AttemptDurationSeconds": 3600,
             },
@@ -338,8 +337,7 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
             "JobName.$": job_name,
             "JobDefinition": "${TestJobDef}",
             "JobQueue": "spot_queue_arn",
-            # 20220909: save for v1.2
-            # "ShareIdentifier": "${WorkflowName}",
+            "ShareIdentifier": "${WorkflowName}",
             "Parameters": {
                 "repo.$": "$.repo",
                 "references": json.dumps(step.spec["references"]),

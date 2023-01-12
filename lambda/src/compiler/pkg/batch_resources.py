@@ -217,8 +217,7 @@ def job_definition_rc(step: Step,
                 **get_resource_requirements(step),
                 **get_volume_info(step),
             },
-            # 20220909: save for v1.2
-            # "SchedulingPriority": 1,
+            "SchedulingPriority": 1,
             **get_timeout(step)
         },
     }
@@ -267,8 +266,7 @@ def batch_step(step: Step,
             "JobName.$": job_name,
             "JobDefinition": f"${{{job_definition_name}}}",
             "JobQueue": get_job_queue(step.spec["compute"]),
-            # 20220909: save for v1.2
-            # "ShareIdentifier": "${WorkflowName}",
+            "ShareIdentifier": "${WorkflowName}",
             "Parameters": {
                 "repo.$": "$.repo",
                 **step.input_field,
