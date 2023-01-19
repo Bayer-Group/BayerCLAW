@@ -41,6 +41,9 @@ def run_subpipe_step(step: Step, retrieve_step_name: str) -> dict:
                 "repo.$": "$.subpipe.sub_repo",
                 "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id",
             },
+            # todo: this could get to be too long if you have nested subpipes
+            #   might be better to compute it in subpipe lambda
+            "Name.$": f"States.Format('{{}}--{step.name}', $$.Execution.Name)",
             "StateMachineArn": state_machine_arn,
         },
         "ResultPath": None,

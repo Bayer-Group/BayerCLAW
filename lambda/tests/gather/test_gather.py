@@ -9,23 +9,24 @@ import moto
 import pytest
 
 # make common layer modules available
-sys.path.append(
-    os.path.realpath(
-        os.path.join(
-            os.path.dirname(__file__),  # (home)/lambda/tests/scatter
-            os.pardir,                  # (home)/lambda/tests
-            os.pardir,                  # (home)/lambda
-            "src", "common", "python"
-        )
-    )
-)
+# sys.path.append(
+#     os.path.realpath(
+#         os.path.join(
+#             os.path.dirname(__file__),  # (home)/lambda/tests/scatter
+#             os.pardir,                  # (home)/lambda/tests
+#             os.pardir,                  # (home)/lambda
+#             "src", "common", "python"
+#         )
+#     )
+# )
 
 logging.basicConfig(level=logging.INFO)
 
-from ...src.gather.gather import _output_path_generator, find_output_files, lambda_handler
+from ...src.gather.gather import _output_path_generator, find_output_files, manifest_entries, find_this_file, lambda_handler
 
 TEST_BUCKET = "test-bucket"
 JOB_DATA = {"job": {"job": "data"}, "parent": {}, "scatter": {}}
+
 
 @pytest.fixture(scope="module")
 def repo_bucket():
@@ -36,6 +37,7 @@ def repo_bucket():
 
         yld.put_object(Key="repo/path/test-step/00000/output1", Body=b"00000.output1")
         yld.put_object(Key="repo/path/test-step/00000/output2", Body=b"00000.output2")
+        yld.put_object(Key="repo/path/test-step/00000/zoutput2", Body=b"00000.zoutput2")
         yld.put_object(Key="repo/path/test-step/00000/unoutput", Body=b"00000.unoutput")
 
         yld.put_object(Key="repo/path/test-step/00001/output1", Body=b"00001.output1")
@@ -57,39 +59,67 @@ def repo_bucket():
                  f"s3://{TEST_BUCKET}/repo/path/test-step/00002/output2"]),
     ("output3", [])
 ])
-def test_output_path_generator(caplog, repo_bucket, filename, expect):
-    repos = [
-        f"s3://{repo_bucket.name}/repo/path/test-step/00000",
-        f"s3://{repo_bucket.name}/repo/path/test-step/00001",
-        f"s3://{repo_bucket.name}/repo/path/test-step/00002",
-    ]
-    result = sorted(list(_output_path_generator(filename, repos)))
+def test_find_this_file(repo_bucket, filename, expect):
+    objs = list(repo_bucket.objects.filter(Prefix="repo/path/test-step"))
+    result = sorted(find_this_file(filename, repo_bucket.name, objs))
     assert result == expect
 
-    if filename != "output1":
-        assert f"{filename} not found in" in caplog.text
+# def test_output_path_generator(caplog, repo_bucket, filename, expect):
+#     repos = [
+#         f"s3://{repo_bucket.name}/repo/path/test-step/00000",
+#         f"s3://{repo_bucket.name}/repo/path/test-step/00001",
+#         f"s3://{repo_bucket.name}/repo/path/test-step/00002",
+#     ]
+#     result = sorted(list(_output_path_generator(filename, repos)))
+#     assert result == expect
+#
+#     if filename != "output1":
+#         assert f"{filename} not found in" in caplog.text
 
 
-@pytest.mark.parametrize("key, filename, expect", [
-    ("key1", "output1", [f"s3://{TEST_BUCKET}/repo/path/test-step/00000/output1",
-                         f"s3://{TEST_BUCKET}/repo/path/test-step/00001/output1",
-                         f"s3://{TEST_BUCKET}/repo/path/test-step/00002/output1"]),
-    ("key2", "output2", [f"s3://{TEST_BUCKET}/repo/path/test-step/00000/output2",
-                         f"s3://{TEST_BUCKET}/repo/path/test-step/00002/output2"]),
-    ("key3", "output3", [])
-])
-def test_find_output_files(caplog, repo_bucket, key, filename, expect):
-    repos = [
-        f"s3://{repo_bucket.name}/repo/path/test-step/00000",
-        f"s3://{repo_bucket.name}/repo/path/test-step/00001",
-        f"s3://{repo_bucket.name}/repo/path/test-step/00002",
-    ]
-    result_key, result_list = find_output_files((key, filename), repos)
-    assert result_key == key
-    assert sorted(result_list) == expect
+# @pytest.mark.parametrize("key, filename, expect", [
+#     ("key1", "output1", [f"s3://{TEST_BUCKET}/repo/path/test-step/00000/output1",
+#                          f"s3://{TEST_BUCKET}/repo/path/test-step/00001/output1",
+#                          f"s3://{TEST_BUCKET}/repo/path/test-step/00002/output1"]),
+#     ("key2", "output2", [f"s3://{TEST_BUCKET}/repo/path/test-step/00000/output2",
+#                          f"s3://{TEST_BUCKET}/repo/path/test-step/00002/output2"]),
+#     ("key3", "output3", [])
+# ])
+# def test_find_output_files(caplog, repo_bucket, key, filename, expect):
+#     repos = [
+#         f"s3://{repo_bucket.name}/repo/path/test-step/00000",
+#         f"s3://{repo_bucket.name}/repo/path/test-step/00001",
+#         f"s3://{repo_bucket.name}/repo/path/test-step/00002",
+#     ]
+#     result_key, result_list = find_output_files((key, filename), repos)
+#     assert result_key == key
+#     assert sorted(result_list) == expect
+#
+#     if key == "key3":
+#         assert f"no files named {filename} found" in caplog.text
 
-    if key == "key3":
-        assert f"no files named {filename} found" in caplog.text
+
+def test_manifest_entries(repo_bucket):
+    output_files = {
+        "out1": "output1",
+        "out2": "output2",
+        "out3": "output3",
+    }
+    prefix = "repo/path/test-step"
+    result = dict(manifest_entries(output_files, repo_bucket, prefix))
+    expect = {
+        "out1": [
+            f"s3://{repo_bucket.name}/repo/path/test-step/00000/output1",
+            f"s3://{repo_bucket.name}/repo/path/test-step/00001/output1",
+            f"s3://{repo_bucket.name}/repo/path/test-step/00002/output1",
+        ],
+        "out2": [
+            f"s3://{repo_bucket.name}/repo/path/test-step/00000/output2",
+            f"s3://{repo_bucket.name}/repo/path/test-step/00002/output2",
+        ],
+        "out3": [],
+    }
+    assert result == expect
 
 
 def test_lambda_handler(caplog, repo_bucket):
