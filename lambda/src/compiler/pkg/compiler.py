@@ -12,8 +12,16 @@ logger = logging.getLogger()
 def compile_template(wf_spec: dict, state_machine_out=None) -> dict:
     # normalize workflow spec
     normalized_wf = workflow_schema(wf_spec)
-    wf_params = merge_params_and_options(normalized_wf["params"], normalized_wf["options"])
-    steps = normalized_wf["steps"]
+
+    # todo: substitute templateParameterValues
+
+    # wf_params = merge_params_and_options(normalized_wf["params"], normalized_wf["options"])
+    # todo: could be prettier
+    wf_params = normalized_wf["Options"]
+    wf_params["repository"] = normalized_wf["Repository"]
+
+    steps = normalized_wf["Steps"]
+    # steps = normalized_wf["steps"]
 
     # create state machine and associated resources
     resources = {}

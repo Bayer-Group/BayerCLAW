@@ -8,8 +8,22 @@ logger.setLevel(logging.INFO)
 
 def lambda_handler(event: dict, context: object) -> dict:
     # event = {
-    #   "requestId": "1234567890",
-    #   "fragment": {...}
+    #   accountId: str
+    #   fragment: {
+    #       Repository: str
+    #       Parameters: {...}
+    #       Options: {...}
+    #       Steps: []
+    #   }
+    #   region: str
+    #   params: {}  # empty
+    #   requestId: uuid,
+    #   templateParameterValues: {
+    #       param1: value1
+    #       param2: value2
+    #       ...
+    #   }
+    #   transformId: str
     # }
 
     ret = event.copy()

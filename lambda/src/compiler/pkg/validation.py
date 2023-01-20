@@ -191,21 +191,41 @@ subpipe_step_schema = Schema(
 
 workflow_schema = Schema(
     {
-        Required("params", "params block not found"): {
-            Optional("workflow_name", default=""): str,
-            Optional("job_name", default=""): str,
-            Required("repository", msg="repository is required"): str,
+        Required("Repository", msg="Repository is required"): str,
+        Optional("Parameters"): {
+            str: {
+                Required("Type", msg="Parameter Type is required"): str,
+                Extra: object,
+            },
+        },
+        Optional("Options", default={}): {
+            Optional("shell", default="sh"): Any ("bash", "sh", "sh-pipefail",
+                                                  msg="shell option must be bash, sh, or sh-pipefail"),
             Optional("task_role", default=None): Maybe(str),
         },
-        Optional("options", default={}): {
-            Optional("shell", default="sh"): Any("bash", "sh", "sh-pipefail",
-                                                 msg="shell option must be bash, sh, or sh-pipefail"),
-            Optional("task_role", default=None): Maybe(str),
-        },
-        Required("steps", "steps list not found"): All(Length(min=1, msg="at least one step is required"),
-                                                       [{Coerce(str): dict}]),
+        Required("Steps", "Steps list not found"):
+            All(Length(min=1, msg="at least one step is required"),
+            [{Coerce(str): dict}]),
     }
 )
+
+# workflow_schema = Schema(
+#     {
+#         Required("params", "params block not found"): {
+#             Optional("workflow_name", default=""): str,
+#             Optional("job_name", default=""): str,
+#             Required("repository", msg="repository is required"): str,
+#             Optional("task_role", default=None): Maybe(str),
+#         },
+#         Optional("options", default={}): {
+#             Optional("shell", default="sh"): Any("bash", "sh", "sh-pipefail",
+#                                                  msg="shell option must be bash, sh, or sh-pipefail"),
+#             Optional("task_role", default=None): Maybe(str),
+#         },
+#         Required("steps", "steps list not found"): All(Length(min=1, msg="at least one step is required"),
+#                                                        [{Coerce(str): dict}]),
+#     }
+# )
 
 
 def _validator(spec: dict, schema: Schema, where: str):
