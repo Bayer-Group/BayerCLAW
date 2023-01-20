@@ -42,6 +42,7 @@ def compile_template(wf_spec: dict, state_machine_out=None) -> dict:
     # create cloudformation template fragment to return
     ret = {
         "AWSTemplateFormatVersion": "2010-09-09",
+        "Parameters": wf_spec["Parameters"],
         "Resources": resources,
         "Outputs": {
             "ECSTaskRoleArn": {
