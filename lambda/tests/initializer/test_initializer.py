@@ -192,7 +192,6 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
     # return value to send to step functions
     expect = {
         "index": "main",
-        # "id_prefix": "test",
         "job_file": {
             "bucket": launcher_bucket,
             "key": job_data_key,
@@ -200,6 +199,7 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
         },
         "prev_outputs": {},
         "repo": "s3://repo-bucket/path/to/repo/testJob",
+        "share_id": "testworkflow",
     }
 
     assert result == expect

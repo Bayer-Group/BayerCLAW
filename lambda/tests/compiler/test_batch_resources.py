@@ -341,7 +341,7 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
             "JobName.$": job_name,
             "JobDefinition": "${TestJobDef}",
             "JobQueue": "spot_queue_arn",
-            "ShareIdentifier": "${WorkflowName}",
+            "ShareIdentifier.$": "$.share_id",
             "Parameters": {
                 "repo.$": "$.repo",
                 "references": json.dumps(step.spec["references"]),
