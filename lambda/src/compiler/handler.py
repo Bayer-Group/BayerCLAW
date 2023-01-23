@@ -29,7 +29,7 @@ def lambda_handler(event: dict, context: object) -> dict:
     ret = event.copy()
 
     try:
-        ret["fragment"] = compile_template(event["fragment"])
+        ret["fragment"] = compile_template(event["fragment"], event["templateParameterValues"])
         ret["status"] = "success"
 
     except Exception as e:

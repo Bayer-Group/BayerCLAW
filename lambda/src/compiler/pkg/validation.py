@@ -57,7 +57,6 @@ batch_step_schema = Schema(All(
     {
         Required("image"): str,
         Optional("task_role", default=None): Maybe(str),
-        Optional("params", default={}): {str: Coerce(str)},
         # None is used as a signal that inputs was not specified at all, and should be copied from previous outputs.
         # inputs = {} can be used to explicitly specify a step has no inputs at all, with no copy from previous output.
         Optional("inputs", default=None): Any(None, {str: str}),
@@ -109,7 +108,7 @@ batch_step_schema = Schema(All(
                                                            msg="incorrect timeout time string")),
         **next_or_end,
     },
-    no_shared_keys("params", "inputs", "outputs", "references"),
+    no_shared_keys("inputs", "outputs", "references"),
 ))
 
 
@@ -167,7 +166,6 @@ chooser_step_schema = Schema(
 scatter_step_schema = Schema(All(
     {
         Required("scatter"): {str: str},
-        Optional("params", default={}): {str: Coerce(str)},
         Optional("inputs", default=None): Any(None, {str: str}),
         Required("steps", "steps list is required"):
             All(Length(min=1, msg="at least one step is required"), [{str: dict}]),
@@ -175,7 +173,7 @@ scatter_step_schema = Schema(All(
         **next_or_end,
     },
     # It's technically OK if scatter shares keys with these, because it's namespaced as ${scatter.foo}
-    no_shared_keys("params", "inputs", "outputs")
+    no_shared_keys("inputs", "outputs")
 ))
 
 

@@ -165,10 +165,20 @@ def test_get_timeout(timeout, expect):
 
 @pytest.fixture(scope="function")
 def sample_batch_step():
-    # todo: remove params block
     ret = yaml.safe_load(textwrap.dedent("""
           commands: 
-            - ${FASTP0200}/fastp --in1 ${reads1} --in2 ${reads2} --out1 ${paired1} --outdir ${outdir} --out2 ${paired2} --unpaired1 ${unpaired1} --unpaired2 ${unpaired2} --adapter_fasta ${adapter_file} --length_required 25 --json ${trim_log}
+            - >
+             ${FASTP0200}/fastp 
+             --in1 ${reads1}
+             --in2 ${reads2}
+             --outdir outt
+             --out1 ${paired1}
+             --out2 ${paired2} 
+             --unpaired1 ${unpaired1} 
+             --unpaired2 ${unpaired2}
+             --adapter_fasta ${adapter}
+             --length_required 25
+             --json ${trim_log}
           compute:
             cpus: 4
             memory: 4 Gb
@@ -183,7 +193,7 @@ def sample_batch_step():
               root_dir: /path/to/my/data
           image: skim3-fastp
           inputs: 
-            adapter: ${adapter_path}${adapter_file}
+            adapter: s3://bayer-skim-sequence-processing-696164428135/adapters/${job.ADAPTER_FILE}
             reads1: ${job.READ_PATH1}
             reads2: ${job.READ_PATH2}
           outputs: 
@@ -191,15 +201,9 @@ def sample_batch_step():
             paired2: paired_trim_2.fq
             unpaired1: unpaired_trim_1.fq
             unpaired2: unpaired_trim_2.fq
-            trim_log: ${sample_id}-fastP.json
+            trim_log: ${job.SAMPLE_ID}-fastP.json
           references:
             reference1: s3://ref-bucket/path/to/reference.file
-          # params: {}
-          params:
-            outdir: outt
-            sample_id: ${job.SAMPLE_ID}
-            adapter_path: s3://bayer-skim-sequence-processing-696164428135/adapters/
-            adapter_file: ${job.ADAPTER_FILE}
           qc_check: null
           skip_on_rerun: false
           timeout: 1h

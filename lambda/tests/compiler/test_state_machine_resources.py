@@ -5,15 +5,15 @@ from ...src.compiler.pkg.util import Step, lambda_logging_block, lambda_retry
 
 
 def test_make_initializer_step(compiler_env):
-    wf_params = {"repository": "s3://bucket/repo/path/${template}"}
+    repository = "s3://bucket/repo/path/${template}"
 
-    result = make_initializer_step(wf_params)
+    result = make_initializer_step(repository)
     expect = {
         "Initialize": {
             "Type": "Task",
             "Resource": "initializer_lambda_arn",
             "Parameters": {
-                "repo_template": wf_params["repository"],
+                "repo_template": repository,
                 "input_obj.$": "$",
                 **lambda_logging_block("Initialize"),
             },

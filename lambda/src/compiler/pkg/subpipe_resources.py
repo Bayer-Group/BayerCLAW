@@ -43,7 +43,7 @@ def run_subpipe_step(step: Step, retrieve_step_name: str) -> dict:
             },
             # todo: this could get to be too long if you have nested subpipes
             #   might be better to compute it in subpipe lambda
-            "Name.$": f"States.Format('{{}}--{step.name}', $$.Execution.Name)",
+            "Name.$": f"States.Format('{{}}_{step.name}', $$.Execution.Name)",
             "StateMachineArn": state_machine_arn,
         },
         "ResultPath": None,

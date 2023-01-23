@@ -19,7 +19,7 @@ from .validation import validate_batch_step, validate_native_step, validate_para
     validate_subpipe_step, validate_chooser_step
 
 
-def make_initializer_step(wf_params: dict) -> dict:
+def make_initializer_step(repository: str) -> dict:
     initialize_step_name = "Initialize"
 
     ret = {
@@ -27,7 +27,7 @@ def make_initializer_step(wf_params: dict) -> dict:
             "Type": "Task",
             "Resource": os.environ["INITIALIZER_LAMBDA_ARN"],
             "Parameters": {
-                "repo_template": wf_params["repository"],
+                "repo_template": repository,
                 "input_obj.$": "$",
                 **lambda_logging_block(initialize_step_name),
             },
@@ -107,12 +107,12 @@ def process_step(step: Step,
 
 def make_branch(raw_steps: list,
                 wf_params: dict,
-                include_initializer: bool = False,
+                repository: str = None,
                 depth: int = 0) -> Generator[Resource, None, dict]:
     logger = logging.getLogger(__name__)
 
-    if include_initializer:
-        initializer_step = make_initializer_step(wf_params)
+    if repository is not None:
+        initializer_step = make_initializer_step(repository)
         raw_steps.insert(0, initializer_step)
 
     steps = make_step_list(raw_steps)
@@ -145,7 +145,6 @@ def write_state_machine_to_fh(sfn_def: dict, fh) -> dict:
 def write_state_machine_to_s3(sfn_def: dict) -> dict:
     def_json = json.dumps(sfn_def, indent=4)
 
-    # bucket = core_stack.output("ResourceBucketName")
     bucket = os.environ["RESOURCE_BUCKET_NAME"]
 
     base_filename = uuid4().hex
@@ -171,8 +170,9 @@ def write_state_machine_to_s3(sfn_def: dict) -> dict:
 
 def handle_state_machine(raw_steps: List[Dict],
                          wf_params: dict,
+                         repository: str,
                          dst_fh=None) -> Generator[Resource, None, str]:
-    state_machine_def = yield from make_branch(raw_steps, wf_params, include_initializer=True)
+    state_machine_def = yield from make_branch(raw_steps, wf_params, repository=repository)
 
     if dst_fh is None:
         state_machine_location = write_state_machine_to_s3(state_machine_def)

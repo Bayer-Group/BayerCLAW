@@ -13,10 +13,6 @@ def test_scatter_step(compiler_env):
         "scatter": {
             "stuff": "test*.txt",
         },
-        "params": {
-            "a": 1,
-            "b": 2,
-        },
         "inputs": {
             "input1": "infile1.txt",
             "input2": "infile2.txt",
@@ -74,10 +70,6 @@ def test_map_step():
 ])
 def test_gather_step(next_step_name, next_or_end, compiler_env):
     spec = {
-        "params": {
-            "a": 1,
-            "b": 2,
-        },
         "outputs": {
             "output1": "outfile1.txt",
             "output2": "outfile2.txt",
@@ -116,34 +108,29 @@ def sample_scatter_step():
     ret = yaml.safe_load(textwrap.dedent("""
       scatter:
         stuff: test*.txt
-      params:
-        a: 1
-        b: 2
       inputs:
-        input1: infile${a}.txt
-        input2: infile${b}.txt
+        input1: infile1.txt
+        input2: infile2.txt
       steps:
         -
           Step1:
             image: test_image
-            params:
-                c: 3
             references:
                 ref1: "s3://ref-bucket/path/to/reference.file"
             inputs:
-                input3: ${parent.a}_infile${c}.txt
+                input3: 1_infile3.txt
             commands:
               - ls -l ${scatter.stuff} > ${output3}
             outputs:
-                output3: ${parent.b}_outfile${c}.txt
+                output3: 2_outfile3.txt
             compute:
                 cpus: 1
                 memory: 4
                 spot: true
             skip_if_output_exists: true
       outputs:
-        output1: outfile${a}.txt
-        output2: outfile${b}.txt
+        output1: outfile1.txt
+        output2: outfile2.txt
     """))
     yield ret
 

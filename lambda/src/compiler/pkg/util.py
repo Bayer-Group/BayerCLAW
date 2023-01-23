@@ -52,15 +52,15 @@ def make_logical_name(s: str) -> str:
 # given "${something}":
 #   match.group(0) == "${something}"
 #   match.group(1) == "something"
-PARAM_FINDER = re.compile(r"\${([\w.]+)}")
+PARAM_FINDER = re.compile(r"\${([A-Za-z0-9]+)}")
 
-def _param_subber(params: dict, target: Any):
+def substitute_params(params: dict, target: Any):
     if isinstance(target, str):
         ret = PARAM_FINDER.sub(lambda m: str(params.get(m.group(1), m.group(0))), target)
     elif isinstance(target, list):
-        ret = [_param_subber(params, v) for v in target]
+        ret = [substitute_params(params, v) for v in target]
     elif isinstance(target, dict):
-        ret = {k: _param_subber(params, v) for k, v in target.items()}
+        ret = {k: substitute_params(params, v) for k, v in target.items()}
     else:
         ret = target
     return ret
@@ -81,21 +81,21 @@ def lambda_logging_block(step_name: str) -> dict:
     return ret
 
 
-def do_param_substitution(spec: dict) -> dict:
-    ret = {}
-
-    for k, v in spec.items():
-        if k in {"inputs", "commands", "outputs"}:
-            ret[k] = _param_subber(spec["params"], v)
-        elif k == "steps":
-            parent_params = {f"parent.{k}": v for k, v in spec["params"].items()}
-            ret[k] = _param_subber(parent_params, v)
-        elif k == "params":
-            ret[k] = {}
-        else:
-            ret[k] = v
-
-    return ret
+# def do_param_substitution(spec: dict) -> dict:
+#     ret = {}
+#
+#     for k, v in spec.items():
+#         if k in {"inputs", "commands", "outputs"}:
+#             ret[k] = _param_subber(spec["params"], v)
+#         elif k == "steps":
+#             parent_params = {f"parent.{k}": v for k, v in spec["params"].items()}
+#             ret[k] = _param_subber(parent_params, v)
+#         elif k == "params":
+#             ret[k] = {}
+#         else:
+#             ret[k] = v
+#
+#     return ret
 
 
 def time_string_to_seconds(time: str) -> int:

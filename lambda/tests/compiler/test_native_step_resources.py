@@ -151,8 +151,6 @@ def test_handle_parallel_native_step(compiler_env):
             -
               do_this:
                 image: bclaw-blank
-                params:
-                  i: 1
                 references:
                   m: s3://n
                 inputs:
@@ -169,8 +167,6 @@ def test_handle_parallel_native_step(compiler_env):
             -
               do_that:
                 image: bclaw-wut
-                params:
-                  i: 1
                 references:
                   m: s3://n
                 inputs:
@@ -189,8 +185,6 @@ def test_handle_parallel_native_step(compiler_env):
             -
               do_the_other:
                 image: who-dat
-                params:
-                  i: 1
                 references:
                   m: s3://n
                 inputs:

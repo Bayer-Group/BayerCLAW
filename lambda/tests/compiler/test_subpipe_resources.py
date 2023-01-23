@@ -64,7 +64,7 @@ def test_run_subpipe_step(sample_subpipe_spec):
                 "repo.$": "$.subpipe.sub_repo",
                 "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id",
             },
-            "Name.$": "States.Format('{}--step_name', $$.Execution.Name)",
+            "Name.$": "States.Format('{}_step_name', $$.Execution.Name)",
             "StateMachineArn": sample_subpipe_spec["subpipe"],
         },
         "ResultPath": None,

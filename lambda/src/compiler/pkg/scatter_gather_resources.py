@@ -4,7 +4,7 @@ import os
 from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import Step, Resource, State, do_param_substitution, lambda_logging_block, lambda_retry
+from .util import Step, Resource, State, lambda_logging_block, lambda_retry
 
 
 def scatter_step(step: Step, map_step_name: str) -> dict:
@@ -72,19 +72,16 @@ def handle_scatter_gather(step: Step,
     if map_depth > 0:
         raise RuntimeError("Nested Scatter steps are not supported")
 
-    subbed_spec = do_param_substitution(step.spec)
-    subbed_step = Step(step.name, subbed_spec, step.next)
+    sub_branch = yield from sm.make_branch(step.spec["steps"], wf_params, depth=map_depth + 1)
 
-    sub_branch = yield from sm.make_branch(subbed_step.spec["steps"], wf_params, depth=map_depth + 1)
-
-    scatter_step_name = subbed_step.name
-    map_step_name = f"{subbed_step.name}.map"
-    gather_step_name = f"{subbed_step.name}.gather"
+    scatter_step_name = step.name
+    map_step_name = f"{step.name}.map"
+    gather_step_name = f"{step.name}.gather"
 
     ret = [
-        State(scatter_step_name, scatter_step(subbed_step, map_step_name)),
+        State(scatter_step_name, scatter_step(step, map_step_name)),
         State(map_step_name, map_step(sub_branch, gather_step_name)),
-        State(gather_step_name, gather_step(subbed_step))
+        State(gather_step_name, gather_step(step))
     ]
 
     return ret

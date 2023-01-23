@@ -8,7 +8,7 @@ from typing import Generator, List, Tuple, Union
 import humanfriendly
 
 from .qc_resources import handle_qc_check
-from .util import Step, Resource, State, make_logical_name, do_param_substitution, time_string_to_seconds
+from .util import Step, Resource, State, make_logical_name, time_string_to_seconds
 
 SCRATCH_PATH = "/_bclaw_scratch"
 
@@ -324,19 +324,16 @@ def handle_batch(step: Step,
     task_role = step.spec.get("task_role") or wf_params.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
     shell_opt = step.spec["compute"]["shell"] or wf_params.get("shell")
 
-    subbed_spec = do_param_substitution(step.spec)
-    subbed_step = Step(step.name, subbed_spec, step.next)
+    job_def_name = yield from job_definition_rc(step, task_role, shell_opt)
 
-    job_def_name = yield from job_definition_rc(subbed_step, task_role, shell_opt)
-
-    if subbed_spec["qc_check"] is not None:
-        qc_state = handle_qc_check(subbed_step)
-        ret0 = batch_step(subbed_step, job_def_name, scattered, **subbed_step.spec["retry"],
+    if step.spec["qc_check"] is not None:
+        qc_state = handle_qc_check(step)
+        ret0 = batch_step(step, job_def_name, scattered, **step.spec["retry"],
                           next_step_override=qc_state.name)
         ret = [State(step.name, ret0), qc_state]
 
     else:
-        ret = [State(step.name, batch_step(subbed_step, job_def_name, **subbed_step.spec["retry"],
+        ret = [State(step.name, batch_step(step, job_def_name, **step.spec["retry"],
                                            scattered=scattered))]
 
     return ret
