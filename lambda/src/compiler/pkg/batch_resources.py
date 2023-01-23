@@ -266,8 +266,7 @@ def batch_step(step: Step,
             "JobName.$": job_name,
             "JobDefinition": f"${{{job_definition_name}}}",
             "JobQueue": get_job_queue(step.spec["compute"]),
-            # todo: ShareIdentifier needs to be alphanumeric
-            "ShareIdentifier": "${WorkflowName}",
+            "ShareIdentifier.$": "$.share_id",
             "Parameters": {
                 "repo.$": "$.repo",
                 **step.input_field,

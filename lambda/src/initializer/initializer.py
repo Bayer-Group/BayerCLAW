@@ -97,6 +97,8 @@ def handle_s3_launch(event: dict) -> dict:
     write_extended_job_data_object(job_data, repo_bucket, repo_prefix)
     write_execution_record(event, repo_bucket, repo_prefix)
 
+    share_id = re.sub(r"[\W_]+", "", event["logging"]["workflow_name"])
+
     ret = {
         "index": event["input_obj"]["index"],
         "job_file": {
@@ -106,6 +108,7 @@ def handle_s3_launch(event: dict) -> dict:
         },
         "prev_outputs": {},
         "repo": repo,
+        "share_id": share_id,
     }
 
     return ret
