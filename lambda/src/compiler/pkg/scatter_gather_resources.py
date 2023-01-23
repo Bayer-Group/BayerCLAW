@@ -63,7 +63,7 @@ def gather_step(step: Step) -> dict:
 
 
 def handle_scatter_gather(step: Step,
-                          wf_params: dict,
+                          options: dict,
                           map_depth: int
                           ) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ def handle_scatter_gather(step: Step,
     if map_depth > 0:
         raise RuntimeError("Nested Scatter steps are not supported")
 
-    sub_branch = yield from sm.make_branch(step.spec["steps"], wf_params, depth=map_depth + 1)
+    sub_branch = yield from sm.make_branch(step.spec["steps"], options, depth=map_depth + 1)
 
     scatter_step_name = step.name
     map_step_name = f"{step.name}.map"

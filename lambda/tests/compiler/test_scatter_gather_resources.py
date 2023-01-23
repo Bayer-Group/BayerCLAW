@@ -136,11 +136,11 @@ def sample_scatter_step():
 
 
 def test_handle_scatter_gather(sample_scatter_step, compiler_env):
-    wf_params = {"wf": "params"}
+    options = {"wf": "options"}
 
     def helper():
         step = Step("step_name", sample_scatter_step, "next_step_name")
-        states = yield from handle_scatter_gather(step, wf_params, 0)
+        states = yield from handle_scatter_gather(step, options, 0)
 
         assert len(states) == 3
 

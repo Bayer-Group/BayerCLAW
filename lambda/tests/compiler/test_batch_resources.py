@@ -384,7 +384,7 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
     assert result == expected_body
 
 
-@pytest.mark.parametrize("wf_params", [
+@pytest.mark.parametrize("options", [
     {"no_task_role": ""},
     {"task_role": "arn:from:workflow:params"}
 ])
@@ -392,18 +392,18 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
     {},
     {"task_role": "arn:from:step:spec"}
 ])
-def test_handle_batch(wf_params, step_task_role_request, sample_batch_step, compiler_env):
+def test_handle_batch(options, step_task_role_request, sample_batch_step, compiler_env):
     if "task_role" in step_task_role_request:
         expected_job_role_arn = step_task_role_request["task_role"]
-    elif "task_role" in wf_params:
-        expected_job_role_arn = wf_params["task_role"]
+    elif "task_role" in options:
+        expected_job_role_arn = options["task_role"]
     else:
         expected_job_role_arn = "ecs_task_role_arn"
 
     def helper():
         test_spec = {**sample_batch_step, **step_task_role_request}
         test_step = Step("step_name", test_spec, "next_step_name")
-        states = yield from handle_batch(test_step, wf_params, False)
+        states = yield from handle_batch(test_step, options, False)
         assert len(states) == 1
         assert isinstance(states[0], State)
         assert states[0].name == "step_name"

@@ -44,12 +44,12 @@ def test_handle_parallel_step_enhanced(next_step_name, next_or_end, compiler_env
     """)
 
     spec = yaml.safe_load(spec_yaml)
-    wf_params = {"wf": "params"}
+    options = {"wf": "params"}
 
     def helper():
         step = Step("step_name", spec, next_step_name)
 
-        result, *more = yield from handle_parallel_step(step, wf_params, 0)
+        result, *more = yield from handle_parallel_step(step, options, 0)
         assert len(more) == 0
         assert isinstance(result, State)
         assert result.spec["Type"] == "Parallel"

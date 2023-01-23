@@ -15,7 +15,6 @@ def compile_template(fragment: dict, param_values: dict, state_machine_out=None)
 
     subbed_wf = substitute_params(param_values, normalized_wf)
 
-    # todo: change wf_params to options globally
     options = subbed_wf["Options"]
     repository = subbed_wf["Repository"]
 

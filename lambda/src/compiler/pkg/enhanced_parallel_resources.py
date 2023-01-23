@@ -7,7 +7,7 @@ from .util import Step, Resource, State, lambda_logging_block, lambda_retry
 
 
 def handle_parallel_step(step: Step,
-                         wf_params: dict,
+                         options: dict,
                          map_depth: int) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
     logger.info(f"making enhanced parallel step {step.name}")
@@ -64,7 +64,7 @@ def handle_parallel_step(step: Step,
         except KeyError:
             pass
 
-        sfn_branch = yield from sm.make_branch(steps, wf_params, depth=map_depth)
+        sfn_branch = yield from sm.make_branch(steps, options, depth=map_depth)
         sfn_branches.append(sfn_branch)
 
     ret = {

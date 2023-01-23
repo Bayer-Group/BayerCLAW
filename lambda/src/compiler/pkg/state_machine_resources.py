@@ -64,19 +64,19 @@ def make_step_list(steps: List[Dict]) -> List[Step]:
 
 
 def process_step(step: Step,
-                 wf_params: dict,
+                 options: dict,
                  depth: int) -> Generator[Resource, None, List[State]]:
     if "scatter" in step.spec:
         normalized_step = validate_scatter_step(step)
         states_to_add = yield from sg.handle_scatter_gather(normalized_step,
-                                                            wf_params,
+                                                            options,
                                                             depth)
 
     elif "image" in step.spec:
         normalized_step = validate_batch_step(step)
         scattered = depth > 0
         states_to_add = yield from b.handle_batch(normalized_step,
-                                                  wf_params,
+                                                  options,
                                                   scattered)
 
     elif "subpipe" in step.spec:
@@ -86,7 +86,7 @@ def process_step(step: Step,
     elif "Type" in step.spec:
         normalized_step = validate_native_step(step)
         states_to_add = yield from ns.handle_native_step(normalized_step,
-                                                         wf_params,
+                                                         options,
                                                          depth)
 
     elif "choices" in step.spec:
@@ -96,7 +96,7 @@ def process_step(step: Step,
     elif "branches" in step.spec:
         normalized_step = validate_parallel_step(step)
         states_to_add = yield from ep.handle_parallel_step(normalized_step,
-                                                           wf_params,
+                                                           options,
                                                            depth)
 
     else:
@@ -106,7 +106,7 @@ def process_step(step: Step,
 
 
 def make_branch(raw_steps: list,
-                wf_params: dict,
+                options: dict,
                 repository: str = None,
                 depth: int = 0) -> Generator[Resource, None, dict]:
     logger = logging.getLogger(__name__)
@@ -119,7 +119,7 @@ def make_branch(raw_steps: list,
     states = {}
 
     for step in steps:
-        states_to_add = yield from process_step(step, wf_params, depth)
+        states_to_add = yield from process_step(step, options, depth)
         states.update(states_to_add)
 
     ret = {
@@ -169,10 +169,10 @@ def write_state_machine_to_s3(sfn_def: dict) -> dict:
 
 
 def handle_state_machine(raw_steps: List[Dict],
-                         wf_params: dict,
+                         options: dict,
                          repository: str,
                          dst_fh=None) -> Generator[Resource, None, str]:
-    state_machine_def = yield from make_branch(raw_steps, wf_params, repository=repository)
+    state_machine_def = yield from make_branch(raw_steps, options, repository=repository)
 
     if dst_fh is None:
         state_machine_location = write_state_machine_to_s3(state_machine_def)

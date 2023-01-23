@@ -316,13 +316,13 @@ def batch_step(step: Step,
 
 
 def handle_batch(step: Step,
-                 wf_params: dict,
+                 options: dict,
                  scattered: bool) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
     logger.info(f"making batch step {step.name}")
 
-    task_role = step.spec.get("task_role") or wf_params.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
-    shell_opt = step.spec["compute"]["shell"] or wf_params.get("shell")
+    task_role = step.spec.get("task_role") or options.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
+    shell_opt = step.spec["compute"]["shell"] or options.get("shell")
 
     job_def_name = yield from job_definition_rc(step, task_role, shell_opt)
 

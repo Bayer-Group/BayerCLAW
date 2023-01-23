@@ -6,7 +6,7 @@ from .util import Step, Resource, State
 
 
 def handle_native_step(step: Step,
-                       wf_params: dict,
+                       options: dict,
                        map_depth: int) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
     logger.info(f"making native step {step.name}")
@@ -19,7 +19,7 @@ def handle_native_step(step: Step,
         sub_branches = []
 
         for branch in step.spec["Branches"]:
-            sub_branch = yield from sm.make_branch(branch["steps"], wf_params, depth=map_depth)
+            sub_branch = yield from sm.make_branch(branch["steps"], options, depth=map_depth)
             sub_branches.append(sub_branch)
 
         ret.update({"Branches": sub_branches})
