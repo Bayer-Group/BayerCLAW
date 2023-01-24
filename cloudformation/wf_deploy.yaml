@@ -261,3 +261,7 @@ Resources:
             key:
               -
                 prefix: !Sub "${WorkflowName}/"
+
+Outputs:
+  wfNotificationsTopicArn:
+    Value: !Ref wfNotificationsTopic

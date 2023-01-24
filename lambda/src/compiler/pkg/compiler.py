@@ -49,10 +49,9 @@ def compile_template(fragment: dict, param_values: dict, state_machine_out=None)
             "LauncherBucketName": {
                 "Value": os.environ["LAUNCHER_BUCKET_NAME"],
             },
-            # todo: restore
-            # "NotificationTopicArn": {
-            #     "Value": {"Fn::GetAtt": [notifications_substack.name, "Outputs.wfOutputTopicArn"]},
-            # },
+            "NotificationTopicArn": {
+                "Value": {"Fn::GetAtt": [deploy_substack.name, "Outputs.wfNotificationsTopic"]},
+            },
             "StepFunctionsStateMachineArn": {
                 "Value": {"Ref": state_machine.name},
             },

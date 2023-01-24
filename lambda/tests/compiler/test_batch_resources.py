@@ -47,7 +47,7 @@ def test_get_memory_in_mibs(req, mibs):
     ({"spot": False}, "on_demand_queue_arn"),
     ({"spot": True, "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue")
 ])
-def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack, compiler_env):
+def test_get_job_queue(spec, expected, compiler_env):
     result = get_job_queue(spec)
     assert result == expected
 

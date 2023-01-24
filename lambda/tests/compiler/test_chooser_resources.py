@@ -23,7 +23,7 @@ def test_choice_spec():
     assert result == expect
 
 
-def test_make_chooser_steps(mock_core_stack, compiler_env):
+def test_make_chooser_steps(compiler_env):
     spec = {
         "inputs": {
             "infile1": "file1.json",
