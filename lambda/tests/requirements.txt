@@ -1,10 +1,10 @@
 boto3==1.21.18
-dotted
 humanfriendly
 jmespath
 jsonpath
 moto[all]==3.1.3
 pytest
 pytest-mock
+python-box[all]~=6.0
 pyyaml
 voluptuous
