@@ -125,8 +125,7 @@ Resources:
           - DEPLOYMENT_FAILURE
           - DEPLOYMENT_STOP_ON_ALARM
           - DEPLOYMENT_STOP_ON_REQUEST
-      # todo: all at once
-      DeploymentConfigName: CodeDeployDefault.LambdaLinear10PercentEvery1Minute
+      DeploymentConfigName: CodeDeployDefault.LambdaAllAtOnce
       DeploymentStyle:
         DeploymentType: BLUE_GREEN
         DeploymentOption: WITH_TRAFFIC_CONTROL

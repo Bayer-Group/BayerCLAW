@@ -13,6 +13,12 @@ Parameters:
   VersionatorArn:
     Type: String
 
+  VersionedSFN:
+    Type: String
+    AllowedValues:
+      - Y
+      - N
+
   WorkflowName:
     Type: String
 
@@ -51,10 +57,11 @@ Resources:
         ImageUri: !Ref LauncherImageUri
       Environment:
         Variables:
-          REGION: !Ref AWS::Region
           ACCT_NUM: !Ref AWS::AccountId
+          REGION: !Ref AWS::Region
           SFN_NAME_ROOT: !Ref WorkflowName
           UNIQIFIER: !Ref Uniqifier
+          VERSIONED_SFN: !Ref VersionedSFN
       Role: !GetAtt wfLauncherLambdaRole.Arn
 
   wfLauncherLambdaVersion:
@@ -70,9 +77,19 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${wfLauncherLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  wfStateMachineName:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt wfLauncherLambdaVersion.Arn
+      Properties:
+        Uniqifier: !Ref Uniqifier
+
 Outputs:
   LauncherLambdaName:
     Value: !Ref wfLauncherLambda
 
   LauncherLambdaVersion:
     Value: !GetAtt wfLauncherLambdaVersion.Version
+
+  StateMachineName:
+    Value: !GetAtt wfStateMachineName.Name

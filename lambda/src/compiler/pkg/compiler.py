@@ -31,7 +31,7 @@ def compile_template(fragment: dict, param_values: dict, state_machine_out=None)
     sm.add_definition_substitutions(state_machine, resources)
 
     # create substacks
-    launcher_substack = launcher_substack_rc()
+    launcher_substack = launcher_substack_rc(options)
     deploy_substack = deploy_substack_rc(state_machine.name)
 
     resources.update([launcher_substack, deploy_substack])

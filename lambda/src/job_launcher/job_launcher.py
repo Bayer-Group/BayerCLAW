@@ -6,6 +6,7 @@ import re
 import boto3
 
 from lambda_logs import JSONFormatter, custom_lambda_logs
+from cfn_responder import responder
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -37,6 +38,23 @@ def make_execution_name(s3_key: str, version: str, replay: str) -> str:
     return ret
 
 
+def state_machine_name(context: object) -> str:
+    root = os.environ["SFN_NAME_ROOT"]
+    if os.environ["VERSIONED_SFN"] == "Y":
+        version = context.function_version
+        ret = f"{root}--{version}"
+    else:
+        ret = root
+    return ret
+
+
+def handle_sfn_name_request(event: dict, context: object):
+    with responder(event, context) as cfn_response:
+        ret = state_machine_name(context)
+        cfn_response.return_values(Name=ret)
+
+
+
 def lambda_handler(event: dict, context: object) -> None:
     # event = {
     #   "branch": "..."
@@ -48,40 +66,45 @@ def lambda_handler(event: dict, context: object) -> None:
 
     with custom_lambda_logs(**event):
         logger.info(f"{event=}")
-        sfn = boto3.client("stepfunctions")
 
-        try:
-            # todo: remove
-            assert "_DIE_DIE_DIE_" not in event["job_file_key"]
+        if "RequestType" in event:
+            handle_sfn_name_request(event, context)
 
-            exec_name = make_execution_name(event["job_file_key"],
-                                            event["job_file_version"],
-                                            event["replay"])
-            logger.info(f"{exec_name=}")
+        else:
+            sfn = boto3.client("stepfunctions")
 
-            input_obj = {
-                "job_file": {
-                    "bucket": event["job_file_bucket"],
-                    "key": event["job_file_key"],
-                    "version": event["job_file_version"],
-                },
-                "index": event["branch"],
-            }
+            try:
+                # todo: remove
+                assert "_DIE_DIE_DIE_" not in event["job_file_key"]
 
-            region = os.environ["REGION"]
-            acct_num = os.environ["ACCT_NUM"]
-            root = os.environ["SFN_NAME_ROOT"]
-            version = context.function_version
-            state_machine_arn = f"arn:aws:states:{region}:{acct_num}:stateMachine:{root}--{version}"
+                exec_name = make_execution_name(event["job_file_key"],
+                                                event["job_file_version"],
+                                                event["replay"])
+                logger.info(f"{exec_name=}")
 
-            if "dry_run" not in event:
-                response = sfn.start_execution(
-                    stateMachineArn=state_machine_arn,
-                    name=exec_name,
-                    input=json.dumps(input_obj)
-                )
-                logger.info(f"{response=}")
+                input_obj = {
+                    "job_file": {
+                        "bucket": event["job_file_bucket"],
+                        "key": event["job_file_key"],
+                        "version": event["job_file_version"],
+                    },
+                    "index": event["branch"],
+                }
 
-        except sfn.exceptions.ExecutionAlreadyExists:
-            # duplicated s3 events are way more likely than bona fide name collisions
-            logger.info(f"duplicate event: {exec_name}")
+                region = os.environ["REGION"]
+                acct_num = os.environ["ACCT_NUM"]
+                root = os.environ["SFN_NAME_ROOT"]
+                version = context.function_version
+                state_machine_arn = f"arn:aws:states:{region}:{acct_num}:stateMachine:{root}--{version}"
+
+                if "dry_run" not in event:
+                    response = sfn.start_execution(
+                        stateMachineArn=state_machine_arn,
+                        name=exec_name,
+                        input=json.dumps(input_obj)
+                    )
+                    logger.info(f"{response=}")
+
+            except sfn.exceptions.ExecutionAlreadyExists:
+                # duplicated s3 events are way more likely than bona fide name collisions
+                logger.info(f"duplicate event: {exec_name}")

@@ -185,15 +185,16 @@ def handle_state_machine(raw_steps: List[Dict],
         "UpdateReplacePolicy": "Retain",
         "Properties": {
             "StateMachineName": {
-                "Fn::Sub": [
-                    "${Root}--${Version}",
-                    {
-                        "Root": {"Ref": "AWS::StackName"},
-                        "Version": {
-                            "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]
-                        }
-                    }
-                ]
+                "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.StateMachineName"],
+                # "Fn::Sub": [
+                #     "${Root}--${Version}",
+                #     {
+                #         "Root": {"Ref": "AWS::StackName"},
+                #         "Version": {
+                #             "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]
+                #         }
+                #     }
+                # ]
             },
             "RoleArn": os.environ["STATES_EXECUTION_ROLE_ARN"],
             "DefinitionS3Location": state_machine_location,
