@@ -6,8 +6,9 @@ from ...src.compiler.pkg.util import Resource
 
 def test_launcher_substack_rc(monkeypatch, compiler_env):
     monkeypatch.setattr(uu, "uuid4", lambda: "fake_uuid")
+    options = {"versioned": "Y"}
 
-    result = launcher_substack_rc()
+    result = launcher_substack_rc(options)
     expect = {
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
@@ -16,6 +17,7 @@ def test_launcher_substack_rc(monkeypatch, compiler_env):
                 "LogRetentionDays": "99",
                 "Uniqifier": "fake_uuid",
                 "VersionatorArn": "versionator_lambda_arn",
+                "VersionedSFN": "Y",
                 "WorkflowName": {"Ref": "AWS::StackName"},
             },
             "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/1234567/wf_launcher.yaml",
