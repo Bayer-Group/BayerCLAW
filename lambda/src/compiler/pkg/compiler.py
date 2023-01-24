@@ -50,7 +50,7 @@ def compile_template(fragment: dict, param_values: dict, state_machine_out=None)
                 "Value": os.environ["LAUNCHER_BUCKET_NAME"],
             },
             "NotificationTopicArn": {
-                "Value": {"Fn::GetAtt": [deploy_substack.name, "Outputs.wfNotificationsTopic"]},
+                "Value": {"Fn::GetAtt": [deploy_substack.name, "Outputs.wfNotificationsTopicArn"]},
             },
             "StepFunctionsStateMachineArn": {
                 "Value": {"Ref": state_machine.name},
