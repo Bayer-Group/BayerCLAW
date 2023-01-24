@@ -12,7 +12,7 @@ phases:
     runtime-versions:
       python: 3.9
     commands:
-      - pip install aws-sam-cli
+      - pip install aws-sam-cli==1.51.0
       - pip install -r lambda/tests/requirements.txt
 
   pre_build:
