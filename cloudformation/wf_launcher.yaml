@@ -84,7 +84,7 @@ Resources:
     Properties:
       # todo: wf update after a launcher lambda change fails with "Modifying service token is not allowed"
 #      ServiceToken: !GetAtt wfLauncherLambdaVersion.Arn
-      ServiceToken: !Sub "${wfLauncherLambda}:$LATEST"
+      ServiceToken: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${wfLauncherLambda}:$LATEST"
       Properties:
         Uniqifier: !Ref Uniqifier
 
