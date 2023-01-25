@@ -79,6 +79,8 @@ Resources:
 
   wfStateMachineName:
     Type: AWS::CloudFormation::CustomResource
+    # nothing is created, no reason to call during deletion
+    DeletionPolicy: Retain
     Properties:
       ServiceToken: !GetAtt wfLauncherLambdaVersion.Arn
       Properties:
