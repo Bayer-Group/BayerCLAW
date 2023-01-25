@@ -38,7 +38,7 @@ def make_execution_name(s3_key: str, version: str, replay: str) -> str:
     return ret
 
 
-def state_machine_name(context: object) -> str:
+def mk_state_machine_name(context: object) -> str:
     root = os.environ["SFN_NAME_ROOT"]
     if os.environ["VERSIONED_SFN"] == "Y":
         version = context.function_version
@@ -50,8 +50,9 @@ def state_machine_name(context: object) -> str:
 
 def handle_sfn_name_request(event: dict, context: object):
     with responder(event, context) as cfn_response:
-        ret = state_machine_name(context)
-        cfn_response.return_values(Name=ret)
+        state_machine_name = mk_state_machine_name(context)
+        logger.info(f"{state_machine_name=}")
+        cfn_response.return_values(Name=state_machine_name)
 
 
 
@@ -93,7 +94,7 @@ def lambda_handler(event: dict, context: object) -> None:
 
                 region = os.environ["REGION"]
                 acct_num = os.environ["ACCT_NUM"]
-                state_machine_arn = f"arn:aws:states:{region}:{acct_num}:stateMachine:{state_machine_name(context)}"
+                state_machine_arn = f"arn:aws:states:{region}:{acct_num}:stateMachine:{mk_state_machine_name(context)}"
 
                 if "dry_run" not in event:
                     response = sfn.start_execution(

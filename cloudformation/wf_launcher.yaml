@@ -22,6 +22,9 @@ Parameters:
   WorkflowName:
     Type: String
 
+Conditions:
+  BlueGreenDeployment: !Equals [!Ref VersionedSFN, "Y"]
+
 Resources:
   wfLauncherLambdaRole:
     Type: AWS::IAM::Role
@@ -84,7 +87,8 @@ Resources:
     Properties:
 #       todo: use !GetAtt wfLauncherLambda.Arn (w/o $LATEST?)
 #      ServiceToken: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${wfLauncherLambda}:$LATEST"
-      ServiceToken: !GetAtt wfLauncherLambda.Arn
+#      ServiceToken: !GetAtt wfLauncherLambda.Arn
+      ServiceToken: !If [BlueGreenDeployment, !GetAtt wfLauncherLambda.Arn, !GetAtt wfLauncherLambdaVersion.Arn]
       Properties:
         Uniqifier: !Ref Uniqifier
 
