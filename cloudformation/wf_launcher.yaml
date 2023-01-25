@@ -82,9 +82,9 @@ Resources:
     # nothing is created, no reason to call during deletion
     DeletionPolicy: Retain
     Properties:
-      # todo: wf update after a launcher lambda change fails with "Modifying service token is not allowed"
-#      ServiceToken: !GetAtt wfLauncherLambdaVersion.Arn
-      ServiceToken: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${wfLauncherLambda}:$LATEST"
+#       todo: use !GetAtt wfLauncherLambda.Arn (w/o $LATEST?)
+#      ServiceToken: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${wfLauncherLambda}:$LATEST"
+      ServiceToken: !GetAtt wfLauncherLambda.Arn
       Properties:
         Uniqifier: !Ref Uniqifier
 
