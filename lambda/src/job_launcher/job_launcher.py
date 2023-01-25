@@ -93,9 +93,7 @@ def lambda_handler(event: dict, context: object) -> None:
 
                 region = os.environ["REGION"]
                 acct_num = os.environ["ACCT_NUM"]
-                root = os.environ["SFN_NAME_ROOT"]
-                version = context.function_version
-                state_machine_arn = f"arn:aws:states:{region}:{acct_num}:stateMachine:{root}--{version}"
+                state_machine_arn = f"arn:aws:states:{region}:{acct_num}:stateMachine:{state_machine_name(context)}"
 
                 if "dry_run" not in event:
                     response = sfn.start_execution(
