@@ -11,7 +11,7 @@ def launcher_substack_rc(options: dict) -> Resource:
     rc_bucket = os.environ["RESOURCE_BUCKET_NAME"]
     source_version = os.environ["SOURCE_VERSION"]
     template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/{source_version}/wf_launcher.yaml"
-    versioned_sfn = options["versioned"]
+    versioned_sfn = "Y" if options["versioned"] else "N"
 
     ret = {
         "Type": "AWS::CloudFormation::Stack",

@@ -201,7 +201,7 @@ workflow_schema = Schema(
                                                   msg="shell option must be bash, sh, or sh-pipefail"),
             Optional("task_role", default=None): Maybe(str),
             # todo: should probly be True, False, convert in resource code
-            Optional("versioned", default="N"): Any("Y", "N"),
+            Optional("versioned", default=False): Any(True, False),
         },
         Required("Steps", "Steps list not found"):
             All(Length(min=1, msg="at least one step is required"),
