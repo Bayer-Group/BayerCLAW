@@ -9,6 +9,5 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt --target ${LAMBDA_TASK_ROOT}
 COPY src/job_launcher/job_launcher.py ${LAMBDA_TASK_ROOT}
 COPY src/common/python/lambda_logs.py ${LAMBDA_TASK_ROOT}
-COPY src/common/python/cfn_responder.py ${LAMBDA_TASK_ROOT}
 
 CMD ["job_launcher.lambda_handler"]

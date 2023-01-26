@@ -168,6 +168,26 @@ def write_state_machine_to_s3(sfn_def: dict) -> dict:
     return ret
 
 
+def mk_physical_name(versioned: str) -> dict:
+    if versioned:
+        body = {
+            "Fn::Sub": [
+                "${Root}--${Version}",
+                {
+                    "Root": {"Ref": "AWS::StackName"},
+                    "Version": {
+                        "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]
+                    }
+                }
+            ]
+        }
+    else:
+        body = {"Ref": "AWS::StackName"}
+
+    ret = {"StateMachineName": body}
+    return ret
+
+
 def handle_state_machine(raw_steps: List[Dict],
                          options: dict,
                          repository: str,
@@ -179,23 +199,22 @@ def handle_state_machine(raw_steps: List[Dict],
     else:
         state_machine_location = write_state_machine_to_fh(state_machine_def, dst_fh)
 
-    state_machine_name = make_logical_name("main.state.machine")
     ret = {
         "Type": "AWS::StepFunctions::StateMachine",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
-            "StateMachineName": {
-                "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.StateMachineName"],
-                # "Fn::Sub": [
-                #     "${Root}--${Version}",
-                #     {
-                #         "Root": {"Ref": "AWS::StackName"},
-                #         "Version": {
-                #             "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]
-                #         }
-                #     }
-                # ]
-            },
+            **mk_physical_name(options["versioned"]),
+            # "StateMachineName": {
+            #     "Fn::Sub": [
+            #         "${Root}--${Version}",
+            #         {
+            #             "Root": {"Ref": "AWS::StackName"},
+            #             "Version": {
+            #                 "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]
+            #             }
+            #         }
+            #     ]
+            # },
             "RoleArn": os.environ["STATES_EXECUTION_ROLE_ARN"],
             "DefinitionS3Location": state_machine_location,
             "DefinitionSubstitutions": None,
@@ -208,8 +227,10 @@ def handle_state_machine(raw_steps: List[Dict],
         },
     }
 
-    yield Resource(state_machine_name, ret)
-    return state_machine_name
+    state_machine_logical_name = make_logical_name("main.state.machine")
+
+    yield Resource(state_machine_logical_name, ret)
+    return state_machine_logical_name
 
 
 def add_definition_substitutions(sfn_resource: Resource, other_resources: dict) -> None:

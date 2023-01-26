@@ -6,7 +6,6 @@ import re
 import boto3
 
 from lambda_logs import JSONFormatter, custom_lambda_logs
-from cfn_responder import responder
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -42,18 +41,11 @@ def mk_state_machine_name(context: object) -> str:
     root = os.environ["SFN_NAME_ROOT"]
     if os.environ["VERSIONED_SFN"] == "Y":
         version = context.function_version
-        ret = f"{root}--{version}"
+        sfn_name = f"{root}--{version}"
     else:
-        ret = root
-    return ret
-
-
-def handle_sfn_name_request(event: dict, context: object):
-    with responder(event, context) as cfn_response:
-        state_machine_name = mk_state_machine_name(context)
-        logger.info(f"{state_machine_name=}")
-        cfn_response.return_values(Name=state_machine_name)
-
+        sfn_name = root
+    logger.info(f"{sfn_name=}")
+    return sfn_name
 
 
 def lambda_handler(event: dict, context: object) -> None:
@@ -67,43 +59,38 @@ def lambda_handler(event: dict, context: object) -> None:
 
     with custom_lambda_logs(**event):
         logger.info(f"{event=}")
+        sfn = boto3.client("stepfunctions")
 
-        if "RequestType" in event:
-            handle_sfn_name_request(event, context)
+        try:
+            # todo: remove
+            assert "_DIE_DIE_DIE_" not in event["job_file_key"]
 
-        else:
-            sfn = boto3.client("stepfunctions")
+            exec_name = make_execution_name(event["job_file_key"],
+                                            event["job_file_version"],
+                                            event["replay"])
+            logger.info(f"{exec_name=}")
 
-            try:
-                # todo: remove
-                assert "_DIE_DIE_DIE_" not in event["job_file_key"]
+            input_obj = {
+                "job_file": {
+                    "bucket": event["job_file_bucket"],
+                    "key": event["job_file_key"],
+                    "version": event["job_file_version"],
+                },
+                "index": event["branch"],
+            }
 
-                exec_name = make_execution_name(event["job_file_key"],
-                                                event["job_file_version"],
-                                                event["replay"])
-                logger.info(f"{exec_name=}")
+            region = os.environ["REGION"]
+            acct_num = os.environ["ACCT_NUM"]
+            state_machine_arn = f"arn:aws:states:{region}:{acct_num}:stateMachine:{mk_state_machine_name(context)}"
 
-                input_obj = {
-                    "job_file": {
-                        "bucket": event["job_file_bucket"],
-                        "key": event["job_file_key"],
-                        "version": event["job_file_version"],
-                    },
-                    "index": event["branch"],
-                }
+            if "dry_run" not in event:
+                response = sfn.start_execution(
+                    stateMachineArn=state_machine_arn,
+                    name=exec_name,
+                    input=json.dumps(input_obj)
+                )
+                logger.info(f"{response=}")
 
-                region = os.environ["REGION"]
-                acct_num = os.environ["ACCT_NUM"]
-                state_machine_arn = f"arn:aws:states:{region}:{acct_num}:stateMachine:{mk_state_machine_name(context)}"
-
-                if "dry_run" not in event:
-                    response = sfn.start_execution(
-                        stateMachineArn=state_machine_arn,
-                        name=exec_name,
-                        input=json.dumps(input_obj)
-                    )
-                    logger.info(f"{response=}")
-
-            except sfn.exceptions.ExecutionAlreadyExists:
-                # duplicated s3 events are way more likely than bona fide name collisions
-                logger.info(f"duplicate event: {exec_name}")
+        except sfn.exceptions.ExecutionAlreadyExists:
+            # duplicated s3 events are way more likely than bona fide name collisions
+            logger.info(f"duplicate event: {exec_name}")

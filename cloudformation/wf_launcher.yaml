@@ -50,7 +50,6 @@ Resources:
                   - "states:StartExecution"
                 Resource: "*"
 
-
   wfLauncherLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -80,24 +79,9 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${wfLauncherLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
-  wfStateMachineName:
-    Type: AWS::CloudFormation::CustomResource
-    # nothing is created, no reason to call during deletion
-    DeletionPolicy: Retain
-    Properties:
-#       todo: use !GetAtt wfLauncherLambda.Arn (w/o $LATEST?)
-#      ServiceToken: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${wfLauncherLambda}:$LATEST"
-#      ServiceToken: !GetAtt wfLauncherLambda.Arn
-      ServiceToken: !If [BlueGreenDeployment, !GetAtt wfLauncherLambda.Arn, !GetAtt wfLauncherLambdaVersion.Arn]
-      Properties:
-        Uniqifier: !Ref Uniqifier
-
 Outputs:
   LauncherLambdaName:
     Value: !Ref wfLauncherLambda
 
   LauncherLambdaVersion:
     Value: !GetAtt wfLauncherLambdaVersion.Version
-
-  StateMachineName:
-    Value: !GetAtt wfStateMachineName.Name
