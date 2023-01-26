@@ -201,7 +201,7 @@ def handle_state_machine(raw_steps: List[Dict],
 
     ret = {
         "Type": "AWS::StepFunctions::StateMachine",
-        "UpdateReplacePolicy": "Retain" if options["versioned"] else "Delete",
+        "UpdateReplacePolicy": "Retain",
         "Properties": {
             **mk_physical_name(options["versioned"]),
             # "StateMachineName": {
