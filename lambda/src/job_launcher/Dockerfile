@@ -8,7 +8,7 @@ RUN yum update -y && \
     yum update -y libtasn1 && \
     yum update -y sqlite && \
     yum -y clean all && \
-    rem -rf /var/cache
+    rm -rf /var/cache/yum
 
 WORKDIR ${LAMBDA_TASK_ROOT}
 
