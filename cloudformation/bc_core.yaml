@@ -437,7 +437,7 @@ Resources:
   PermissionToInvokeEventHandler:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref EventHandlerLambda
+      FunctionName: !Ref EventHandlerLambda.Version
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceAccount: !Ref AWS::AccountId
