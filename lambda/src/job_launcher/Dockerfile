@@ -2,10 +2,13 @@ FROM public.ecr.aws/lambda/python:3.9
 
 LABEL maintainer="jack.tabaska@bayer.com"
 
-RUN yum update krb5 && \
-    yum update libpng && \
-    yum update libtasn1 && \
-    yum update sqlite
+RUN yum update -y && \
+    yum update -y krb5 && \
+    yum update -y libpng && \
+    yum update -y libtasn1 && \
+    yum update -y sqlite && \
+    yum -y clean all && \
+    rem -rf /var/cache
 
 WORKDIR ${LAMBDA_TASK_ROOT}
 
