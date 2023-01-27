@@ -2,6 +2,11 @@ FROM public.ecr.aws/lambda/python:3.9
 
 LABEL maintainer="jack.tabaska@bayer.com"
 
+RUN yum update krb5 && \
+    yum update libpng && \
+    yum update libtasn1 && \
+    yum update sqlite
+
 WORKDIR ${LAMBDA_TASK_ROOT}
 
 COPY src/job_launcher/requirements.txt ./

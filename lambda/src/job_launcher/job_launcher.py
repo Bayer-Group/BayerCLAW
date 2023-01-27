@@ -37,6 +37,7 @@ def make_execution_name(s3_key: str, version: str, replay: str) -> str:
     return ret
 
 
+# todo: unit test
 def mk_state_machine_name(context: object) -> str:
     root = os.environ["SFN_NAME_ROOT"]
     if os.environ["VERSIONED_SFN"] == "Y":

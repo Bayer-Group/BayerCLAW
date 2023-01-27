@@ -523,7 +523,7 @@ Resources:
     Properties:
       Name: !Ref CompilerMacroName
       Description: "bclaw compiler"
-      FunctionName: !Ref CompilerLambda
+      FunctionName: !Ref CompilerLambda.Alias
 
   # step functions
   StatesExecutionRole:
