@@ -22,7 +22,8 @@ sys.path.append(
 
 logging.basicConfig(level=logging.INFO)
 
-from ...src.job_launcher.job_launcher import shorten_filename, normalize, make_execution_name, lambda_handler
+from ...src.job_launcher.job_launcher import shorten_filename, normalize, make_execution_name, \
+    make_state_machine_name, lambda_handler
 
 
 @pytest.mark.parametrize("string, expect", [
@@ -84,8 +85,8 @@ def test_make_execution_name_pathological(s3_key, version, expect):
     assert result == expect
 
 
-@pytest.fixture(scope="function")
-def mock_state_machine():
+@pytest.fixture(scope="function", params=["Y", "N"])
+def mock_state_machine_version(request):
     with moto.mock_iam():
         iam = boto3.resource("iam", region_name="us-east-1")
 
@@ -96,13 +97,17 @@ def mock_state_machine():
 
         with moto.mock_stepfunctions():
             sfn = boto3.client("stepfunctions")
+            if request.param == "Y":
+                sfn_name = "test_sfn--99"
+            else:
+                sfn_name = "test_sfn"
             state_machine = sfn.create_state_machine(
-                name="test_sfn--99",
+                name=sfn_name,
                 definition="{}",
                 roleArn=role.arn
             )
 
-            yield state_machine["stateMachineArn"]
+            yield state_machine["stateMachineArn"], request.param
 
 
 class MockContext():
@@ -114,10 +119,13 @@ class MockContext():
     ("", "one-two-three-file_01234567"),
     ("replay789ABCDEF", "replay789A_one-two-three-file_01234567")
 ])
-def test_lambda_handler(mock_state_machine, replay, expected_name, monkeypatch):
+def test_lambda_handler(mock_state_machine_version, replay, expected_name, monkeypatch):
     monkeypatch.setenv("REGION", "us-east-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
     monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
+
+    state_machine_arn, versioned = mock_state_machine_version
+    monkeypatch.setenv("VERSIONED_SFN", versioned)
 
     event = {
         "branch": "main",
@@ -132,9 +140,9 @@ def test_lambda_handler(mock_state_machine, replay, expected_name, monkeypatch):
     lambda_handler(event, ctx)
 
     sfn = boto3.client("stepfunctions")
-    result = sfn.list_executions(stateMachineArn=mock_state_machine)
+    result = sfn.list_executions(stateMachineArn=state_machine_arn)
     execution = result["executions"][0]
-    assert execution["stateMachineArn"] == mock_state_machine
+    assert execution["stateMachineArn"] == state_machine_arn
     assert execution["name"] == expected_name
     assert execution["status"] == "RUNNING"
 
@@ -151,10 +159,26 @@ def test_lambda_handler(mock_state_machine, replay, expected_name, monkeypatch):
     assert desc_input == expect
 
 
-def test_lambda_handler_duplicate_event(mock_state_machine, monkeypatch):
+@pytest.mark.parametrize("versioned, expect", [
+    ("Y", "test_sfn--99"),
+    ("N", "test_sfn")
+])
+def test_make_state_machine_name(monkeypatch, versioned, expect):
+    monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
+    monkeypatch.setenv("VERSIONED_SFN", versioned)
+    ctx = MockContext()
+
+    result = make_state_machine_name(ctx)
+    assert result == expect
+
+
+def test_lambda_handler_duplicate_event(mock_state_machine_version, monkeypatch):
     monkeypatch.setenv("REGION", "us-east-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
     monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
+
+    state_machine_arn, versioned = mock_state_machine_version
+    monkeypatch.setenv("VERSIONED_SFN", versioned)
 
     event1 = {
         "branch": "main",
@@ -171,5 +195,5 @@ def test_lambda_handler_duplicate_event(mock_state_machine, monkeypatch):
     lambda_handler(event2, ctx)
 
     sfn = boto3.client("stepfunctions")
-    result = sfn.list_executions(stateMachineArn=mock_state_machine)
+    result = sfn.list_executions(stateMachineArn=state_machine_arn)
     assert len(result["executions"]) == 1

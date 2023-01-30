@@ -1,6 +1,7 @@
 import pytest
 
-from ...src.compiler.pkg.state_machine_resources import make_initializer_step, make_step_list
+from ...src.compiler.pkg.state_machine_resources import make_initializer_step, make_step_list, \
+    make_physical_name
 from ...src.compiler.pkg.util import Step, lambda_logging_block, lambda_retry
 
 
@@ -55,3 +56,27 @@ def test_make_step_list():
         assert result.name == k
         assert result.spec == v
         assert result.next == exp_next
+
+
+@pytest.mark.parametrize("versioned", [True, False])
+def test_make_physical_name(versioned):
+    result = make_physical_name(versioned)
+    if versioned:
+        expect = {
+            "StateMachineName": {
+                "Fn::Sub": [
+                    "${Root}--${Version}",
+                    {
+                        "Root": {"Ref": "AWS::StackName"},
+                        "Version": {
+                            "Fn::GetAtt": ["launcherStack", "Outputs.LauncherLambdaVersion"],
+                        },
+                    },
+                ],
+            },
+        }
+    else:
+        expect = {
+            "StateMachineName": {"Ref": "AWS::StackName"}
+        }
+    assert result == expect

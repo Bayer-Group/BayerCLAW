@@ -37,8 +37,7 @@ def make_execution_name(s3_key: str, version: str, replay: str) -> str:
     return ret
 
 
-# todo: unit test
-def mk_state_machine_name(context: object) -> str:
+def make_state_machine_name(context: object) -> str:
     root = os.environ["SFN_NAME_ROOT"]
     if os.environ["VERSIONED_SFN"] == "Y":
         version = context.function_version
@@ -82,7 +81,7 @@ def lambda_handler(event: dict, context: object) -> None:
 
             region = os.environ["REGION"]
             acct_num = os.environ["ACCT_NUM"]
-            state_machine_arn = f"arn:aws:states:{region}:{acct_num}:stateMachine:{mk_state_machine_name(context)}"
+            state_machine_arn = f"arn:aws:states:{region}:{acct_num}:stateMachine:{make_state_machine_name(context)}"
 
             if "dry_run" not in event:
                 response = sfn.start_execution(

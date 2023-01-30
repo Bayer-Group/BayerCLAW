@@ -104,6 +104,7 @@ def make_sns_payload(message: str, event: dict) -> dict:
 def lambda_handler(event: dict, context: object) -> dict:
     print(f"{event=}")
 
+    # todo: include state machine name in message
     message = make_state_change_message(event)
     payload = make_sns_payload(message, event)
 

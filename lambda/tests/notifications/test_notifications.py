@@ -43,7 +43,6 @@ def state_change_event_factory():
             "bucket": LAUNCHER_BUCKET,
             "key": JOB_DATA_KEY,
             "version": JOB_DATA_VERSION,
-            # "s3_request_id": REQUEST_ID,
         },
         "index": "main",
     }

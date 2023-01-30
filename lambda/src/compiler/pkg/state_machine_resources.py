@@ -168,8 +168,7 @@ def write_state_machine_to_s3(sfn_def: dict) -> dict:
     return ret
 
 
-# todo: unit test
-def mk_physical_name(versioned: str) -> dict:
+def make_physical_name(versioned: bool) -> dict:
     if versioned:
         body = {
             "Fn::Sub": [
@@ -177,10 +176,10 @@ def mk_physical_name(versioned: str) -> dict:
                 {
                     "Root": {"Ref": "AWS::StackName"},
                     "Version": {
-                        "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]
-                    }
-                }
-            ]
+                        "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+                    },
+                },
+            ],
         }
     else:
         body = {"Ref": "AWS::StackName"}
@@ -204,7 +203,7 @@ def handle_state_machine(raw_steps: List[Dict],
         "Type": "AWS::StepFunctions::StateMachine",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
-            **mk_physical_name(options["versioned"]),
+            **make_physical_name(options["versioned"]),
             "RoleArn": os.environ["STATES_EXECUTION_ROLE_ARN"],
             "DefinitionS3Location": state_machine_location,
             "DefinitionSubstitutions": None,
