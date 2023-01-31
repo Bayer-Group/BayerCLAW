@@ -191,7 +191,7 @@ subpipe_step_schema = Schema(
 workflow_schema = Schema(
     {
         Required("Repository", msg="Repository is required"): str,
-        Optional("Parameters", default={}): {
+        Optional("Parameters"): {
             str: {
                 Required("Type", msg="Parameter Type is required"): str,
                 Extra: object,
