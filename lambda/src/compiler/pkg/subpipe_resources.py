@@ -40,6 +40,7 @@ def run_subpipe_step(step: Step, retrieve_step_name: str) -> dict:
                 "job_file.$": "$.job_file",
                 "prev_outputs": {},
                 "repo.$": "$.subpipe.sub_repo",
+                "share_id.$": "$.share_id",
                 "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id",
             },
             # todo: this could get to be too long if you have nested subpipes
