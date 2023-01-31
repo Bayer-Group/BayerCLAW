@@ -12,6 +12,7 @@ def file_submit_step(step: Step, run_subpipe_step_name: str) -> dict:
         "Resource": os.environ["SUBPIPES_LAMBDA_ARN"],
         "Parameters": {
             "repo.$": "$.repo",
+            "job_data": step.spec["job_data"],
             "submit": json.dumps(step.spec["submit"]),
             **lambda_logging_block(step.name),
         },
@@ -76,8 +77,7 @@ def file_retrieve_step(step: Step) -> dict:
     return ret
 
 
-def handle_subpipe(step: Step
-                   ) -> List[State]:
+def handle_subpipe(step: Step) -> List[State]:
     logger = logging.getLogger(__name__)
     logger.info(f"making subpipe step {step.name}")
 

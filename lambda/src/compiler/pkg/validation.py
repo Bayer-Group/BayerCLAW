@@ -179,7 +179,8 @@ scatter_step_schema = Schema(All(
 
 subpipe_step_schema = Schema(
     {
-        Optional("submit", default=[]): [str],
+        Optional("job_data", default=None): Maybe(str),
+        Optional("submit", default=[]): [str],  # deprecated
         Required("subpipe"): str,
         Optional("retrieve", default=[]): [str],
         **next_or_end,
@@ -200,7 +201,6 @@ workflow_schema = Schema(
             Optional("shell", default="sh"): Any ("bash", "sh", "sh-pipefail",
                                                   msg="shell option must be bash, sh, or sh-pipefail"),
             Optional("task_role", default=None): Maybe(str),
-            # todo: should probly be True, False, convert in resource code
             Optional("versioned", default=False): Any(True, False),
         },
         Required("Steps", "Steps list not found"):
@@ -208,25 +208,6 @@ workflow_schema = Schema(
             [{Coerce(str): dict}]),
     }
 )
-
-# workflow_schema = Schema(
-#     {
-#         Required("params", "params block not found"): {
-#             Optional("workflow_name", default=""): str,
-#             Optional("job_name", default=""): str,
-#             Required("repository", msg="repository is required"): str,
-#             Optional("task_role", default=None): Maybe(str),
-#         },
-#         Optional("options", default={}): {
-#             Optional("shell", default="sh"): Any("bash", "sh", "sh-pipefail",
-#                                                  msg="shell option must be bash, sh, or sh-pipefail"),
-#             Optional("task_role", default=None): Maybe(str),
-#         },
-#         Required("steps", "steps list not found"): All(Length(min=1, msg="at least one step is required"),
-#                                                        [{Coerce(str): dict}]),
-#     }
-# )
-
 
 def _validator(spec: dict, schema: Schema, where: str):
     try:

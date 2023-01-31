@@ -7,19 +7,25 @@ import yaml
 from ...src.compiler.pkg.subpipe_resources import file_submit_step, run_subpipe_step, file_retrieve_step, handle_subpipe
 from ...src.compiler.pkg.util import Step, lambda_retry
 
+SUBMIT_BLOCK = {
+    "submit": [
+        "file1.txt -> fileA.txt",
+        "file2.txt",
+    ],
+}
+
 
 @pytest.fixture(scope="module")
 def sample_subpipe_spec() -> dict:
-    step_yaml = textwrap.dedent("""
-      submit:
-        - file1.txt -> fileA.txt
-        - file2.txt
-      subpipe: arn:aws:states:us-east-1:123456789012:StateMachine:test-machine
-      retrieve:
-        - fileX.txt -> file3.txt
-        - fileY.txt
-      """)
-    ret = yaml.safe_load(step_yaml)
+    ret = {
+        "job_data": "test_job_data.json",
+        **SUBMIT_BLOCK,
+        "subpipe": "arn:aws:states:us-east-1:123456789012:StateMachine:test-machine",
+        "retrieve": [
+            "fileX.txt -> file3.txt",
+            "fileY.txt",
+        ],
+    }
     return ret
 
 
@@ -31,7 +37,8 @@ def test_file_submit_step(sample_subpipe_spec, compiler_env):
         "Resource": "subpipes_lambda_arn",
         "Parameters": {
             "repo.$": "$.repo",
-            "submit": json.dumps(sample_subpipe_spec["submit"]),
+            "job_data": "test_job_data.json",
+            "submit": json.dumps(SUBMIT_BLOCK["submit"]),
             "logging": {
                 "branch.$": "$.index",
                 "job_file_bucket.$": "$.job_file.bucket",
