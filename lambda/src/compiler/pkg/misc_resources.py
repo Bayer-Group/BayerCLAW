@@ -47,7 +47,7 @@ def deploy_substack_rc(state_machine_logical_name: str) -> Resource:
                 "LauncherLambdaVersion": {
                     "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
                 },
-                "NotificationsLambdaArn": os.environ["EVENT_HANDLER_LAMBDA_ARN"],
+                "NotificationsLambdaArn": os.environ["NOTIFICATIONS_LAMBDA_ARN"],
                 "StateMachineArn": {"Ref": state_machine_logical_name},
                 "WorkflowName": {"Ref": "AWS::StackName"},
             },

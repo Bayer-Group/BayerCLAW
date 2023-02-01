@@ -62,7 +62,6 @@ def lambda_handler(event: dict, context: object) -> None:
         sfn = boto3.client("stepfunctions")
 
         try:
-            # todo: remove
             assert "_DIE_DIE_DIE_" not in event["job_file_key"]
 
             exec_name = make_execution_name(event["job_file_key"],

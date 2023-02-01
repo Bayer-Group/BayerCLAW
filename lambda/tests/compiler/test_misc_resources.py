@@ -43,7 +43,7 @@ def test_deploy_substack_rc(monkeypatch, compiler_env):
                 "LauncherLambdaVersion": {
                     "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
                 },
-                "NotificationsLambdaArn": "event_handler_lambda_arn",
+                "NotificationsLambdaArn": "notifications_lambda_arn",
                 "StateMachineArn": {"Ref": state_machine_logical_name},
                 "WorkflowName": {"Ref": "AWS::StackName"},
             },

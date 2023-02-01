@@ -21,12 +21,10 @@ phases:
 #      - pytest -s -vvv lambda/tests/
       - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
       - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
-      # todo: use build id
       - export SOURCE_VERSION=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
 
   build:
     commands:
-#      - cd $CODEBUILD_SRC_DIR
       - sam build -b ./build -s . -t cloudformation/bc_core.yaml
       - >
         sam package
@@ -56,8 +54,6 @@ phases:
         Subnets=${SUBNETS}
         Uniqifier=$(date | md5sum | head -c 16)
         VpcId=${VPC_ID}
-      # todo: use SOURCE_VERSION for Uniqifier?
-      # todo: rationalize versions & uniqifiers
 
       - export RUNNER_IMAGE_TAG=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='RunnerImageUri'].OutputValue" --output text)
       - echo $RUNNER_IMAGE_TAG
@@ -78,9 +74,10 @@ phases:
       - >
         aws ecr get-login-password --region ${AWS_REGION} |
         docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-      # todo: don't crash on tag collision
-      - docker push ${RUNNER_IMAGE_TAG}
-      - docker push ${LAUNCHER_IMAGE_TAG}
+
+      # don't crash on tag collision
+      - docker push ${RUNNER_IMAGE_TAG} || true
+      - docker push ${LAUNCHER_IMAGE_TAG} || true
 
 artifacts:
   discard-paths: yes

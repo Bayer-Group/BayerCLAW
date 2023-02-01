@@ -12,7 +12,7 @@ def compiler_env():
     os.environ["CORE_STACK_NAME"] = "bclaw-core"
     os.environ["CHOOSER_LAMBDA_ARN"] = "chooser_lambda_arn"
     os.environ["ECS_TASK_ROLE_ARN"] = "ecs_task_role_arn"
-    os.environ["EVENT_HANDLER_LAMBDA_ARN"] = "event_handler_lambda_arn"
+    os.environ["NOTIFICATIONS_LAMBDA_ARN"] = "notifications_lambda_arn"
     os.environ["GATHER_LAMBDA_ARN"] = "gather_lambda_arn"
     os.environ["ON_DEMAND_QUEUE_ARN"] = "on_demand_queue_arn"
     os.environ["INITIALIZER_LAMBDA_ARN"] = "initializer_lambda_arn"

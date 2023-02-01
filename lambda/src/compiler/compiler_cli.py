@@ -27,7 +27,6 @@ if __name__ == "__main__":
     wf_spec = yaml.safe_load(args.infile)
     wf_spec.pop("Transform", None)
 
-    # todo: what to do about parameters?
     result = compile_template(wf_spec, {}, state_machine_out=args.sfn_file)
     yaml.safe_dump(result, args.cfn_file)
 

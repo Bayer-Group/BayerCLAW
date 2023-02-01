@@ -2,13 +2,6 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
-#  AmiId:
-#    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-#    Description: >
-#      Location of an Amazon Machine Image (AMI) ID in Systems Manager Parameter Store.
-#      This AMI will be used by AWS Batch to create EC2 instances. Default is the
-#      location of the latest Amazon Linux 2 ECS image ID.
-#    Default: "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
   AmiId:
     Type: String
     Description: >
@@ -209,7 +202,7 @@ Resources:
           SOURCE_VERSION: !Ref SourceVersion
           CHOOSER_LAMBDA_ARN: !Ref ChooserLambda.Version
           ECS_TASK_ROLE_ARN: !GetAtt EcsTaskRole.Arn
-          EVENT_HANDLER_LAMBDA_ARN: !Ref EventHandlerLambda.Version
+          NOTIFICATIONS_LAMBDA_ARN: !Ref NotificationsLambda.Version
           GATHER_LAMBDA_ARN: !Ref GatherLambda.Version
           INITIALIZER_LAMBDA_ARN: !Ref InitializerLambda.Version
           JOB_LAUNCHER_REPO_URI: !GetAtt JobLauncherRepo.RepositoryUri
@@ -410,8 +403,7 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${SubpipesLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
-  # todo: rename
-  EventHandlerLambda:
+  NotificationsLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: notifications.lambda_handler
@@ -434,18 +426,18 @@ Resources:
       DeploymentPreference:
         Enabled: False
 
-  PermissionToInvokeEventHandler:
+  PermissionToInvokeNotificationsLambda:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref EventHandlerLambda.Version
+      FunctionName: !Ref NotificationsLambda.Version
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceAccount: !Ref AWS::AccountId
 
-  EventHandlerLambdaLogGroup:
+  NotificationsLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${EventHandlerLambda}"
+      LogGroupName: !Sub "/aws/lambda/${NotificationsLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
   VersionatorLambda:
@@ -709,14 +701,13 @@ Resources:
   RunnerRepo:
     Type: AWS::ECR::Repository
     Properties:
-      # todo: change name, this will fail if uprading from a previous installation
-      RepositoryName: !Sub "${AWS::StackName}/bclaw_runner"
+      RepositoryName: !Sub "${AWS::StackName}/runner"
       ImageTagMutability: IMMUTABLE
 
   JobLauncherRepo:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Sub "${AWS::StackName}/bclaw_launcher"
+      RepositoryName: !Sub "${AWS::StackName}/launcher"
       ImageTagMutability: IMMUTABLE
 
 Outputs:
@@ -729,8 +720,8 @@ Outputs:
   ECSTaskRoleArn:
     Value: !GetAtt EcsTaskRole.Arn
 
-  EventHandlerLambdaArn:
-    Value: !Ref EventHandlerLambda.Version
+  NotificationsLambdaArn:
+    Value: !Ref NotificationsLambda.Version
 
   GatherLambdaArn:
     Value: !Ref GatherLambda.Version

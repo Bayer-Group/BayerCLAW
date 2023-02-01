@@ -13,7 +13,6 @@ def lambda_handler(event: dict, context: object):
 
             client = boto3.client("lambda")
 
-            # todo: description??? might help with manual cleanup
             result = client.publish_version(FunctionName=function_name)
             cfn_response.return_values(Arn=result["FunctionArn"],
                                        Version=result["Version"])
