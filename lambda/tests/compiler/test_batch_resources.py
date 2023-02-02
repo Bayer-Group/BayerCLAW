@@ -7,6 +7,7 @@ import yaml
 from ...src.compiler.pkg.batch_resources import URI_PARSER, expand_image_uri, get_job_queue,\
     get_memory_in_mibs, get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, \
     get_timeout, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH
+from ...src.compiler.pkg.batch_resources import BAD_expand_image_uri
 from ...src.compiler.pkg.misc_resources import LAUNCHER_STACK_NAME
 from ...src.compiler.pkg.util import Step, Resource, State
 
@@ -23,6 +24,23 @@ def test_uri_parser(uri, expected):
 
 
 @pytest.mark.parametrize("uri, expected", [
+    ("image", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image"}),
+    ("image:ver", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:ver"}),
+    ("registry/image", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image"}),
+    ("image:${tag}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:${!tag}"}),
+    ("registry/image:tag", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image:tag"}),
+    ("level1/level2/${env}/image:${tag}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/level1/level2/${!env}/image:${!tag}"}),
+    ("docker.io/library/ubuntu", "docker.io/library/ubuntu"),
+    ("quay.io/biocontainers/edta:1.9.6--1", "quay.io/biocontainers/edta:1.9.6--1"),
+    ("something.weird.com/really/deep/path/image:version", "something.weird.com/really/deep/path/image:version"),
+])
+def test_expand_image_uri(uri, expected):
+    result = expand_image_uri(uri)
+    assert result == expected
+
+
+# preserving these, just in case: old tests for the version that doesn't correctly handle public registries
+@pytest.mark.parametrize("uri, expected", [
     ("registry/path/image_name:version", "registry/path/image_name:version"),
     ("registry/path/image_name:${version}", "registry/path/image_name:${version}"),
     ("registry/path/image_name", "registry/path/image_name"),
@@ -31,8 +49,8 @@ def test_uri_parser(uri, expected):
     ("image_name:${ver}${sion}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name:${!ver}${!sion}"}),
     ("image_name", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name"}),
 ])
-def test_expand_image_uri(uri, expected):
-    result = expand_image_uri(uri)
+def test_BAD_expand_image_uri(uri, expected):
+    result = BAD_expand_image_uri(uri)
     assert result == expected
 
 

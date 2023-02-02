@@ -19,7 +19,7 @@ SCRATCH_PATH = "/_bclaw_scratch"
 # "image_name"                       -> (None, "image_name", None)
 URI_PARSER = re.compile(r"^(?:(.+)/)?([^:]+)(?::(.+))?$")
 
-def expand_image_uri(uri: str) -> Union[str, dict]:
+def BAD_expand_image_uri(uri: str) -> Union[str, dict]:
     registry, image, version = URI_PARSER.fullmatch(uri).groups()
 
     if registry is None:
@@ -32,6 +32,19 @@ def expand_image_uri(uri: str) -> Union[str, dict]:
         }
     else:
         ret = uri
+
+    return ret
+
+
+def expand_image_uri(uri: str) -> Union[str, dict]:
+    subbed_uri = re.sub(r"\${", "${!", uri)
+    maybe_hostname, *_ = subbed_uri.split("/")
+    if "." not in maybe_hostname:
+        ret = {
+            "Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed_uri}",
+        }
+    else:
+        ret = subbed_uri
 
     return ret
 
