@@ -37,16 +37,15 @@ def BAD_expand_image_uri(uri: str) -> Union[str, dict]:
 
 
 def expand_image_uri(uri: str) -> Union[str, dict]:
-    subbed_uri = re.sub(r"\${", "${!", uri)
-    maybe_hostname, *_ = subbed_uri.split("/")
-    if "." not in maybe_hostname:
-        ret = {
-            "Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed_uri}",
-        }
+    subbed = re.sub(r"\${", "${!", uri)
+    # https://stackoverflow.com/questions/37861791/how-are-docker-image-names-parsed
+    #   The hostname [of a docker image uri] must contain a . dns separator,
+    #   a : port separator, or the value "localhost" before the first /.
+    # ...but it's unlikely that localhost will be used in a batch job
+    if re.match(r"^.*[.:].*/", subbed):
+        return subbed
     else:
-        ret = subbed_uri
-
-    return ret
+        return {"Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed}"}
 
 
 def get_job_queue(compute_spec: dict) -> str:

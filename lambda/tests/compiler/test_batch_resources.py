@@ -26,6 +26,7 @@ def test_uri_parser(uri, expected):
 @pytest.mark.parametrize("uri, expected", [
     ("image", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image"}),
     ("image:ver", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:ver"}),
+    ("image:with.dots", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:with.dots"}),
     ("registry/image", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image"}),
     ("image:${tag}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:${!tag}"}),
     ("registry/image:tag", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image:tag"}),
@@ -33,6 +34,7 @@ def test_uri_parser(uri, expected):
     ("docker.io/library/ubuntu", "docker.io/library/ubuntu"),
     ("quay.io/biocontainers/edta:1.9.6--1", "quay.io/biocontainers/edta:1.9.6--1"),
     ("something.weird.com/really/deep/path/image:version", "something.weird.com/really/deep/path/image:version"),
+    ("host-with-port:1234/image", "host-with-port:1234/image"),
 ])
 def test_expand_image_uri(uri, expected):
     result = expand_image_uri(uri)
