@@ -1,6 +1,10 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Parameters:
+  CentralLoggingDestinationArn:
+    Type: String
+    Default: none
+
   LauncherImageUri:
     Type: String
 
@@ -23,7 +27,9 @@ Parameters:
     Type: String
 
 Conditions:
-  BlueGreenDeployment: !Equals [!Ref VersionedSFN, "Y"]
+  # todo: why is this here?
+#  BlueGreenDeployment: !Equals [!Ref VersionedSFN, "Y"]
+  MakeLogSubscriptionFilter: !Not [!Equals [!Ref CentralLoggingDestinationArn, "none"]]
 
 Resources:
   wfLauncherLambdaRole:
@@ -78,6 +84,14 @@ Resources:
     Properties:
       LogGroupName: !Sub "/aws/lambda/${wfLauncherLambda}"
       RetentionInDays: !Ref LogRetentionDays
+
+  wfLauncherLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeLogSubscriptionFilter
+    Properties:
+      DestinationArn: !Ref CentralLoggingDestinationArn
+      FilterPattern: '{$.function = "job_launcher.*"}'
+      LogGroupName: !Ref wfLauncherLambdaLogGroup
 
 Outputs:
   LauncherLambdaName:

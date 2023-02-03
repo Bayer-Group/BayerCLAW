@@ -1,14 +1,11 @@
 import os
-import textwrap
 
-import boto3
-import moto
-import moto.ec2
 import pytest
 
 
 @pytest.fixture(scope="session")
 def compiler_env():
+    os.environ["CENTRAL_LOGGING_DESTINATION_ARN"] = "central_logging_destination_arn"
     os.environ["CORE_STACK_NAME"] = "bclaw-core"
     os.environ["CHOOSER_LAMBDA_ARN"] = "chooser_lambda_arn"
     os.environ["ECS_TASK_ROLE_ARN"] = "ecs_task_role_arn"

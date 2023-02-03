@@ -23,6 +23,8 @@ def test_uri_parser(uri, expected):
     assert result == expected
 
 
+# Docker image tag format:
+#   https://docs.docker.com/engine/reference/commandline/tag/#description
 @pytest.mark.parametrize("uri, expected", [
     ("image", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image"}),
     ("image:ver", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:ver"}),

@@ -10,6 +10,10 @@ Parameters:
       image to use.
     Default: "auto"
 
+  CentralLoggingDestinationArn:
+    Type: String
+    Default: "none"
+
   CompilerMacroName:
     Type: String
     Description: Compiler macro name, change this only for testing and development instances
@@ -198,6 +202,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
+          CENTRAL_LOGGING_DESTINATION_ARN: !Ref CentralLoggingDestinationArn
           CORE_STACK_NAME: !Ref "AWS::StackName"
           SOURCE_VERSION: !Ref SourceVersion
           CHOOSER_LAMBDA_ARN: !Ref ChooserLambda.Version
