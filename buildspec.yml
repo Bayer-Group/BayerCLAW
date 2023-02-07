@@ -40,6 +40,8 @@ phases:
         --s3-prefix lambda
         --no-fail-on-empty-changeset
         --parameter-overrides
+        AmiId=${AMI_ID:-auto}
+        CentralLoggingDestinationArn=${CENTRAL_LOGGING_ARN:-none}
         CompilerMacroName=${COMPILER_MACRO_NAME}
         InstallationName=${INSTALLATION_NAME}
         LauncherBucketName=${LAUNCHER_BUCKET_NAME}
