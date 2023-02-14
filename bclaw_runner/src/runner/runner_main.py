@@ -17,6 +17,7 @@ Options:
     --version            show version
 """
 
+from functools import partial, partialmethod
 import json
 import logging.config
 from typing import Dict, List
@@ -109,6 +110,14 @@ def main(commands: List[str],
 
 def cli() -> int:
     tag_this_instance()
+
+    # create custom log level for user commands
+    # https://stackoverflow.com/a/55276759
+    logging.USER = 25
+    logging.addLevelName(logging.USER, "USER")
+    logging.Logger.user = partialmethod(logging.Logger.log, logging.USER)
+    logging.user = partial(logging.log, logging.USER)
+
     with spot_termination_checker():
         args = docopt(__doc__, version=VERSION)
 
