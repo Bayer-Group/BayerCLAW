@@ -133,7 +133,7 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
             try:
                 with closing(container.logs(stream=True)) as fp:
                     for line in fp:
-                        logger.user(line.decode("utf-8"))
+                        logger.user_cmd(line.decode("utf-8"))
                         # logger.info(line.decode("utf-8"))
 
             except Exception:
