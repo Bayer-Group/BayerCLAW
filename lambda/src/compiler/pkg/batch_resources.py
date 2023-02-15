@@ -4,10 +4,10 @@ import math
 import os
 import re
 from typing import Generator, List, Tuple, Union
-import uuid  # todo: temp
 
 import humanfriendly
 
+from .misc_resources import LAUNCHER_STACK_NAME
 from .qc_resources import handle_qc_check
 from .util import Step, Resource, State, make_logical_name, time_string_to_seconds
 
@@ -18,6 +18,7 @@ SCRATCH_PATH = "/_bclaw_scratch"
 # "registry/path/image_name"         -> ("registry/path", "image_name", None)
 # "image_name:version"               -> (None, "image_name", "version")
 # "image_name"                       -> (None, "image_name", None)
+# todo: remove
 URI_PARSER = re.compile(r"^(?:(.+)/)?([^:]+)(?::(.+))?$")
 
 def BAD_expand_image_uri(uri: str) -> Union[str, dict]:
@@ -192,13 +193,23 @@ def get_timeout(step: Step) -> dict:
 def job_definition_rc(step: Step,
                       task_role: str,
                       shell_opt: str) -> Generator[Resource, None, str]:
-    job_def_name = make_logical_name(f"{step.name}.job.def")
+    logical_name = make_logical_name(f"{step.name}.job.def")
 
     job_def = {
         "Type": "AWS::Batch::JobDefinition",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
-            "JobDefinitionName": str(uuid.uuid4()),
+            "JobDefinitionName": {
+                "Fn::Sub": [
+                    "${Root}--${Version}",
+                    {
+                        "Root": logical_name,
+                        "Version": {
+                            "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+                        },
+                    },
+                ],
+            },
             "Type": "container",
             "Parameters": {
                 "workflow_name": {
@@ -236,8 +247,8 @@ def job_definition_rc(step: Step,
         },
     }
 
-    yield Resource(job_def_name, job_def)
-    return job_def_name
+    yield Resource(logical_name, job_def)
+    return logical_name
 
 
 def get_skip_behavior(spec: dict) -> str:
@@ -252,7 +263,7 @@ def get_skip_behavior(spec: dict) -> str:
 
 
 def batch_step(step: Step,
-               job_definition_name: str,
+               job_definition_logical_name: str,
                scattered: bool,
                next_step_override: str = None,
                attempts: int = 3,
@@ -278,7 +289,7 @@ def batch_step(step: Step,
         ],
         "Parameters": {
             "JobName.$": job_name,
-            "JobDefinition": f"${{{job_definition_name}}}",
+            "JobDefinition": f"${{{job_definition_logical_name}}}",
             "JobQueue": get_job_queue(step.spec["compute"]),
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
@@ -337,16 +348,16 @@ def handle_batch(step: Step,
     task_role = step.spec.get("task_role") or options.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
     shell_opt = step.spec["compute"]["shell"] or options.get("shell")
 
-    job_def_name = yield from job_definition_rc(step, task_role, shell_opt)
+    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt)
 
     if step.spec["qc_check"] is not None:
         qc_state = handle_qc_check(step)
-        ret0 = batch_step(step, job_def_name, scattered, **step.spec["retry"],
+        ret0 = batch_step(step, job_def_logical_name, scattered, **step.spec["retry"],
                           next_step_override=qc_state.name)
         ret = [State(step.name, ret0), qc_state]
 
     else:
-        ret = [State(step.name, batch_step(step, job_def_name, **step.spec["retry"],
+        ret = [State(step.name, batch_step(step, job_def_logical_name, **step.spec["retry"],
                                            scattered=scattered))]
 
     return ret
