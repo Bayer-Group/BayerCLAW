@@ -4,6 +4,7 @@ import math
 import os
 import re
 from typing import Generator, List, Tuple, Union
+import uuid  # todo: temp
 
 import humanfriendly
 
@@ -197,6 +198,7 @@ def job_definition_rc(step: Step,
         "Type": "AWS::Batch::JobDefinition",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
+            "JobDefinitionName": str(uuid.uuid4()),
             "Type": "container",
             "Parameters": {
                 "workflow_name": {
