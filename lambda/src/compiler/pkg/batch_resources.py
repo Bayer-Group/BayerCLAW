@@ -201,9 +201,12 @@ def job_definition_rc(step: Step,
         "Properties": {
             "JobDefinitionName": {
                 "Fn::Sub": [
-                    "${Root}--${Version}",
+                    "${WFName}-${Step}--${Version}",
                     {
-                        "Root": logical_name,
+                        "WFName": {
+                            "Ref": "AWS::StackName",
+                        },
+                        "Step": logical_name,
                         "Version": {
                             "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
                         },
