@@ -251,6 +251,20 @@ def test_job_definition_rc(task_role, sample_batch_step, compiler_env):
         "Type": "AWS::Batch::JobDefinition",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
+            "JobDefinitionName": {
+                "Fn::Sub": [
+                    "${WFName}-${Step}--${Version}",
+                    {
+                        "WFName": {
+                            "Ref": "AWS::StackName"
+                        },
+                        "Step": expected_job_def_name,
+                        "Version": {
+                            "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+                        }
+                    },
+                ],
+            },
             "Type": "container",
             "Parameters": {
                 "workflow_name": {"Ref": "AWS::StackName"},
