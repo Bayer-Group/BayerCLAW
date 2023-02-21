@@ -48,9 +48,9 @@
             - CoreRepo: Location (account and repo name) of the BayerCLAW repository. You shouldn't need to change this.
             - CoreBranch: Git branch to build. You shouldn't need to change this.
         - **Identifiers**
-            - InstallationName: Name of the main BayerCLAW stack. Default is `bayerclaw`, don't change it for the 
+            - InstallationName: Name of the main BayerCLAW stack. Default is `bayerclaw2`, don't change it for the 
             initial deployment.
-            - CompilerMacroName: The name of the BayerCLAW compiler that will be created. Default is `BC_Compiler`,
+            - CompilerMacroName: The name of the BayerCLAW compiler that will be created. Default is `BC2_Compiler`,
             don't change this for the initial deployment.
         - **Enviroment parameters**
             - VpcId: The ID of the VPC where Batch jobs will run, as described above.
@@ -89,13 +89,13 @@ This CloudFormation stack contains resources used to create and update a BayerCL
 - A `resources` S3 bucket, which is used for store items BayerCLAW needs.
 - A CodeBuild project that constructs pieces of BayerCLAW.
 - The CodePipeline that builds everything.
-- An `admin` SNS topic that users can subscribe to to get notifications about BayerCLAW builds and updates.
 
 #### The core stack
 The core stack contains the major functional components of BayerCLAW, including:
 - The `launcher` bucket, where users deposit data files to run through workflows.
 - Lambda functions that perform various processing duties during an execution.
 - Batch components, including compute environments and queues.
+- ECR repositories for BayerCLAW component containers.
 
 ## Updating BayerCLAW
 

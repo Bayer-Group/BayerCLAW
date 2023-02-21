@@ -3,7 +3,7 @@
 ## The `shell` option
 
 BayerCLAW 1.1.3+ provides the ability to choose which Unix shell to run Batch job commands
-under. You can specify the shell to use globally, using the setting in the `options` block
+under. You can specify the shell to use globally, using the setting in the `Options` block
 or for individual steps in the `compute` block. The choices for the `shell` setting are
 `sh`, `bash`, and `sh-pipefail`:
 

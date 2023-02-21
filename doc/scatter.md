@@ -74,12 +74,11 @@ The fields are similar to those of the main (parent) workflow, but with some imp
 
 ## Sample scatter/gather template
 ```YAML
-Transform: BC_Compiler
+Transform: BC2_Compiler
 
-params:
-  repository: s3://sample-bucket/two-step-scatter/repo/${job.SAMPLE_ID}
+Repository: s3://sample-bucket/two-step-scatter/repo/${job.SAMPLE_ID}
 
-steps:
+Steps:
   - Assemble:
       image: shovill
       inputs:

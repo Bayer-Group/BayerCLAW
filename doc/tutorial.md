@@ -34,29 +34,27 @@ Let's start with the simplest possible BayerCLAW workflow.
 You can use this to check that BayerCLAW is installed correctly and all your tools work.
 
 ```yaml
-Transform: BC_Compiler
+Transform: BC2_Compiler
 
-params:
-  repository: s3://bayerclaw-tutorial/runs/${job.job_id}
+Repository: s3://bayerclaw-tutorial/runs/${job.job_id}
 
-steps:
+Steps:
   - parse_config:
       image: docker.io/library/ubuntu
       commands:
         - echo 'Hello, World!'
 ```
 
-The first line, `Transform: BC_Compiler`, is boilerplate that should appear as the first line of every BayerCLAW workflow.
+The first line, `Transform: BC2_Compiler`, is boilerplate that should appear as the first line of every BayerCLAW workflow.
 If you're curious, it's required by AWS CloudFormation under the hood.
 
-The `params` block lays out some information that's shared by all steps in the workflow. The required `repository` field 
-tells BayerCLAW where to store the files this workflow will generate as it runs, in our "repository" S3 bucket.
-This example workflow doesn't generate any files yet, but we'll add outputs in later versions.
+The required `Repository` field tells BayerCLAW where to store the files this workflow will generate as it runs, 
+within our "repository" S3 bucket. This example workflow doesn't generate any files yet, but we'll add outputs in later versions.
 We use the `${job.job_id}` variable here to tell BayerCLAW to look up a field named `job_id` in the input job data file
 and substitute it into the repository name string. This is done so that each execution of the workflow writes files to 
 its own subdirectory.
 
-The `steps` block lays out what the workflow will actually do when it runs.
+The `Steps` block lays out what the workflow will actually do when it runs.
 Right now, we've declared only one step, which we decided to name `parse_config`.
 When it runs, it will use the public `ubuntu` image, the one you get if you type `docker run ubuntu ...` from the command line.
 By default, the `image` parameter refers to images in your account's ECR repository;
@@ -131,7 +129,7 @@ We record our parameters in a JSON file, which I'll save as `job.json`.
 }
 ```
 
-Based on the `params` of the workflow we authored, we know that if this job produced any output files, they would go to
+Based on the `Repository` of the workflow we authored, we know that if this job produced any output files, they would go to
 our repository at `s3://bayerclaw-tutorial/runs/SEQxxxxx`.
 
 When we deployed our BayerCLAW, it created a special S3 bucket named something like `bclaw-main-launcher-123456789012`.
@@ -189,7 +187,7 @@ Jobs also run on machines with 1 TB of scratch disk space, but sometimes multipl
 If you'd like to request more resources, you just add on to your step definition:
 
 ```yaml
-steps:
+Steps:
   - parse_config:
       image: micro-assembler
       commands:
@@ -285,10 +283,11 @@ In this example, I'm just going to pretty-print the JSON using `jq`, as a placeh
 Here's the modified workflow I'm using:
 
 ```yaml
-params:
-  repository: s3://bayerclaw-tutorial/runs/${job.job_id}
+Transform: BC2_Compiler
 
-steps:
+Repository: s3://bayerclaw-tutorial/runs/${job.job_id}
+
+Steps:
   - parse_config:
       image: micro-assembler
       inputs:
@@ -397,12 +396,11 @@ If our child jobs produced many outputs, we might choose to collect only a subse
 Putting all of this together, the whole workflow now looks like this:
 
 ```yaml
-Transform: BC_Compiler
+Transform: BC2_Compiler
 
-params:
-  repository: s3://bayerclaw-tutorial/runs/${job.job_id}
+Repository: s3://bayerclaw-tutorial/runs/${job.job_id}
 
-steps:
+Steps:
   - parse_config:
       image: micro-assembler
       inputs:
@@ -465,12 +463,11 @@ This brings us to the finished example of a three-step pipeline.
 The same steps used with our "hello world" example above can be used to deploy and run this one:
 
 ```yaml
-Transform: BC_Compiler
+Transform: BC2_Compiler
 
-params:
-  repository: s3://bayerclaw-tutorial/runs/${job.job_id}
+Repository: s3://bayerclaw-tutorial/runs/${job.job_id}
 
-steps:
+Steps:
   - parse_config:
       image: micro-assembler
       inputs:

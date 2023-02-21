@@ -19,12 +19,16 @@ A BayerCLAW workflow template is a JSON- or YAML-formatted file describing the p
 Here is an example of a very simple, one-step workflow:
 
 ```YAML
-Transform: BC_Compiler
+Transform: BC2_Compiler
 
-params:
-  repository: s3://example-bucket/hello-world/${job.SAMPLE_ID}
+Repository: s3://${myBucket}/hello-world/${job.SAMPLE_ID}
 
-steps:
+Parameters:
+  myBucket:
+    Type: String
+    Default: example-bucket
+
+Steps:
   -
     hello:
       image: ubuntu
@@ -33,37 +37,56 @@ steps:
 ```
 
 ## The Transform line
-
-Every template must start with `Transform: BC_Compiler`.
-This tells CloudFormation to compile (transform) our template through the Lambda function `BC_Compiler`, which allows
+Every template must start with `Transform: BC2_Compiler`.
+This tells CloudFormation to compile (transform) our template through the Lambda function `BC2_Compiler`, which allows
 us to deploy the template directly using CloudFormation.
 
-## The params block
-The params block of the workflow template contains values to be used by the workflow:
+## The Repository line
+This specifies an S3 location that will be used to store intermediate and output files. Usually, this should
+be parameterized with one or more unique identifiers from the job data file so that each job's files go to 
+a separate folder.
 
-* `repository`(required): The S3 location that will be used to store intermediate and output files. Usually, this should
-be parameterized with one or more unique identifiers from the job data file.
-* `job_name` (optional): An name used to help identify individual executions. Should refer to one or more fields in the
-job data file (see [String Substitution](#string-substitution)). After string substitution, the job name should only
-contain alphanumeric characters, underscores, dashes, and periods. 
-* `task_role` (optional): ‼️DEPRECATED‼️ This is moving to the [options](#-the-options-block) block,
-and its use in the `params` block is deprecated.
+## The Parameters block
+The Parameters block allows you set custom values to use when your workflow is deployed. Each Parameter
+is specified as:
+```yaml
+<parameter name>:
+  Type: <type name>
+  Default: <default value>
+```
+where:
+* `parameter name`: The name this used to reference this Parameter in the rest of the workflow template. Parameter
+  names must consist of alphanumeric characters only. Parameters can be referenced using `${<parameter pame>}`
+  (e.g. `${myParameter}`)
+* `Type` (required): The Parameter's data type. This will usually be `String` or `Number`.
+* `Default` (optional): A default value to use when no value is available when the workflow is compiled.
 
-## 🆕 The options block
+Parameter values are inserted into your workflow when it is compiled, and cannot be used or altered later,
+i.e. during execution.
 
-The options block contains settings that affect the operation of BayerCLAW:
+The Parameters block is processed directly by CloudFormation, and many other options are
+available. See the [CloudFormation documentation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html)
+for additional information.
 
-* 🆕`shell` (optional): Sets the UNIX shell (and shell options) that will be used to run commands in
+## The Options block
+The Options block contains settings that affect the operation of BayerCLAW:
+
+* `shell` (optional): Sets the UNIX shell (and shell options) that will be used to run commands in
     this workflow. Choices are `sh` (the default), `bash`, and `sh-pipefail`.
 * `task_role` (optional): the ARN of a pre-existing [ECS task role](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html)
     to be used by all the steps in this workflow, such as `arn:aws:iam::123456789012:role/hello-world-ecs-task-role`.
     This allows advanced users to provide custom AWS permissions to the workflow, if needed.
     If this field is not specified, the steps will use a generic role created by BayerCLAW, which is fine for most uses.
     See [bc_core.yaml](../cloudformation/bc_core.yaml) for the definition of the generic role.
+* `versioned` (optional): When this is set to `true`, BayerCLAW will deploy this workflow using 
+    a [blue/green](https://en.wikipedia.org/wiki/Blue-green_deployment) protocol, allowing you to deploy
+    new workflow versions without interrupting running jobs. This involves creating a new version of the
+    workflow's Step Functions state machine for every new revision. When set to `false` (the default), new
+    state machine versions will overwrite existing versions.
 
-## The steps block
-The workflow section consists of a single JSON or YAML list containing processing step specifications.
-The steps will be run in the order listed in the workflow template file.
+## The Steps block
+The Steps section consists of a single JSON or YAML list containing processing step specifications.
+Workflow steps will be run in the order listed in the workflow template file.
 
 The fields of the step specification objects are:
 * `image` (required): The name of the Docker image to use. If you specify a plain name, such as `ubuntu` or `my_image:v1`,
@@ -72,14 +95,14 @@ The fields of the step specification objects are:
   in ECR. Use of version tags is recommended but optional; per custom, the version tag defaults to `:latest`. The usual
   [caveats](https://www.howtogeek.com/devops/understanding-dockers-latest-tag/) about the `:latest` tag apply.
 
-  🆕 You can [substitute](#string-substitution) values from the job data file into the version tag of your image, for
-  example:
+  You can [substitute](#string-substitution) values from the job data file into the
+  image name or version tag of your image, for example:
   ```yaml
   image: my_repo/my_image:${job.environment}
   ```
   This is intended to help deploy multiple instances of a workflow in an account without having to change the code.
 
-  String substitutions can only be performed in the version tag, not in any other part of
+  String substitutions can only be performed in the image name and the version tag, not in any other part of
   the image name.
 * `task_role` (optional): allows overriding the global `task_role` on a per-step basis, if desired.
 * `inputs`: A set of key-value pairs indicating files to be downloaded from S3 for processing.
@@ -138,7 +161,7 @@ The fields of the step specification objects are:
     natively support the use of GPU resources: you will need to create a custom GPU-enabled job queue and use the
     `queue_name` parameter to direct jobs to it. See [the custom queue documentation](custom_queue.md) for
     details.
-  * 🆕`shell`: Overrides the global `shell` option from the [params](#the-params-block) block. Choices are
+  * `shell`: Overrides the global `shell` option from the [params](#the-params-block) block. Choices are
       `sh`, `bash`, and `sh-pipefail`, defaults to `sh`.
 * `filesystems`: A list of objects describing EFS filesystems that will be mounted for this job. Note that you may
   have several entries in this list, but each `efs_id` must be unique. All filesystems are mounted read-only.
@@ -166,15 +189,22 @@ the current step finishes. Also useful in conjunction with [chooser steps](#choo
 
 ### Sample workflow template
 ```YAML
-Transform: BC_Compiler
+Transform: BC2_Compiler
 
-params:
-  repository: s3://my-bucket/two-step/repo/${job.SAMPLE_ID}
+Repository: s3://${myBucket}/two-step/repo/${job.SAMPLE_ID}
+ 
+Parameters:
+  myBucket:
+    Type: String
+    Default: my-bucket
+  blastDb:
+    Type: String
+    Default: uniprot/uniprot.fasta
   
-options:
+Options:
   shell: bash
 
-steps:
+Steps:
   -
     Assemble:
       image: shovill
@@ -219,7 +249,7 @@ steps:
           efs_id: fs-12345678
           host_path: /ref_data
       commands:
-        - blastp -query ${inputs} -db /ref_data/uniprot/uniprot.fasta -out ${blast_out} -evalue 1e-10
+        - blastp -query ${inputs} -db /ref_data/${blastDb} -out ${blast_out} -evalue 1e-10
       outputs:
         blast_out: prots_v_uniprot.txt
       skip_on_rerun: false
@@ -228,7 +258,7 @@ steps:
 ## QC steps
 
 Any step may include a quality control check.
-If the check fails, the pipeline will stop early and not continue to the end.
+If the check fails, the pipeline will abort and not continue to the end.
 This is typically used when the input data is not adequate for the pipeline to continue.
 
 [Click here](qc.md) for full documentation of the QC syntax.
@@ -250,6 +280,8 @@ in the job data file.
 
 The order in which string substitutions happen is:
 
+0. Values from the Parameters block are substituted into all parts of the workflow template at compile time,
+before any other processing happens.
 1. Values from the job data file are substituted into all parts of the workflow template.
 2. Within each step, the `inputs`, `references`, and `outputs` values are substituted into the `commands`. Note, however,
 that the `input`, `references`, and `output` file paths are reduced to file names before substitution (e.g. `s3://bucket/path/to/file.txt`

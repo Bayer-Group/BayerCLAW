@@ -16,11 +16,10 @@ The parameters for the `bc_batch` template are as follows:
     - QueuePriority: Priority level for the job queue. Jobs from a queue with a higher QueuePriority
     number will be prioritized those from a queue with lower QueuePriority (but see
       [below](#on-queue-priority-levels) for caveats). [Optional, default=10]
-- Source parameters
-    - ResourceBucketName: The resource S3 bucket associated with your BayerCLAW installation. This
-    will usually be something like `<installation name>-resources-<account id>`. [Required]
 - Compute parameters
-    - AmiId: The Amazon Machine Image (AMI) to use to launch EC2 instances. [Required]
+    - AmiId: The Amazon Machine Image (AMI) to use to launch EC2 instances. If set to
+      `Auto`, AWS Batch will select an appropriate machine image for the EC2 instance being
+      launched. Otherwise, you may specify a custom (ECS-enabled!) AMI. [Optional, default=Auto]
     - RequestType: Choose whether to run Spot or On-Demand instances. [Optional, defaul=Spot]
     - InstanceTypes: A comma-separated list of EC2 instance types to use. Enter `optimal` to allow
       AWS Batch to choose a suitable instance type from among the M4, C4, or R4 instance families.
@@ -84,7 +83,8 @@ One of the major motivations for providing BayerCLAW with custom job queue capab
 use of GPU-enabled compute resources in workflows. Here are some special considerations for creating
 job queues with GPU support:
 
-AMI ID: You must choose an AMI that both supports GPU and is ECS-optimized. You can typically find 
+AMI ID: If the AmiID parameter is set to `Auto`, AWS Batch will select a GPU-enabled AMI for you.
+Otherwise, you must choose an AMI that both supports GPU and is ECS-optimized. You can typically find 
 these by searching for the strings "gpu" and "ecs" in the EC2 AMI console. Again, Amazon Linux 2
 is recommended.
 

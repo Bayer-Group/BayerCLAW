@@ -17,7 +17,7 @@ all processes in the container will be killed immediately so no upload is possib
 (Batch will typical report an error code 137 for out of memory.)
 
 Each Batch EC2 instance has a temporary EBS volume attached as scratch space.
-By default, each *instance* has a 100 GB scratch volume.
+By default, each *instance* has a 1 Tb scratch volume.
 However, multiple jobs may share a single instance, in which case they have to share the scratch space.
 AWS Batch controls how jobs are packed onto instances, and we are not aware of a way for users to control this.
 

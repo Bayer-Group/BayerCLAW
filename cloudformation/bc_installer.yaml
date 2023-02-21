@@ -46,7 +46,7 @@ Parameters:
   CompilerMacroName:
     Type: String
     Description: Compiler macro name, change this only if you are creating multiple BayerCLAW installations.
-    Default: "BC_Compiler"
+    Default: "BC2_Compiler"
 
   CoreBranch:
     Type: String
@@ -63,7 +63,7 @@ Parameters:
     Description: >
       Name of this BayerCLAW installation, change this only if you are creating multiple BayerCLAW
       installations.
-    Default: "bayerclaw"
+    Default: "bayerclaw2"
 
   LauncherBucketName:
     Type: String
