@@ -19,11 +19,15 @@ def lambda_handler(event: dict, context: object) -> None:
     #    should eventbridge rule put something bclaw-specific in input object for recognition?
 
     try:
+        wf_name = event["detail"]["stateMachineArn"].rsplit(":", 1)[-1]
         exec_id = event["detail"]["name"]
         job_status = event["detail"]["status"]
 
         input_obj = json.loads(event["detail"]["input"])
-        wf_name, job_file_name = input_obj["job_file"]["key"].split("/", 1)
+
+        # HEY! this causes subpipe executions to look like superpipe executions
+        # wf_name, job_file_name = input_obj["job_file"]["key"].split("/", 1)
+        job_file_name = input_obj["job_file"]["key"].split("/", 1)[-1]
         job_file_version = input_obj["job_file"]["version"]
 
         time_str = event["time"]

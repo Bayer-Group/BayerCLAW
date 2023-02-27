@@ -27,6 +27,18 @@ If you have selected multiple jobs, it will allow you to choose either writing a
 It will also write out metadata about the selected jobs if you like.
 This can be useful for investigating the distribution of running times over a large number of jobs.
 
+## Installation
+
+`sam build -b ./build -s . -t template.yaml`
+
+```bash
+sam deploy \
+--template-file build/template.yaml \
+--stack-name wut \
+--resolve-s3 \
+--capabilities CAPABILITY_IAM \
+```
+
 ## Example of running the tool
 
 ```
