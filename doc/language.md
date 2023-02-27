@@ -4,8 +4,10 @@
 
 - [Simple example](#simple-example)
 - [The Transform line](#the-transform-line)
-- [The params block](#the-params-block)
-- [The steps block](#the-steps-block)
+- [The Repository line](#the-repository-line)
+- [The Parameters block](#the-parameters-block)
+- [The Options block](#the-options-block)
+- [The Steps block](#the-steps-block)
 - [QC steps](#qc-steps)
 - [Scatter-gather steps](#scatter-gather-steps)
 - [String substitution](#string-substitution)
@@ -31,7 +33,7 @@ Parameters:
 Steps:
   -
     hello:
-      image: ubuntu
+      image: docker.io/library/ubuntu
       commands:
         - echo "Hello world! This is job ${job.SAMPLE_ID}!"
 ```
@@ -47,29 +49,33 @@ be parameterized with one or more unique identifiers from the job data file so t
 a separate folder.
 
 ## The Parameters block
-The Parameters block allows you set custom values to use when your workflow is deployed. Each Parameter
+The `Parameters` block allows you set custom values to use when your workflow is deployed. Each Parameter
 is specified as:
 ```yaml
 <parameter name>:
   Type: <type name>
   Default: <default value>
+  NoEcho: <true|false>
+  <other options...>
 ```
 where:
 * `parameter name`: The name this used to reference this Parameter in the rest of the workflow template. Parameter
-  names must consist of alphanumeric characters only. Parameters can be referenced using `${<parameter pame>}`
-  (e.g. `${myParameter}`)
+names must consist of alphanumeric characters only. Parameters can be referenced using `${<parameter pame>}`
+(e.g. `${myParameter}`)
 * `Type` (required): The Parameter's data type. This will usually be `String` or `Number`.
 * `Default` (optional): A default value to use when no value is available when the workflow is compiled.
-
-Parameter values are inserted into your workflow when it is compiled, and cannot be used or altered later,
-i.e. during execution.
-
-The Parameters block is processed directly by CloudFormation, and many other options are
+* `NoEcho` (optional): If you intend to supply sensitive information to the workflow through a parameter value, set
+`NoEcho` to `true` to prevent it from being displayed in the logs, console, etc. Default is `false`.
+* `other options`: The `Parameters` block is processed directly by CloudFormation, and many additional options are
 available. See the [CloudFormation documentation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html)
 for additional information.
 
+All parameters must have either a `Default` value or a value assigned at compile time. The Parameter values are built
+directly into  the workflow, and may not be altered or referenced later, i.e. during execution. Parameters may not
+reference each other.
+
 ## The Options block
-The Options block contains settings that affect the operation of BayerCLAW:
+The `Options` block contains settings that affect the operation of BayerCLAW:
 
 * `shell` (optional): Sets the UNIX shell (and shell options) that will be used to run commands in
     this workflow. Choices are `sh` (the default), `bash`, and `sh-pipefail`.
@@ -85,7 +91,7 @@ The Options block contains settings that affect the operation of BayerCLAW:
     state machine versions will overwrite existing versions.
 
 ## The Steps block
-The Steps section consists of a single JSON or YAML list containing processing step specifications.
+The `Steps` section consists of a single JSON or YAML list containing processing step specifications.
 Workflow steps will be run in the order listed in the workflow template file.
 
 The fields of the step specification objects are:
