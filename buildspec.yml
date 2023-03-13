@@ -10,22 +10,18 @@ env:
 phases:
   install:
     runtime-versions:
-      python: 3.10
+      python: 3.9
     commands:
-#      - pip install aws-sam-cli==1.51.0
+      - pip install aws-sam-cli==1.51.0
       - pip install -r lambda/tests/requirements.txt
 
   pre_build:
     commands:
       # todo: restore
 #      - pytest -s -vvv lambda/tests/
-#      - ps -p "$$"
-#      - echo $0
-#      - env | sort
       - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
       - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
-#      - export SOURCE_VERSION=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
-      - export SOURCE_VERSION=$(expr substr $CODEBUILD_RESOLVED_SOURCE_VERSION 1 7)
+      - export SOURCE_VERSION=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
 
   build:
     commands:
