@@ -9,9 +9,16 @@ from .validation import workflow_schema
 logger = logging.getLogger()
 
 
+# remove this after everybody gets used to capitalized top level keys
+def _capitalize_top_level_keys(frag: dict) -> dict:
+    ret = {k.capitalize(): v for k, v in frag.items()}
+    return ret
+
+
 def compile_template(fragment: dict, param_values: dict, state_machine_out=None) -> dict:
     # normalize workflow spec
-    normalized_wf = workflow_schema(fragment)
+    # normalized_wf = workflow_schema(fragment)
+    normalized_wf = workflow_schema(_capitalize_top_level_keys(fragment))
 
     subbed_wf = substitute_params(param_values, normalized_wf)
 

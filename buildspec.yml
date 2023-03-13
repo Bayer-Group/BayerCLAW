@@ -12,7 +12,7 @@ phases:
     runtime-versions:
       python: 3.9
     commands:
-      - pip install aws-sam-cli==1.51.0
+#      - pip install aws-sam-cli==1.51.0
       - pip install -r lambda/tests/requirements.txt
 
   pre_build:
@@ -26,18 +26,20 @@ phases:
   build:
     commands:
       - sam build -b ./build -s . -t cloudformation/bc_core.yaml
-      - >
-        sam package
-        --template-file build/template.yaml
-        --s3-bucket ${RESOURCE_BUCKET_NAME}
-        --s3-prefix lambda
-        --output-template-file build/packaged.yaml
+      # todo: need?
+#      - >
+#        sam package
+#        --template-file build/template.yaml
+#        --s3-bucket ${RESOURCE_BUCKET_NAME}
+#        --s3-prefix lambda
+#        --output-template-file build/packaged.yaml
       - >
         sam deploy
-        --template-file build/packaged.yaml
+        --template-file build/template.yaml
         --stack-name ${CORE_STACK_NAME}
-        --capabilities CAPABILITY_NAMED_IAM
+        --s3-bucket ${RESOURCE_BUCKET_NAME}
         --s3-prefix lambda
+        --capabilities CAPABILITY_NAMED_IAM
         --no-fail-on-empty-changeset
         --parameter-overrides
         AmiId=${AMI_ID:-auto}
@@ -80,6 +82,9 @@ phases:
       # don't crash on tag collision
       - docker push ${RUNNER_IMAGE_TAG} || true
       - docker push ${LAUNCHER_IMAGE_TAG} || true
+
+      # todo: temp
+      - env
 
 artifacts:
   discard-paths: yes

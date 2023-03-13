@@ -27,8 +27,6 @@ Parameters:
     Type: String
 
 Conditions:
-  # todo: why is this here?
-#  BlueGreenDeployment: !Equals [!Ref VersionedSFN, "Y"]
   MakeLogSubscriptionFilter: !Not [!Equals [!Ref CentralLoggingDestinationArn, "none"]]
 
 Resources:

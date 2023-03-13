@@ -81,23 +81,6 @@ def lambda_logging_block(step_name: str) -> dict:
     return ret
 
 
-# def do_param_substitution(spec: dict) -> dict:
-#     ret = {}
-#
-#     for k, v in spec.items():
-#         if k in {"inputs", "commands", "outputs"}:
-#             ret[k] = _param_subber(spec["params"], v)
-#         elif k == "steps":
-#             parent_params = {f"parent.{k}": v for k, v in spec["params"].items()}
-#             ret[k] = _param_subber(parent_params, v)
-#         elif k == "params":
-#             ret[k] = {}
-#         else:
-#             ret[k] = v
-#
-#     return ret
-
-
 def time_string_to_seconds(time: str) -> int:
     units = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
     count = int(time[:-1])

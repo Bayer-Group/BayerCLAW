@@ -133,7 +133,6 @@ Resources:
 
   wfLauncherLambdaAliasLive:
     Type: AWS::Lambda::Alias
-    # todo: depends on notifications
     UpdatePolicy:
       CodeDeployLambdaAliasUpdate:
         ApplicationName: !Ref wfCodeDeployApplication
