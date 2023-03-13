@@ -19,6 +19,7 @@ phases:
     commands:
       # todo: restore
 #      - pytest -s -vvv lambda/tests/
+      - env | sort
       - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
       - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
       - export SOURCE_VERSION=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
