@@ -209,6 +209,7 @@ workflow_schema = Schema(
     }
 )
 
+
 def _validator(spec: dict, schema: Schema, where: str):
     try:
         ret = schema(spec)

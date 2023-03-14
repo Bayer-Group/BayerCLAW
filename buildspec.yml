@@ -26,13 +26,6 @@ phases:
   build:
     commands:
       - sam build -b ./build -s . -t cloudformation/bc_core.yaml
-      # todo: need?
-#      - >
-#        sam package
-#        --template-file build/template.yaml
-#        --s3-bucket ${RESOURCE_BUCKET_NAME}
-#        --s3-prefix lambda
-#        --output-template-file build/packaged.yaml
       - >
         sam deploy
         --template-file build/template.yaml
