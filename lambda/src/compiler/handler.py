@@ -25,7 +25,7 @@ def lambda_handler(event: dict, context: object) -> dict:
     #   }
     #   transformId: str
     # }
-
+    logger.info(f"{event=}")
     ret = event.copy()
 
     try:
