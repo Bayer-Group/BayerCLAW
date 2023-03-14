@@ -85,7 +85,7 @@ def test_make_execution_name_pathological(s3_key, version, expect):
     assert result == expect
 
 
-@pytest.fixture(scope="function", params=["Y", "N"])
+@pytest.fixture(scope="function", params=["true", "false"])
 def mock_state_machine_version(request):
     with moto.mock_iam():
         iam = boto3.resource("iam", region_name="us-east-1")
@@ -97,7 +97,7 @@ def mock_state_machine_version(request):
 
         with moto.mock_stepfunctions():
             sfn = boto3.client("stepfunctions")
-            if request.param == "Y":
+            if request.param == "true":
                 sfn_name = "test_sfn--99"
             else:
                 sfn_name = "test_sfn"
@@ -160,8 +160,8 @@ def test_lambda_handler(mock_state_machine_version, replay, expected_name, monke
 
 
 @pytest.mark.parametrize("versioned, expect", [
-    ("Y", "test_sfn--99"),
-    ("N", "test_sfn")
+    ("true", "test_sfn--99"),
+    ("false", "test_sfn")
 ])
 def test_make_state_machine_name(monkeypatch, versioned, expect):
     monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")

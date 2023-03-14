@@ -58,10 +58,10 @@ def test_make_step_list():
         assert result.next == exp_next
 
 
-@pytest.mark.parametrize("versioned", [True, False])
+@pytest.mark.parametrize("versioned", ["true", "false"])
 def test_make_physical_name(versioned):
     result = make_physical_name(versioned)
-    if versioned:
+    if versioned == "true":
         expect = {
             "StateMachineName": {
                 "Fn::Sub": [

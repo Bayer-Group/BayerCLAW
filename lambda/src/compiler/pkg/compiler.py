@@ -17,15 +17,13 @@ def _capitalize_top_level_keys(frag: dict) -> dict:
 
 def compile_template(fragment: dict, param_values: dict, state_machine_out=None) -> dict:
     # normalize workflow spec
-    # normalized_wf = workflow_schema(fragment)
-    normalized_wf = workflow_schema(_capitalize_top_level_keys(fragment))
+    capitalized_fragment = _capitalize_top_level_keys(fragment)
+    subbed_fragment = substitute_params(param_values, capitalized_fragment)
+    normalized_wf = workflow_schema(subbed_fragment)
 
-    subbed_wf = substitute_params(param_values, normalized_wf)
-
-    options = subbed_wf["Options"]
-    repository = subbed_wf["Repository"]
-
-    steps = subbed_wf["Steps"]
+    options = normalized_wf["Options"]
+    repository = normalized_wf["Repository"]
+    steps = normalized_wf["Steps"]
 
     # create state machine and associated resources
     resources = {}
@@ -63,7 +61,7 @@ def compile_template(fragment: dict, param_values: dict, state_machine_out=None)
         },
     }
 
-    if "Parameters" in subbed_wf:
-        ret["Parameters"] = subbed_wf["Parameters"]
+    if "Parameters" in normalized_wf:
+        ret["Parameters"] = normalized_wf["Parameters"]
 
     return ret

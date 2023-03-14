@@ -201,7 +201,6 @@ workflow_schema = Schema(
             Optional("shell", default="sh"): Any ("bash", "sh", "sh-pipefail",
                                                   msg="shell option must be bash, sh, or sh-pipefail"),
             Optional("task_role", default=None): Maybe(str),
-            # Optional("versioned", default=False): Any(True, False),
             Optional("versioned", default="false"): All(Lower, Coerce(str), Any("true", "false"))
         },
         Required("Steps", "Steps list not found"):
