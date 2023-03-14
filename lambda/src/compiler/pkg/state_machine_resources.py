@@ -168,8 +168,8 @@ def write_state_machine_to_s3(sfn_def: dict) -> dict:
     return ret
 
 
-def make_physical_name(versioned: bool) -> dict:
-    if versioned:
+def make_physical_name(versioned: str) -> dict:
+    if versioned == "true":
         body = {
             "Fn::Sub": [
                 "${Root}--${Version}",

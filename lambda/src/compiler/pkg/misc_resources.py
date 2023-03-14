@@ -11,7 +11,7 @@ def launcher_substack_rc(options: dict) -> Resource:
     rc_bucket = os.environ["RESOURCE_BUCKET_NAME"]
     source_version = os.environ["SOURCE_VERSION"]
     template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/{source_version}/wf_launcher.yaml"
-    versioned_sfn = "Y" if options["versioned"] else "N"
+    # versioned_sfn = "" if options["versioned"] else "N"
 
     ret = {
         "Type": "AWS::CloudFormation::Stack",
@@ -22,7 +22,7 @@ def launcher_substack_rc(options: dict) -> Resource:
                 "LogRetentionDays": os.environ["LOG_RETENTION_DAYS"],
                 "Uniqifier": str(uuid.uuid4()),
                 "VersionatorArn": os.environ["VERSIONATOR_LAMBDA_ARN"],
-                "VersionedSFN": versioned_sfn,
+                "VersionedSFN": options["versioned"],
                 "WorkflowName": {"Ref": "AWS::StackName"},
             },
             "TemplateURL": template_url,

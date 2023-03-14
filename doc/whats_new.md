@@ -1,15 +1,5 @@
 # What's new in BayerCLAW2
 
-## Blue/Green workflow updates
-
-BayerCLAW2 deploys workflow updates using a [Blue/Green](https://docs.aws.amazon.com/whitepapers/latest/overview-deployment-options/bluegreen-deployments.html)
-strategy. When you update a workflow, BayerCLAW2 builds a completely new version of it (the Green version)
-while leaving the existing (Blue) version in place. The Blue version remains capable of accepting and
-processing new jobs. When construction of the Green version is finished, all incoming jobs are automatically
-routed to it, while any remaining jobs on the Blue version drain out. Benefits of Blue/Green deployment
-include decreased downtime for workflow maintenance and upgrades and the ability to easily roll back
-changes if necessary.
-
 ## Parametrized workflow deployment
 
 You can supply parameter values to the BayerCLAW2 compiler. This allows you
@@ -102,6 +92,19 @@ Steps:
 
 Alternatively, if your original job data file contains all of the necessary information to run the subpipe,
 you can omit the `job_data` field and BayerCLAW2 will send the original job data file to the subpipe. 
+
+## Blue/Green workflow updates
+
+BayerCLAW2 can optionally deploy workflow updates using a [Blue/Green](https://docs.aws.amazon.com/whitepapers/latest/overview-deployment-options/bluegreen-deployments.html)
+strategy. When you update a workflow using Blue/Green deployment, BayerCLAW2 builds a completely new version of it
+(the Green version) while leaving the existing (Blue) version in place. The Blue version remains capable of accepting and
+processing new jobs. When construction of the Green version is finished, all incoming jobs are automatically
+routed to it, while any remaining jobs on the Blue version drain out. The Blue version then remains on standby in
+case the changes need to be rolled back.
+
+Blue/Green deployment is intended for use in production environments where downtime and failure risks need to be
+minimized. It can be cumbersome to use in development environments though. As such, Blue/Green deployment
+is an option that is activated using the `versioned` workflow template option.
 
 ## Upgrading to BayerCLAW2
 
