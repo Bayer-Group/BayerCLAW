@@ -12,7 +12,6 @@ phases:
     runtime-versions:
       python: 3.9
     commands:
-#      - pip install aws-sam-cli==1.51.0
       - pip install -r lambda/tests/requirements.txt
 
   pre_build:
@@ -21,7 +20,7 @@ phases:
 #      - pytest -s -vvv lambda/tests/
       - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
       - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
-      - export SOURCE_VERSION=$(echo CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c1-7)
+      - export SOURCE_VERSION=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c1-7)
 
   build:
     commands:
@@ -75,9 +74,6 @@ phases:
       # don't crash on tag collision
       - docker push ${RUNNER_IMAGE_TAG} || true
       - docker push ${LAUNCHER_IMAGE_TAG} || true
-
-      # todo: temp
-      - env
 
 artifacts:
   discard-paths: yes
