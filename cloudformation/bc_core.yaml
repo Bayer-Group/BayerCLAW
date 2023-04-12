@@ -10,18 +10,18 @@ Parameters:
       image to use.
     Default: "auto"
 
-  CentralLoggingDestinationArn:
-    Type: String
-    Default: "none"
-
   CompilerMacroName:
     Type: String
     Description: Compiler macro name, change this only for testing and development instances
-    Default: "BC_Compiler"
+    Default: "BC2_Compiler"
+
+  ExistingBatchSubscriptionFilter:
+    Type: String
+    Default: "none"
 
   InstallationName:
     Type: String
-    Default: bayerclaw
+    Default: "bayerclaw2"
 
   LauncherBucketName:
     Type: String
@@ -30,6 +30,10 @@ Parameters:
       this bucket name is globally unique. Enter "Default" to automatically generate a launcher
       bucket name.
     Default: "Default"
+
+  LoggingDestinationArn:
+    Type: String
+    Default: "none"
 
   LogRetentionDays:
     Type: Number
@@ -100,6 +104,14 @@ Conditions:
   MakeSecurityGroup: !Or [ !Equals [!Ref SecurityGroups, "Auto"],
                            !Equals [!Ref SecurityGroups, "auto"] ]
 
+  MakeSubscriptionFilters: !Not [!Or [ !Equals [!Ref LoggingDestinationArn, "None"],
+                                       !Equals [!Ref LoggingDestinationArn, "none"] ] ]
+
+  NoBatchSubscriptionFilter: !Or [ !Equals [!Ref ExistingBatchSubscriptionFilter, "None"],
+                                   !Equals [!Ref ExistingBatchSubscriptionFilter, "none"] ]
+
+  MakeBatchSubscriptionFilter: !And [ !Condition MakeSubscriptionFilters,
+                                      !Condition NoBatchSubscriptionFilter ]
 
 Resources:
   # network
@@ -193,6 +205,14 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${ChooserLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  ChooserLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "chooser.*"}'
+      LogGroupName: !Ref ChooserLambdaLogGroup
+
   CompilerLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -202,7 +222,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          CENTRAL_LOGGING_DESTINATION_ARN: !Ref CentralLoggingDestinationArn
+          CENTRAL_LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
           CORE_STACK_NAME: !Ref "AWS::StackName"
           SOURCE_VERSION: !Ref SourceVersion
           CHOOSER_LAMBDA_ARN: !Ref ChooserLambda.Version
@@ -280,6 +300,14 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${InitializerLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  InitializerLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "initializer.*"}'
+      LogGroupName: !Ref InitializerLambdaLogGroup
+
   ScatterLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -311,6 +339,14 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${ScatterLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  ScatterLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "scatter.*"}'
+      LogGroupName: !Ref ScatterLambdaLogGroup
+
   GatherLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -341,6 +377,14 @@ Resources:
     Properties:
       LogGroupName: !Sub "/aws/lambda/${GatherLambda}"
       RetentionInDays: !Ref LogRetentionDays
+
+  GatherLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "gather.*"}'
+      LogGroupName: !Ref GatherLambdaLogGroup
 
   QCCheckerLambda:
     Type: AWS::Serverless::Function
@@ -377,6 +421,14 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${QCCheckerLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  QCCheckerLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "qc_checker.*"}'
+      LogGroupName: !Ref QCCheckerLambdaLogGroup
+
   SubpipesLambda:
     Type: AWS::Serverless::Function
     Properties:
@@ -407,6 +459,14 @@ Resources:
     Properties:
       LogGroupName: !Sub "/aws/lambda/${SubpipesLambda}"
       RetentionInDays: !Ref LogRetentionDays
+
+  SubpipesLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "subpipes.*"}'
+      LogGroupName: !Ref SubpipesLambdaLogGroup
 
   NotificationsLambda:
     Type: AWS::Serverless::Function
@@ -600,6 +660,15 @@ Resources:
           !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
         Subnets: !Join [",", !Ref Subnets]
         Uniqifier: !Ref Uniqifier
+
+  BatchLogSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeBatchSubscriptionFilter
+    DeletionPolicy: Retain
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.workflow_name = "*"}'
+      LogGroupName: /aws/batch/job
 
   # ecr repositories
   RunnerRepo:
