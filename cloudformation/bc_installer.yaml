@@ -83,18 +83,18 @@ Parameters:
       bucket name.
     Default: "default"
 
+  LogRetentionDays:
+    Type: Number
+    Description: How long to keep CloudWatch log entries, in days.
+    AllowedValues: [ 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653 ]
+    Default: 30
+
   LoggingDestination:
     Type: String
     Description: >
       If you use CloudWatch Logs subscriptions to enable log data analysis/aggregation, you can enter the
       destination ARN here to add SubscriptionFilters to the BayerCLAW logs. Otherwise, enter "none".
     Default: "none"
-
-  LogRetentionDays:
-    Type: Number
-    Description: How long to keep CloudWatch log entries, in days.
-    AllowedValues: [ 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653 ]
-    Default: 30
 
   MaxvCpus:
     Type: Number

@@ -13,9 +13,9 @@ def test_launcher_substack_rc(monkeypatch, compiler_env):
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
             "Parameters": {
-                "CentralLoggingDestinationArn": "central_logging_destination_arn",
                 "LauncherImageUri": "job_launcher_repo_uri:1234567",
                 "LogRetentionDays": "99",
+                "LoggingDestinationArn": "logging_destination_arn",
                 "Uniqifier": "fake_uuid",
                 "VersionatorArn": "versionator_lambda_arn",
                 "VersionedSFN": "Y",

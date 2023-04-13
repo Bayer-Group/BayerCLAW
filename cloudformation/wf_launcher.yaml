@@ -1,15 +1,15 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
 Parameters:
-  CentralLoggingDestinationArn:
-    Type: String
-    Default: none
-
   LauncherImageUri:
     Type: String
 
   LogRetentionDays:
     Type: Number
+
+  LoggingDestinationArn:
+    Type: String
+    Default: none
 
   Uniqifier:
     Type: String
@@ -27,7 +27,7 @@ Parameters:
     Type: String
 
 Conditions:
-  MakeLogSubscriptionFilter: !Not [!Equals [!Ref CentralLoggingDestinationArn, "none"]]
+  MakeLogSubscriptionFilter: !Not [!Equals [!Ref LoggingDestinationArn, "none"]]
 
 Resources:
   wfLauncherLambdaRole:
@@ -87,7 +87,7 @@ Resources:
     Type: AWS::Logs::SubscriptionFilter
     Condition: MakeLogSubscriptionFilter
     Properties:
-      DestinationArn: !Ref CentralLoggingDestinationArn
+      DestinationArn: !Ref LoggingDestinationArn
       FilterPattern: '{$.function = "job_launcher.*"}'
       LogGroupName: !Ref wfLauncherLambdaLogGroup
 

@@ -3,7 +3,7 @@ import logging
 import math
 import os
 import re
-from typing import Generator, List, Tuple, Union
+from typing import Generator, List, Union
 
 import humanfriendly
 
@@ -12,30 +12,6 @@ from .qc_resources import handle_qc_check
 from .util import Step, Resource, State, make_logical_name, time_string_to_seconds
 
 SCRATCH_PATH = "/_bclaw_scratch"
-
-
-# "registry/path/image_name:version" -> ("registry/path", "image_name", "version")
-# "registry/path/image_name"         -> ("registry/path", "image_name", None)
-# "image_name:version"               -> (None, "image_name", "version")
-# "image_name"                       -> (None, "image_name", None)
-# todo: remove
-URI_PARSER = re.compile(r"^(?:(.+)/)?([^:]+)(?::(.+))?$")
-
-def BAD_expand_image_uri(uri: str) -> Union[str, dict]:
-    registry, image, version = URI_PARSER.fullmatch(uri).groups()
-
-    if registry is None:
-        if version is None:
-            tag = ""
-        else:
-            tag = ":" + re.sub(r"\${", "${!", version)
-        ret = {
-            "Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{image}{tag}",
-        }
-    else:
-        ret = uri
-
-    return ret
 
 
 def expand_image_uri(uri: str) -> Union[str, dict]:

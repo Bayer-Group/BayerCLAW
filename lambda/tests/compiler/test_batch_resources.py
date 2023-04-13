@@ -4,23 +4,11 @@ import textwrap
 import pytest
 import yaml
 
-from ...src.compiler.pkg.batch_resources import URI_PARSER, expand_image_uri, get_job_queue,\
-    get_memory_in_mibs, get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, \
-    get_timeout, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH
-from ...src.compiler.pkg.batch_resources import BAD_expand_image_uri
+from ...src.compiler.pkg.batch_resources import expand_image_uri, get_job_queue, get_memory_in_mibs, \
+    get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout, batch_step, \
+    job_definition_rc, handle_batch, SCRATCH_PATH
 from ...src.compiler.pkg.misc_resources import LAUNCHER_STACK_NAME
 from ...src.compiler.pkg.util import Step, Resource, State
-
-
-@pytest.mark.parametrize("uri, expected", [
-    ("registry/path/image:version", ("registry/path", "image", "version")),
-    ("registry/path/image",         ("registry/path", "image", None)),
-    ("image:version",               (None, "image", "version")),
-    ("image",                       (None, "image", None))
-])
-def test_uri_parser(uri, expected):
-    result = URI_PARSER.fullmatch(uri).groups()
-    assert result == expected
 
 
 # Docker image tag format:
@@ -40,21 +28,6 @@ def test_uri_parser(uri, expected):
 ])
 def test_expand_image_uri(uri, expected):
     result = expand_image_uri(uri)
-    assert result == expected
-
-
-# preserving these, just in case: old tests for the version that doesn't correctly handle public registries
-@pytest.mark.parametrize("uri, expected", [
-    ("registry/path/image_name:version", "registry/path/image_name:version"),
-    ("registry/path/image_name:${version}", "registry/path/image_name:${version}"),
-    ("registry/path/image_name", "registry/path/image_name"),
-    ("image_name:version", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name:version"}),
-    ("image_name:${version}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name:${!version}"}),
-    ("image_name:${ver}${sion}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name:${!ver}${!sion}"}),
-    ("image_name", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name"}),
-])
-def test_BAD_expand_image_uri(uri, expected):
-    result = BAD_expand_image_uri(uri)
     assert result == expected
 
 

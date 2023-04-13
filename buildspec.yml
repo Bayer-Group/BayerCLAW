@@ -16,8 +16,7 @@ phases:
 
   pre_build:
     commands:
-      # todo: restore
-#      - pytest -s -vvv lambda/tests/
+      - pytest -s -vvv lambda/tests/
       - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
       - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
       - export SOURCE_VERSION=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c1-7)
@@ -40,8 +39,8 @@ phases:
         ExistingBatchSubscriptionFilter="${BATCH_FILTER:-none}"
         InstallationName=${INSTALLATION_NAME}
         LauncherBucketName=${LAUNCHER_BUCKET_NAME}
-        LoggingDestinationArn=${LOGGING_DESTINATION}
         LogRetentionDays=${LOG_RETENTION_DAYS}
+        LoggingDestinationArn=${LOGGING_DESTINATION}
         MaxvCpus=${MAX_VCPUS}
         MinvCpus=${MIN_VCPUS}
         ResourceBucketName=${RESOURCE_BUCKET_NAME}
@@ -59,8 +58,7 @@ phases:
       - echo $LAUNCHER_IMAGE_TAG
 
       - cd $CODEBUILD_SRC_DIR/bclaw_runner
-      # todo: restore
-#      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --target test -f Dockerfile.alpine .
+      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --target test -f Dockerfile.alpine .
       - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $RUNNER_IMAGE_TAG -f Dockerfile.alpine .
 
       - cd $CODEBUILD_SRC_DIR/lambda

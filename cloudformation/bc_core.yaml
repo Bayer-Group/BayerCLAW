@@ -22,14 +22,14 @@ Parameters:
     Type: String
     Default: "default"
 
-  LoggingDestinationArn:
-    Type: String
-    Default: "none"
-
   LogRetentionDays:
     Type: Number
     AllowedValues: [ 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653 ]
     Default: 30
+
+  LoggingDestinationArn:
+    Type: String
+    Default: "none"
 
   MaxvCpus:
     Type: Number
@@ -192,7 +192,6 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          CENTRAL_LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
           CORE_STACK_NAME: !Ref "AWS::StackName"
           SOURCE_VERSION: !Ref SourceVersion
           CHOOSER_LAMBDA_ARN: !Ref ChooserLambda.Version
@@ -203,6 +202,7 @@ Resources:
           JOB_LAUNCHER_REPO_URI: !GetAtt JobLauncherRepo.RepositoryUri
           LAUNCHER_BUCKET_NAME: !Ref LauncherBucket
           LOG_RETENTION_DAYS: !Ref LogRetentionDays
+          LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
           ON_DEMAND_QUEUE_ARN: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
           QC_CHECKER_LAMBDA_ARN: !Ref QCCheckerLambda.Version
           RESOURCE_BUCKET_NAME: !Ref ResourceBucketName
@@ -653,29 +653,8 @@ Resources:
       ImageTagMutability: IMMUTABLE
 
 Outputs:
-#  ChooserLambdaArn:
-#    Value: !Ref ChooserLambda.Version
-
-#  ChooserLambdaLogGroupName:
-#    Value: !Ref ChooserLambdaLogGroup
-
   ECSTaskRoleArn:
     Value: !GetAtt EcsTaskRole.Arn
-
-  NotificationsLambdaArn:
-    Value: !Ref NotificationsLambda.Version
-
-#  GatherLambdaArn:
-#    Value: !Ref GatherLambda.Version
-
-#  GatherLambdaLogGroupName:
-#    Value: !Ref GatherLambdaLogGroup
-
-#  InitializerLambdaArn:
-#    Value: !Ref InitializerLambda.Version
-
-#  InitializerLambdaLogGroupName:
-#    Value: !Ref InitializerLambdaLogGroup
 
   JobLauncherImageUri:
     Value: !Sub
@@ -686,50 +665,8 @@ Outputs:
   LauncherBucketName:
     Value: !Ref LauncherBucket
 
-#  LogRetentionDays:
-#    Value: !Ref LogRetentionDays
-
-#  OnDemandQueueArn:
-#    Value: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
-
-#  QCCheckerLambdaArn:
-#    Value: !Ref QCCheckerLambda.Version
-
-#  QCCheckerLambdaLogGroupName:
-#    Value: !Ref QCCheckerLambdaLogGroup
-
-#  ResourceBucketName:
-#    Value: !Ref ResourceBucketName
-
   RunnerImageUri:
     Value: !Sub
       - "${repo}:${tag}"
       - repo: !GetAtt RunnerRepo.RepositoryUri
         tag: !Ref SourceVersion
-
-#  ScatterLambdaArn:
-#    Value: !Ref ScatterLambda.Version
-
-#  ScatterLambdaLogGroupName:
-#    Value: !Ref ScatterLambdaLogGroup
-
-#  SecurityGroupIds:
-#    Value: !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
-
-#  SpotQueueArn:
-#    Value: !GetAtt SpotQueueStack.Outputs.BatchQueueArn
-
-#  StatesExecutionRoleArn:
-#    Value: !GetAtt StatesExecutionRole.Arn
-
-#  SubpipesLambdaArn:
-#    Value: !Ref SubpipesLambda.Version
-
-#  SubpipesLambdaLogGroupName:
-#    Value: !Ref SubpipesLambdaLogGroup
-
-#  VersionatorLambdaArn:
-#    Value: !Ref VersionatorLambda.Version
-
-#  VersionatorLambdaLogGroupName:
-#    Value: !Ref VersionatorLambdaLogGroup

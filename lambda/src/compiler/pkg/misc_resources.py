@@ -17,9 +17,9 @@ def launcher_substack_rc(options: dict) -> Resource:
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
             "Parameters": {
-                "CentralLoggingDestinationArn": os.environ["CENTRAL_LOGGING_DESTINATION_ARN"],
                 "LauncherImageUri": os.environ["JOB_LAUNCHER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
                 "LogRetentionDays": os.environ["LOG_RETENTION_DAYS"],
+                "LoggingDestinationArn": os.environ["LOGGING_DESTINATION_ARN"],
                 "Uniqifier": str(uuid.uuid4()),
                 "VersionatorArn": os.environ["VERSIONATOR_LAMBDA_ARN"],
                 "VersionedSFN": options["versioned"],
