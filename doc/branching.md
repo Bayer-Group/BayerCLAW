@@ -35,22 +35,26 @@ SimpleChooserStep:
 
 Step2:
   image: step2_image
-  # etc.
+  commands:
+    # etc...
   next: Step5
 
 Step3:
   image: step3_image
-  # etc.
+  commands:
+    # etc...
   end: true
 
 Step4:
   image: step4_image
-  # etc.
+  commands:
+    # etc...
   # no `next` or `end`...proceed to Step5
 
 Step5:
   image: step5_image
-  # etc.
+  commands:
+    # etc...
 ```
 
 Note how the `next` and `end` fields of the target steps are used to achieve different execution paths in this example:
@@ -66,7 +70,7 @@ Step5 -> ...
 `input1.value1 <= 0.5`, `input2.value2 >= 0.9`, `job.check_me != 1`:
 Step2 -> Step5 -> ...
 
-Note that a simple chooser step cannot directly stop the execution of a workflow. If you need to stop the execution
+A simple chooser step cannot directly stop the execution of a workflow. If you need to stop the execution
 based on some condition, branch to a native Succeed or Fail step. See [the native steps documentation](./language.md#native-step-functions-steps)
 for more information.
 
@@ -93,24 +97,24 @@ ParallelChooserStep:
   branches:
     # EVERY branch whose condition evaluates to True will be executed
 
-    # Again, `input1.value1` and `input2.value2` are fields in the input files
+    # `input1.value1` and `input2.value2` are fields in the input files
     -
       if: input1.value1 > 0.5
       steps:
         -
           do_this:
             image: this_image
-            # etc
+            # etc.
           do_that:
             image: that_image
-            # etc
+            # etc.
     -
       if: input2.value2 < 0.9
       steps:
         -
           do_the_other:
             image: the_other_image
-            # etc
+            # etc.
     -
       # can check values in the job data file here too
       if: job.check_me == 1
@@ -118,14 +122,14 @@ ParallelChooserStep:
         -
           do_whatever:
             image: whatever_image
-            # etc
+            # etc.
     -
       # no `if` in this branch...always execute it
       steps:
         -
           always_do_this:
             image: always_do_this_image
-            # etc
+            # etc.
 ```
 
 Execution of a branch can be stopped early by using a Succeed native step or by executing a step with an
