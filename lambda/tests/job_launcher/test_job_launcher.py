@@ -1,29 +1,15 @@
 import json
 import logging
-import os
 import re
-import sys
 
 import boto3
 import moto
 import pytest
 
-# make common layer modules available
-# sys.path.append(
-#     os.path.realpath(
-#         os.path.join(
-#             os.path.dirname(__file__),  # (home)/lambda/tests/sfn_namer
-#             os.pardir,                  # (home)/lambda/tests
-#             os.pardir,                  # (home)/lambda
-#             "src", "common", "python"
-#         )
-#     )
-# )
+from ...src.job_launcher.pkg.launcher_stuff import shorten_filename, normalize, make_execution_name, \
+    make_state_machine_name, main
 
 logging.basicConfig(level=logging.INFO)
-
-from ...src.job_launcher.job_launcher import shorten_filename, normalize, make_execution_name, \
-    make_state_machine_name, lambda_handler
 
 
 @pytest.mark.parametrize("string, expect", [
@@ -119,7 +105,7 @@ class MockContext():
     ("", "one-two-three-file_01234567"),
     ("replay789ABCDEF", "replay789A_one-two-three-file_01234567")
 ])
-def test_lambda_handler(mock_state_machine_version, replay, expected_name, monkeypatch):
+def test_main(mock_state_machine_version, replay, expected_name, monkeypatch):
     monkeypatch.setenv("REGION", "us-east-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
     monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
@@ -137,7 +123,7 @@ def test_lambda_handler(mock_state_machine_version, replay, expected_name, monke
 
     ctx = MockContext()
 
-    lambda_handler(event, ctx)
+    main(event, ctx)
 
     sfn = boto3.client("stepfunctions")
     result = sfn.list_executions(stateMachineArn=state_machine_arn)
@@ -172,7 +158,7 @@ def test_make_state_machine_name(monkeypatch, versioned, expect):
     assert result == expect
 
 
-def test_lambda_handler_duplicate_event(mock_state_machine_version, monkeypatch):
+def test_main_duplicate_event(mock_state_machine_version, monkeypatch):
     monkeypatch.setenv("REGION", "us-east-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
     monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
@@ -191,8 +177,8 @@ def test_lambda_handler_duplicate_event(mock_state_machine_version, monkeypatch)
 
     ctx = MockContext()
 
-    lambda_handler(event1, ctx)
-    lambda_handler(event2, ctx)
+    main(event1, ctx)
+    main(event2, ctx)
 
     sfn = boto3.client("stepfunctions")
     result = sfn.list_executions(stateMachineArn=state_machine_arn)

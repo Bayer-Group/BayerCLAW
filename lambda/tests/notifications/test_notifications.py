@@ -1,23 +1,9 @@
 import json
-import os
-import sys
 
 import boto3
 from moto import mock_sns
 import pytest
 import yaml
-
-# make common layer modules available
-# sys.path.append(
-#     os.path.realpath(
-#         os.path.join(
-#             os.path.dirname(__file__),  # (home)/lambda/tests/scatter
-#             os.pardir,                  # (home)/lambda/tests
-#             os.pardir,                  # (home)/lambda
-#             "src", "common", "python"
-#         )
-#     )
-# )
 
 from ...src.notifications.notifications import make_sfn_console_url, make_state_change_message, \
     make_message_attributes, make_sns_payload, lambda_handler

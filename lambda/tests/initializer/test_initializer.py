@@ -1,30 +1,16 @@
 from contextlib import closing
 import json
 import logging
-import os
 import re
-import sys
 
 import boto3
 from moto import mock_s3
 import pytest
 
-# make common layer modules available
-sys.path.append(
-    os.path.realpath(
-        os.path.join(
-            os.path.dirname(__file__),  # (home)/lambda/tests/scatter
-            os.pardir,                  # (home)/lambda/tests
-            os.pardir,                  # (home)/lambda
-            "src", "common", "python"
-        )
-    )
-)
-
-logging.basicConfig(level=logging.INFO)
-
 from ...src.initializer.initializer import read_s3_object, lookup, substitute_job_data, check_recursive_launch, \
     write_extended_job_data_object, lambda_handler
+
+logging.basicConfig(level=logging.INFO)
 
 
 @pytest.fixture(scope="function")

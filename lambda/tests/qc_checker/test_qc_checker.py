@@ -1,26 +1,12 @@
 import logging
-import os
-import sys
 
 import boto3
 from moto import mock_s3, mock_stepfunctions, mock_iam
 import pytest
 
-# make common layer modules available
-# sys.path.append(
-#     os.path.realpath(
-#         os.path.join(
-#             os.path.dirname(__file__),  # (home)/lambda/tests/qc_checker
-#             os.pardir,                  # (home)/lambda/tests
-#             os.pardir,                  # (home)/lambda
-#             "src", "common", "python"
-#         )
-#     )
-# )
+from ...src.qc_checker.qc_checker import lambda_handler, QCFailed
 
 logging.basicConfig(level=logging.INFO)
-
-from ...src.qc_checker.qc_checker import lambda_handler, QCFailed
 
 
 @pytest.fixture(scope="module")

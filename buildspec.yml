@@ -16,8 +16,9 @@ phases:
 
   pre_build:
     commands:
-      - export PYTHONPATH=${CODEBUILD_SRC_DIR}/lambda/src/common/python:$PYTHONPATH
-      - pytest -s -vvv lambda/tests/
+#      - export PYTHONPATH=${CODEBUILD_SRC_DIR}/lambda/src/common/python:$PYTHONPATH
+#      - pytest -s -vvv lambda/tests/
+      - PYTHONPATH=${CODEBUILD_SRC_DIR}/lambda/src/common/python:$PYTHONPATH pytest -s -vvv lambda/tests/
       - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
       - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
       - export SOURCE_VERSION=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c1-7)
@@ -63,7 +64,7 @@ phases:
       - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $RUNNER_IMAGE_TAG -f Dockerfile.alpine .
 
       - cd $CODEBUILD_SRC_DIR/lambda
-      # todo: test in container
+      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --target test -f src/job_launcher/Dockerfile .
       - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $LAUNCHER_IMAGE_TAG -f src/job_launcher/Dockerfile .
 
   post_build:
