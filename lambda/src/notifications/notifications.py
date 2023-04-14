@@ -13,6 +13,7 @@ def make_sfn_console_url(region: str, exec_arn: str) -> str:
 
 def make_state_change_message(event: dict) -> str:
     workflow_name = event["workflow_name"]
+    state_machine_name = event["detail"]["executionArn"].rsplit(":", 1)[-1]
     execution_id = event["detail"]["name"]
     status = event["detail"]["status"]
 
@@ -24,6 +25,7 @@ def make_state_change_message(event: dict) -> str:
     details = {
         "details": {
             "workflow_name": workflow_name,
+            "state_machine_name": state_machine_name,
             "sfn_execution_id": execution_id,
             "job_status": status,
             "job_data": f"s3://{input_obj['job_file']['bucket']}/{input_obj['job_file']['key']}",
@@ -70,6 +72,10 @@ def make_message_attributes(event: dict) -> dict:
             "DataType": "String",
             "StringValue": event["workflow_name"],
         },
+        "state_machine_name": {
+            "DataType": "String",
+            "StringValue": event["detail"]["executionArn"].rsplit(":", 1)[-1],
+        },
         "execution_id": {
             "DataType": "String",
             "StringValue": event["detail"]["name"],
@@ -104,7 +110,6 @@ def make_sns_payload(message: str, event: dict) -> dict:
 def lambda_handler(event: dict, context: object) -> dict:
     print(f"{event=}")
 
-    # todo: include state machine name in message
     message = make_state_change_message(event)
     payload = make_sns_payload(message, event)
 
