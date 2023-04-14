@@ -13,7 +13,7 @@ def make_sfn_console_url(region: str, exec_arn: str) -> str:
 
 def make_state_change_message(event: dict) -> str:
     workflow_name = event["workflow_name"]
-    state_machine_name = event["detail"]["executionArn"].rsplit(":", 1)[-1]
+    state_machine_name = event["detail"]["stateMachineArn"].rsplit(":", 1)[-1]
     execution_id = event["detail"]["name"]
     status = event["detail"]["status"]
 
@@ -74,7 +74,7 @@ def make_message_attributes(event: dict) -> dict:
         },
         "state_machine_name": {
             "DataType": "String",
-            "StringValue": event["detail"]["executionArn"].rsplit(":", 1)[-1],
+            "StringValue": event["detail"]["stateMachineArn"].rsplit(":", 1)[-1],
         },
         "execution_id": {
             "DataType": "String",
