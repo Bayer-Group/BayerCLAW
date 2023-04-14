@@ -7,16 +7,16 @@ from moto import mock_s3, mock_stepfunctions, mock_iam
 import pytest
 
 # make common layer modules available
-sys.path.append(
-    os.path.realpath(
-        os.path.join(
-            os.path.dirname(__file__),  # (home)/lambda/tests/qc_checker
-            os.pardir,                  # (home)/lambda/tests
-            os.pardir,                  # (home)/lambda
-            "src", "common", "python"
-        )
-    )
-)
+# sys.path.append(
+#     os.path.realpath(
+#         os.path.join(
+#             os.path.dirname(__file__),  # (home)/lambda/tests/qc_checker
+#             os.pardir,                  # (home)/lambda/tests
+#             os.pardir,                  # (home)/lambda
+#             "src", "common", "python"
+#         )
+#     )
+# )
 
 logging.basicConfig(level=logging.INFO)
 

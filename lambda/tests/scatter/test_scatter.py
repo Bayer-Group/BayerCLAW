@@ -9,16 +9,16 @@ import moto
 import pytest
 
 # make common layer modules available
-sys.path.append(
-    os.path.realpath(
-        os.path.join(
-            os.path.dirname(__file__),  # (home)/lambda/tests/scatter
-            os.pardir,                  # (home)/lambda/tests
-            os.pardir,                  # (home)/lambda
-            "src", "common", "python"
-        )
-    )
-)
+# sys.path.append(
+#     os.path.realpath(
+#         os.path.join(
+#             os.path.dirname(__file__),  # (home)/lambda/tests/scatter
+#             os.pardir,                  # (home)/lambda/tests
+#             os.pardir,                  # (home)/lambda
+#             "src", "common", "python"
+#         )
+#     )
+# )
 
 logging.basicConfig(level=logging.INFO)
 
