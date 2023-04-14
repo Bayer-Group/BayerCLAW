@@ -300,7 +300,6 @@ def test_download_inputs_empty_inputs(monkeypatch, mock_buckets):
     assert len(result) == 0
 
 
-# todo: recursive glob
 def test_outputerator(monkeypatch, tmp_path, caplog):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
