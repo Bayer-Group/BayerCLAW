@@ -166,7 +166,7 @@ The fields of the step specification objects are:
     natively support the use of GPU resources: you will need to create a custom GPU-enabled job queue and use the
     `queue_name` parameter to direct jobs to it. See [the custom queue documentation](custom_queue.md) for
     details.
-  * `shell`: Overrides the global `shell` option from the [params](#the-params-block) block. Choices are
+  * `shell`: Overrides the global `shell` option from the [Options](#the-options-block) block. Choices are
       `sh`, `bash`, and `sh-pipefail`, defaults to `sh`.
 * `filesystems`: A list of objects describing EFS filesystems that will be mounted for this job. Note that you may
   have several entries in this list, but each `efs_id` must be unique. All filesystems are mounted read-only.

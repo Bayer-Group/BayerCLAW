@@ -67,6 +67,10 @@ def get_environment(step: Step) -> dict:
             "Name": "AWS_DEFAULT_REGION",
             "Value": {"Ref": "AWS::Region"},
         },
+        {
+            "Name": "AWS_ACCOUNT_ID",
+            "Value": {"Ref": "AWS::AccountId"}
+        }
     ]
 
     ret = {"Environment": vars}
