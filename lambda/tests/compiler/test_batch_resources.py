@@ -60,6 +60,8 @@ def test_get_environment():
              "Value": "test_step"},
             {"Name": "AWS_DEFAULT_REGION",
              "Value": {"Ref": "AWS::Region"}},
+            {"Name": "AWS_ACCOUNT_ID",
+             "Value": {"Ref": "AWS::AccountId"}},
         ]
     }
     assert result == expect
@@ -270,6 +272,7 @@ def test_job_definition_rc(task_role, sample_batch_step, compiler_env):
                     {"Name": "BC_SCRATCH_PATH",    "Value": SCRATCH_PATH},
                     {"Name": "BC_STEP_NAME",       "Value": step_name},
                     {"Name": "AWS_DEFAULT_REGION", "Value": {"Ref": "AWS::Region"}},
+                    {"Name": "AWS_ACCOUNT_ID",     "Value": {"Ref": "AWS::AccountId"}},
                 ],
                 "ResourceRequirements": [
                     {"Type": "VCPU",   "Value": "4"},
