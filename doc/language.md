@@ -113,24 +113,24 @@ The fields of the step specification objects are:
 * `task_role` (optional): allows overriding the global `task_role` on a per-step basis, if desired.
 * `inputs`: A set of key-value pairs indicating files to be downloaded from S3 for processing.
   The value can be either an absolute S3 path (`s3://example-bucket/myfile.txt`) or a relative path (`myfile.txt`).
-  Relative paths are assumed to be relative to the workflow S3 `repository` path.
+  Relative paths are assumed to be relative to the workflow's [repository](#the-repository-line) in S3.
   In either case, the downloaded file will be placed in the working directory with the same base name as the S3 path (`myfile.txt` in the examples above).
   During parameter substitution, references to the input will resolve to this unqualified local file name.
   Shell-style wildcards (globs) are accepted in place of single file names, and will expand to all matching files in S3 (e.g. `s3://example-bucket/mydir/*.txt`).
-  Optional -- if unspecified, will default to outputs of previous step.  See [Auto Inputs](#auto-repo-and-auto-inputs).
-  To specify that a step has no inputs from S3, write `inputs: {}` instead.
+  Optional -- if no `inputs` block is specified, the inputs will default to outputs of previous step.
+  See [Auto Inputs](#auto-repo-and-auto-inputs). To specify that a step has no inputs from S3, write `inputs: {}` instead.
 * `references` (optional): If a step uses a large (multi-gigabyte), static reference data file as an input, you may list it under
   `references`. The first time the step is run on an EC2 host, files in the `references` section will be downloaded and
   cached on the host. Subsequent executions of this step will then use the cached reference files. Files listed in the
   `references` section must be full S3 paths. Shell-style wildcards are not allowed.
-* `commands` (required): A list of commands to run.
-  Commands are run in the Bourne shell (`/bin/sh`). All commands are run in the same shell, so communication between
+* `commands` (required): A list of commands to run. By default, commands are run in the Bourne shell (`/bin/sh`).
+  All commands are run in the same shell, so communication between
   commands is possible, e.g. assigning a computed value to a variable with one command and then using that variable in
   subsequent commands.
   If any command returns a non-zero exit code, the BayerCLAW command runner terminates the Docker container and returns an error to Batch.
   To aid in debugging, any `outputs` (see below) that are available will be uploaded to the `repository` before termination.
   Failed jobs may be retried, but if the error persists it will eventually cause the workflow execution to abort and fail.
-  If all commands return success (exit code 0), the step will be considered a success and the workflow execution will proceed.
+  If all commands return success (exit code 0), the step will be considered a success and the workflow execution will continue.
 * `outputs`: Output files to save to S3.
   The value specifies the local path to the file relative to the working directory inside the Docker container.
   Even if the local path contains several directory names, only the base name of the file will be appended to the workflow
@@ -142,8 +142,7 @@ The fields of the step specification objects are:
   Defaults to `false`
 * `skip_if_output_exists` (optional): Similar to `skip_on_rerun`,
   when set to `true`, this causes a step to be skipped if its output files already exist in the job's repository. This is
-  not as reliable as `skip_on_rerun`, so it is deprecated for most purposes. However, there is still a legitimate use
-  case for `skip_if_output_exists` in [subpipes](subpipes.md#running-a-subpipe-independently).
+  not as reliable as `skip_on_rerun`, so `skip_on_rerun` is preferred.
 * `compute`: An object specifying the compute environment that will be used. Optional.
   * `cpus`:  Specify the number of vCPUs to reserve. Optional. Defaults to 1.
   * `memory`: Specify the amount of memory to reserve. This may be provided as a number (in which case
@@ -163,7 +162,7 @@ The fields of the step specification objects are:
     the compute block. When `queue_name` is specified, `cpus` and `memory` should be specified so as to take full advantage
     of the custom resources. However, the `spot` field will have no effect when `queue_name` is specified: spot instance
     usage should be requested in your custom compute environment.
-  * `gpu`: Specify the number of GPUs that will be allocated to each batch job. Note that BayerCLAW does not
+  * `gpu`: Specify the number of GPUs that will be allocated to each batch job. Note that BayerCLAW's default queues do not
     natively support the use of GPU resources: you will need to create a custom GPU-enabled job queue and use the
     `queue_name` parameter to direct jobs to it. See [the custom queue documentation](custom_queue.md) for
     details.
@@ -176,7 +175,7 @@ The fields of the step specification objects are:
   * `root_dir` (optional): Directory within the EFS filesystem that will become the `host_path` in your Docker container.
   Default is `/`, i.e., the root of the EFS volume.
   
-  Note that [string substitutions](#string-substitution) are not allowed in the `filesystems` block.
+  [String substitutions](#string-substitution) are not allowed in the `filesystems` block.
 * `retry`: An object defining how the workflow retries failed jobs. Optional.
   * `attempts` (optional): The number of times to retry a failed job. This does not include the initial execution, so
   for instance setting `attempts` to 3 will result in up to 4 total runs. Default is 3, set to 0 to disable retries.
@@ -301,8 +300,8 @@ Note that it is also possible to use the `'${ENV}'` syntax to insert an environm
 long as it doesn't conflict with anything in the job data file or the keys in the `inputs`, `references`, or `outputs` fields.
 
 ## Auto-repo and auto-inputs
-If an input file path does not start with `s3://`, it is assumed that the file will be in the repository and the
-pipeline will try to retrieve it from there. To specify a file elsewhere in S3, use the fully-qualified S3 path (e.g
+If an input file path does not start with `s3://`, it is assumed that the file will be in the [repository](#the-repository-line)
+and the pipeline will try to retrieve it from there. To specify a file elsewhere in S3, use the fully-qualified S3 path (e.g
 `s3://bucket/path/to/file.txt`)
 
 If a step in the pipeline depends only on the files produced in the previous step, you may omit the `inputs` field for

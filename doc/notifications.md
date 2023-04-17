@@ -25,14 +25,15 @@ accept to receive notifications.
 
 Notification messages will have a format similar to this:
 ```yaml
-Job 51acb9d5 ('input_file.json') on workflow sample-workflow has finished.
+Job input_file_51acb9d5 ('input_file.json') on workflow sample-workflow has finished.
 ---
 details:
   job_data: s3://bclaw-main-launcher-123456789012/sample-workflow/input_file.json
   job_data_version: 09876543211234567890
   job_status: SUCCEEDED
-  sfn_console_link: https://console.aws.amazon.com/states/.../sample-workflow-main:51acb9d5...
-  sfn_execution_id: 51acb9d5-5f52-4087-1147-64470e76ec39_ed811136-c845-265c-e9d4-f4150191658c
+  sfn_console_link: https://console.aws.amazon.com/states/...
+  sfn_execution_id: input_file_09876543
+  state_machine_name: sample-workflow--1
   workflow_name: sample-workflow
 ```
 
@@ -59,6 +60,7 @@ message above. The possible values of `status` are:
     - ABORTED: the job was aborted, possibly on user request.
     - TIMED_OUT: if, somehow, your job manages to run for more than a year, you'll see this one...
 - `workflow_name`: The name of the workflow that sent the notification.
+- `state_machine_name`: The name of the Step Functions state machine that sent the notification.
 - `execution_id`: The ID of the Step Functions execution that sent the notification.
 - `launcher_bucket`, `job_file` and `job_file_version`: Together, these specify the job data file that
 launched the execution in question.
@@ -98,11 +100,12 @@ Using this command, message that looks like this:
 Job 51acb9d5 ('input_file.json') on workflow sample-workflow has finished.
 ---
 details:
-  execution_id: 51acb9d5-5f52-4087-1147-64470e76ec39_ed811136-c845-265c-e9d4-f4150191658c
   job_data: s3://bclaw-main-launcher-123456789012/sample-workflow/input_file.json
   job_data_version: 09876543211234567890
   job_status: SUCCEEDED
-  sfn_console_link: https://console.aws.amazon.com/states/.../sample-workflow-main:51acb9d5...
+  sfn_console_link: https://console.aws.amazon.com/states/...
+  sfn_execution_id: input_file_09876543
+  state_machine_name: sample-workflow--1
   workflow_name: sample-workflow
 ```
 
@@ -113,11 +116,12 @@ will become a data structure that looks like this:
     "Job 51acb9d5 ('input_file.json') on workflow sample-workflow has finished.",
     {
         "details": {
-            "execution_id": "51acb9d5-5f52-4087-1147-64470e76ec39_ed811136-c845-265c-e9d4-f4150191658c",
             "job_data": "s3://bclaw-main-launcher-123456789012/sample-workflow/input_file.json",
             "job_data_version": "09876543211234567890",
             "job_status": "SUCCEEDED",
             "sfn_console_link": "https://console.aws.amazon.com/states/...",
+            "sfn_execution_id": "input_file_09876543",
+            "state_machine_name": "sample-workflow--1",
             "workflow_name": "sample-workflow"
         }
     }
