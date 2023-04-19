@@ -39,6 +39,7 @@ def get_container_metadata() -> dict:
 
 
 def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> Generator[Mount, None, None]:
+    logger.info(f"{metadata['Volumes']=}")
     for volume_spec in metadata["Volumes"]:
         if "Source" in volume_spec:
             if volume_spec["Source"] == "/var/run/docker.sock":
