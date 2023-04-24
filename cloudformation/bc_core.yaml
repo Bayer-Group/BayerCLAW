@@ -207,6 +207,7 @@ Resources:
           NOTIFICATIONS_LAMBDA_ARN: !Ref NotificationsLambda.Version
           GATHER_LAMBDA_ARN: !Ref GatherLambda.Version
           INITIALIZER_LAMBDA_ARN: !Ref InitializerLambda.Version
+          JOB_DEFINITION_ARN: !Ref BatchJobDefinition
           JOB_LAUNCHER_REPO_URI: !GetAtt JobLauncherRepo.RepositoryUri
           LAUNCHER_BUCKET_NAME: !Ref LauncherBucket
           LOG_RETENTION_DAYS: !Ref LogRetentionDays

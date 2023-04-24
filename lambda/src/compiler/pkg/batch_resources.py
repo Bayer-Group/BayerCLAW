@@ -170,70 +170,70 @@ def get_timeout(step: Step) -> dict:
     return ret
 
 
-def job_definition_rc(step: Step,
-                      task_role: str,
-                      shell_opt: str) -> Generator[Resource, None, str]:
-    logical_name = make_logical_name(f"{step.name}.job.def")
-
-    job_def = {
-        "Type": "AWS::Batch::JobDefinition",
-        "UpdateReplacePolicy": "Retain",
-        "Properties": {
-            "JobDefinitionName": {
-                "Fn::Sub": [
-                    "${WFName}-${Step}--${Version}",
-                    {
-                        "WFName": {
-                            "Ref": "AWS::StackName",
-                        },
-                        "Step": logical_name,
-                        "Version": {
-                            "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
-                        },
-                    },
-                ],
-            },
-            "Type": "container",
-            "Parameters": {
-                "workflow_name": {
-                    "Ref": "AWS::StackName",
-                },
-                "repo": "rrr",
-                "image": expand_image_uri(step.spec["image"]),
-                "inputs": "iii",
-                "references": "fff",
-                "command": json.dumps(step.spec["commands"]),
-                "outputs": "ooo",
-                "shell": shell_opt,
-                "skip": "sss",
-            },
-            "ContainerProperties": {
-                "Command": [
-                    "python", "/bclaw_runner/src/runner_cli.py",
-                    "--repo", "Ref::repo",
-                    "--image", "Ref::image",
-                    "--in", "Ref::inputs",
-                    "--ref", "Ref::references",
-                    "--cmd", "Ref::command",
-                    "--out", "Ref::outputs",
-                    "--shell", "Ref::shell",
-                    "--skip", "Ref::skip",
-                ],
-                "Image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
-                "JobRoleArn": task_role,
-                "Privileged": True,
-                **get_environment(step),
-                **get_resource_requirements(step),
-                **get_volume_info(step),
-            },
-            "SchedulingPriority": 1,
-            **get_timeout(step)
-        },
-    }
-
-    yield Resource(logical_name, job_def)
-    return logical_name
-
+# def job_definition_rc(step: Step,
+#                       task_role: str,
+#                       shell_opt: str) -> Generator[Resource, None, str]:
+#     logical_name = make_logical_name(f"{step.name}.job.def")
+#
+#     job_def = {
+#         "Type": "AWS::Batch::JobDefinition",
+#         "UpdateReplacePolicy": "Retain",
+#         "Properties": {
+#             "JobDefinitionName": {
+#                 "Fn::Sub": [
+#                     "${WFName}-${Step}--${Version}",
+#                     {
+#                         "WFName": {
+#                             "Ref": "AWS::StackName",
+#                         },
+#                         "Step": logical_name,
+#                         "Version": {
+#                             "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+#                         },
+#                     },
+#                 ],
+#             },
+#             "Type": "container",
+#             "Parameters": {
+#                 "workflow_name": {
+#                     "Ref": "AWS::StackName",
+#                 },
+#                 "repo": "rrr",
+#                 "image": expand_image_uri(step.spec["image"]),
+#                 "inputs": "iii",
+#                 "references": "fff",
+#                 "command": json.dumps(step.spec["commands"]),
+#                 "outputs": "ooo",
+#                 "shell": shell_opt,
+#                 "skip": "sss",
+#             },
+#             "ContainerProperties": {
+#                 "Command": [
+#                     "python", "/bclaw_runner/src/runner_cli.py",
+#                     "--repo", "Ref::repo",
+#                     "--image", "Ref::image",
+#                     "--in", "Ref::inputs",
+#                     "--ref", "Ref::references",
+#                     "--cmd", "Ref::command",
+#                     "--out", "Ref::outputs",
+#                     "--shell", "Ref::shell",
+#                     "--skip", "Ref::skip",
+#                 ],
+#                 "Image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
+#                 "JobRoleArn": task_role,
+#                 "Privileged": True,
+#                 **get_environment(step),
+#                 **get_resource_requirements(step),
+#                 **get_volume_info(step),
+#             },
+#             "SchedulingPriority": 1,
+#             **get_timeout(step)
+#         },
+#     }
+#
+#     yield Resource(logical_name, job_def)
+#     return logical_name
+#
 
 def get_skip_behavior(spec: dict) -> str:
     if "skip_if_output_exists" in spec and spec["skip_if_output_exists"]:
@@ -273,7 +273,8 @@ def batch_step(step: Step,
         ],
         "Parameters": {
             "JobName.$": job_name,
-            "JobDefinition": f"${{{job_definition_logical_name}}}",
+            "JobDefinition": os.environ["JOB_DEFINITION_NAME"],
+            # "JobDefinition": f"${{{job_definition_logical_name}}}",
             "JobQueue": get_job_queue(step.spec["compute"]),
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
@@ -332,7 +333,8 @@ def handle_batch(step: Step,
     task_role = step.spec.get("task_role") or options.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
     shell_opt = step.spec["compute"]["shell"] or options.get("shell")
 
-    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt)
+    # job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt)
+    job_def_logical_name = "defunct"
 
     if step.spec["qc_check"] is not None:
         qc_state = handle_qc_check(step)
