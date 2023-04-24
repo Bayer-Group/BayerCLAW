@@ -223,8 +223,13 @@ def handle_state_machine(raw_steps: List[Dict],
 
 
 def add_definition_substitutions(sfn_resource: Resource, other_resources: dict) -> None:
+    # job definition logical names
     defn_subs = {k: {"Ref": k} for k in other_resources.keys() if k != sfn_resource.name}
+
+    # used in lambda logging block
     defn_subs["WorkflowName"] = {"Ref": "AWS::StackName"}
+
+    # these are used to construct batch job queue arn, subpipe state machine arn
     defn_subs["AWSRegion"] = {"Ref": "AWS::Region"}
     defn_subs["AWSAccountId"] = {"Ref": "AWS::AccountId"}
 

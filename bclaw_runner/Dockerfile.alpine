@@ -27,4 +27,4 @@ RUN pytest -s -vvv tests/
 FROM base AS build
 
 ENV PYTHONBUFFERED=1
-ENV PATH=/bclaw:$PATH
+ENV PATH=/bclaw_runner:$PATH
