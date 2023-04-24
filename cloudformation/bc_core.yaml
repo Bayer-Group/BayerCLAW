@@ -10,6 +10,10 @@ Parameters:
     Type: String
     Default: "BC2_Compiler"
 
+  EFSPath:
+    Type: String
+    Default: "/efs"
+
   ExistingBatchSubscriptionFilter:
     Type: String
     Default: "none"
@@ -45,6 +49,10 @@ Parameters:
   RootVolumeSize:
     Type: Number
     Default: 100
+
+  ScratchPath:
+    Type: String
+    Default: "/_bclaw_scratch"
 
   ScratchVolumeSize:
     Type: Number
@@ -595,6 +603,73 @@ Resources:
                   - "ecr:GetDownloadUrlForLayer"
                   - "ecr:BatchGetImage"
                 Resource: "*"
+
+  BatchJobDefinition:
+    Type: AWS::Batch::JobDefinition
+    Properties:
+      JobDefinitionName: !Sub "BCGenericJobDef-${SourceVersion}"
+      Type: container
+      ContainerProperties:
+        Image: !Sub
+          - "${repo}:${tag}"
+          - repo: !GetAtt RunnerRepo.RepositoryUri
+            tag: !Ref SourceVersion
+        JobRoleArn: !GetAtt EcsTaskRole.Arn
+        Environment:
+          -
+            Name: BC_SCRATCH_PATH
+            Value: !Ref ScratchPath
+          -
+            Name: BC_EFS_PATH
+            Value: !Ref EFSPath
+          -
+            Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+          -
+            Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+        ResourceRequirements:
+          -
+            Type: VCPU
+            Value: "1"
+          -
+            Type: MEMORY
+            Value: "1024"
+        Volumes:
+          -
+            Name: "docker_socket"
+            Host:
+              SourcePath: "/var/run/docker.sock"
+          -
+            Name: "scratch"
+            Host:
+              SourcePath: "/scratch"
+          -
+            Name: "docker_scratch"
+            Host:
+              SourcePath: "/docker_scratch"
+          -
+            Name: "efs"
+            Host:
+              SourcePath: "/mnt/efs"
+        MountPoints:
+          -
+            SourceVolume: "docker_socket"
+            ContainerPath: "/var/run/docker.sock"
+            ReadOnly: false
+          -
+            SourceVolume: "scratch"
+            ContainerPath: !Ref ScratchPath
+            ReadOnly: false
+          -
+            SourceVolume: "docker_scratch"
+            ContainerPath: "/.scratch"
+            ReadOnly: false
+          -
+            SourceVolume: "efs"
+            ContainerPath: !Ref EFSPath
+            ReadOnly: false
+      SchedulingPriority: 1
 
   SpotQueueStack:
     Type: AWS::Serverless::Application

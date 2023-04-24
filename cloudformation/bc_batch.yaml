@@ -34,6 +34,7 @@ Metadata:
         Label:
           default: Advanced
         Parameters:
+          - EFSVolumeId
           - Uniqifier
 
 Parameters:
@@ -44,6 +45,11 @@ Parameters:
       select an AMI. Otherwise, it is highly recommended that you choose an ECS-optimized Amazon Linux 2
       image to use.
     Default: "auto"
+
+  EFSVolumeId:
+    Type: String
+    Description: EFS volume to mount, enter "none" for no volume.
+    Default: "none"
 
   InstanceTypes:
     Type: CommaDelimitedList
@@ -193,7 +199,11 @@ Resources:
               fi
               mkdir -p /scratch
               mount /dev/sdh /scratch
-
+              
+              if [[ "${EFSVolumeId}" =~ ^fs- ]]; then
+                mkdir -p /mnt/efs
+                mount -t efs -o tls,ro ${EFSVolumeId}:/ /mnt/efs
+              fi
               --==BOUNDARY==--
 
   ComputeEnvironment:
