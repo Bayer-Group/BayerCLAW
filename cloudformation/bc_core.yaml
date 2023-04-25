@@ -593,20 +593,6 @@ Resources:
                   - "logs:CreateLogStream"
                   - "logs:PutLogEvents"
                 Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
-#        -
-#          PolicyName: "S3Access"
-#          PolicyDocument:
-#            Version: "2012-10-17"
-#            Statement:
-#              - Effect: "Allow"
-#                Action:
-#                  - "s3:ListBucket"
-#                Resource: "arn:aws:s3:::*"
-#              - Effect: "Allow"
-#                Action:
-#                  - "s3:*Object"
-#                  - "s3:PutObjectAcl"
-#                Resource: "arn:aws:s3:::*/*"
         -
           PolicyName: "S3Access"
           PolicyDocument:
@@ -614,11 +600,51 @@ Resources:
             Statement:
               - Effect: "Allow"
                 Action:
-                  - "s3:*"
+                  - "s3:ListBucket"
                 Resource: "arn:aws:s3:::*"
-              - Effect: "Deny"
+              - Effect: "Allow"
                 Action:
-
+                  - "s3:*Object"
+                  - "s3:PutObjectAcl"
+                Resource: "arn:aws:s3:::*/*"
+#        -
+#          PolicyName: "S3Access"
+#          PolicyDocument:
+#            Version: "2012-10-17"
+#            Statement:
+#              - Effect: "Allow"
+#                Action:
+#                  - "s3:*"
+#                Resource: "arn:aws:s3:::*"
+#              - Effect: "Deny"
+#                Action:
+#                  - "s3:PutAccessPointPolicyForObjectLambda"
+#                  - "s3:PutBucketPublicAccessBlock"
+#                  - "s3:DeleteAccessPointPolicyForObjectLambda"
+#                  - "s3:PutBucketAcl"
+#                  - "s3:PutBucketPolicy"
+#                  - "s3:DeleteAccessPointPolicy"
+#                  - "s3:DeleteBucketPolicy"
+#                  - "s3:PutAccessPointPolicy"
+#                Resource:
+#                  - "arn:aws:s3-object-lambda:*:934778205429:accesspoint/*"
+#                  - "arn:aws:s3:::*"
+#                  - "arn:aws:s3:*:934778205429:accesspoint/*"
+#              - Effect: "Deny"
+#                Action:
+#                  - "s3:ObjectOwnerOverrideToBucketOwner"
+#                  - "s3:PutMultiRegionAccessPointPolicy"
+#                  - "s3:PutObjectVersionAcl"
+#                  - "s3:BypassGovernanceRetention"
+#                  - "s3:PutObjectAcl"
+#                Resource:
+#                  - "arn:aws:s3:::*/*"
+#                  - "arn:aws:s3::934778205429:accesspoint/*"
+#              - Effect: "Deny"
+#                Action:
+#                  - "s3:PutAccountPublicAccessBlock"
+#                  - "s3:PutAccessPointPublicAccessBlock"
+#                Resource: "*"
         -
           PolicyName: "ECRAccess"
           PolicyDocument:
