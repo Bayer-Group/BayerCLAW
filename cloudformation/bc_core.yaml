@@ -588,15 +588,25 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-#              - Effect: "Allow"
-#                Action:
-#                  - "logs:CreateLogGroup"
-#                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
               - Effect: "Allow"
                 Action:
                   - "logs:CreateLogStream"
                   - "logs:PutLogEvents"
-                Resource: !Sub "arn:aws:logs:${AWS::Region};${AWS::AccountId}:log-group:*"
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+#        -
+#          PolicyName: "S3Access"
+#          PolicyDocument:
+#            Version: "2012-10-17"
+#            Statement:
+#              - Effect: "Allow"
+#                Action:
+#                  - "s3:ListBucket"
+#                Resource: "arn:aws:s3:::*"
+#              - Effect: "Allow"
+#                Action:
+#                  - "s3:*Object"
+#                  - "s3:PutObjectAcl"
+#                Resource: "arn:aws:s3:::*/*"
         -
           PolicyName: "S3Access"
           PolicyDocument:
@@ -604,13 +614,11 @@ Resources:
             Statement:
               - Effect: "Allow"
                 Action:
-                  - "s3:ListBucket"
+                  - "s3:*"
                 Resource: "arn:aws:s3:::*"
-              - Effect: "Allow"
+              - Effect: "Deny"
                 Action:
-                  - "s3:*Object"
-                  - "s3:PutObjectAcl"
-                Resource: "arn:aws:s3:::*/*"
+
         -
           PolicyName: "ECRAccess"
           PolicyDocument:
@@ -622,6 +630,16 @@ Resources:
                   - "ecr:BatchCheckLayerAvailability"
                   - "ecr:GetDownloadUrlForLayer"
                   - "ecr:BatchGetImage"
+                Resource: "*"
+        -
+          PolicyName: "EC2Access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "ec2:CreateTags"
+                  - "ec2:DeleteTags"
                 Resource: "*"
 
   SpotQueueStack:
