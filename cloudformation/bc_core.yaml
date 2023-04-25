@@ -579,10 +579,38 @@ Resources:
             Action:
               - "sts:AssumeRole"
       ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
+#        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+#        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
       Policies:
+        -
+          PolicyName: "LogsAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+#              - Effect: "Allow"
+#                Action:
+#                  - "logs:CreateLogGroup"
+#                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: !Sub "arn:aws:logs:${AWS::Region};${AWS::AccountId}:log-group:*"
+        -
+          PolicyName: "S3Access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "s3:ListBucket"
+                Resource: "arn:aws:s3:::*"
+              - Effect: "Allow"
+                Action:
+                  - "s3:*Object"
+                  - "s3:PutObjectAcl"
+                Resource: "arn:aws:s3:::*/*"
         -
           PolicyName: "ECRAccess"
           PolicyDocument:
