@@ -2,8 +2,8 @@
 
 Each BayerCLAW step runs on AWS Batch, using the specified Docker image.
 
-The entry point is a program called `bclaw_runner`, which is hosted on the EC2 host
-so that it does not need to be baked into the user's Docker image.
+The entry point is a program called `bclaw_runner`, which is hosted in its own Docker
+container and  does not need to be baked into the user's Docker image.
 The runner is responsible for downloading inputs from S3,
 running the user-specified commands,  and uploading the output to S3.
 BayerCLAW manages this;  the runner should be basically invisible to users.

@@ -51,7 +51,7 @@ The `versioned` option controls Blue/Green workflow deployments. When BayerCLAW 
 
 - The previous version of the workflow (if present) remains active for the duration of the compilation. Active
 executions continue running, and incoming jobs continue to be directed to the previous version.
-- A new version of the launcher Lambda is deployed.
+- A new version of the workflow's job launcher Lambda is deployed.
 - New versions of the state machine, batch job definitions, and other components are created. The state machine will
 have a version number appended to its name (e.g. `MyWorkflow--1`). The state machine version number will be 
 the same as the launcher Lambda version (it's important to know this in case you need to roll back a Blue/Green
@@ -120,4 +120,4 @@ Parameters:
 ```
 
 This will retrieve the value of `myStoredParameter` from Parameter Store and use it in your workflow. Parameters
-used in this way must exist before compilation time. SecureString parameters are not supported.
+used in this way must exist before compilation time. Parameter Store SecureString parameters are not supported.
