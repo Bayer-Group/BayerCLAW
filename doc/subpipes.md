@@ -6,55 +6,67 @@ An BayerCLAW workflow can execute other BayerCLAW workflows as subpipes. Use cas
 - Breaking large, complex workflows into manageable units
 - Enabling workflows to be developed and tested as separate, logical units 
 
-#### How it works
-In the main pipeline, users specify a list of files form the workflow's repository to be sent to the subpipe.
-A repository is created for the subpipe -- this will be in a folder inside of the main repository -- and the specifiec files copied into the sub-repository. The subpipe
-is invoked, receiving the same job data record that the main pipeline received. After the subpipe finishes,
-the main pipeline copies files out of the subpipe's repository into its own repository, and continues
-execution.
+### How it works
 
-There are no special requirements for the subpipe. It can be an ordinary BayerCLAW workflow (however, see
-[Running a subpipe independently](#running-a-subpipe-independently) for additional information). The subpipe
-execution is somewhat different from a normal BayerCLAW run:
-- The repository established by the main workflow overrides the repository designated in the subpipe's workflow
-definition
-- The launcher bucket is bypassed, and subpipe's Step Functions state machine is invoked directly.
+In general, the main workflow should create a new job data file that can be submitted to the subpipe:
+
+```yaml
+  -
+    MakeNewJobData:
+      image: docker.io/library/ubuntu
+      commands:
+        - "echo '{\"a\": \"eh\", \"b\": \"bee\", \"c\": \"sea\"}' > ${sub_job_data}"
+      outputs:
+        sub_job_data: sub_job.json
+  -
+    RunTheSubpipe:
+      job_data: sub_job.json
+      subpipe: my-subpipe
+```
+
+If the main workflow's job data file contains all of the information needed to run the subpipe, you may
+omit the subpipe step's `job_data` field, and the original job data file will be submitted directly to the
+subpipe.
+
+The subpipe step creates a repository for the subpipe (this will be in a folder inside of the main
+repository) where the subpipe will store its intermediate files. After the subpipe finishes, the
+main pipeline can optionally copy files out of the sub-repository into the main repository.
+
+There are no special requirements for the subpipe. It can be an ordinary BayerCLAW workflow -- however,
+the repository established by the main workflow overrides the repository designated in the subpipe's
+workflow definition.
 
 ## Calling a subpipe
 To invoke a subpipe, the parent pipeline must contain a *subpipe step*.
 
-#### Subpipe step syntax
+### Subpipe step syntax
 ```yaml
   SubpipeStepName:
-    submit:
-      - filename1.txt -> filename99.txt
-      - filename2.txt
+    job_data: sub_job.json
     subpipe: my-subpipe-workflow
     retrieve:
       - filenameX.txt -> filenameY.txt
       - filenameZ.txt
 ```
 The fields of the subpipe step are:
-- `submit`: A list of files to be copied from the parent workflow's repository to the subpipe's repository.
-Use the syntax `parent_wf_filename -> subpipe_filename` to rename the file upon copying. If the file does not 
-need to be renamed, you can just provide the filename (e.g. `filename2`) above. The `submit` field may be omitted
-if the subpipe does not need any files from the main workflow.
+- `job_data`: An S3 file that will be used to launch the subpipe. This may be the name of a file in the
+main workflow's repository, or a full S3 URI of a file that exists elsewhere.
 
 - `subpipe`: The name of the BayerCLAW workflow to be run as a subpipe. For testing purposes, you may also provide the
 Amazon Resource Name (ARN) of a Step Functions state machine that simulates the behavior of the real subpipe.
  
 - `retrieve`: A list of files to be copied from the subpipe's repository to the parent workflow's repository.
-As with `submit`, use the syntax `subpipe_filename -> parent_wf_filename` to rename the file, or just the name
+Use the syntax `subpipe_filename -> parent_wf_filename` to rename the file, or just the name
 of the file if it does not need to be renamed. The `retrieve` field may be omitted if there are no files to
 copy into the parent workflow's repository.
 
-#### String substitution and file globs
-Values from the execution's job data file can be substituted into any filename in the `submit` or `retrieve`
+### String substitution and file globs
+Values from the execution's job data file can be substituted into any filename in the `retrieve`
 field. For instance, this would be valid (though not really recommented): `${job.project_id}.txt -> ${job.sample_id}.txt`.
 
 Filename globbing is not available in subpipe steps.
 
-#### Subpipes and scatter/gather
+### Subpipes and scatter/gather
 A subpipe may be invoked from inside of a scatter step. For instance, this is a small workflow that scatters
 over a set of sequence files, each branch passing a sequence file and a configuration file to a subpipe and
 collecting the .bam files produced: 
@@ -68,9 +80,7 @@ collecting the .bam files produced:
     steps:
       -
         RunSubpipe:
-          submit:
-            - ${scatter.contigs} -> seqfile.fa
-            - ${parent.config}
+          # no "job_data" field here, were passing along the main job data file
           subpipe: sub-workflow
           retrieve:
             - output.bam
@@ -78,13 +88,12 @@ collecting the .bam files produced:
       bamfile: output.bam
 ```
 
-Note that, while the `scatter` and `parent` variables from the scatter step are available to the subpipe
+While the `scatter` and `parent` variables from the scatter step are available to the subpipe
 step itself, *the workflow invoked by the subpipe will not have access to these values*.
 
 The sub-workflow, itself being an BayerCLAW workflow, may also contain its own scatter steps.
 
-## Details
-#### Job tracking in the AWS console
+## Job tracking in the AWS console
 Although a subpipe call involves invoking a completely different workflow, AWS Step Functions makes it easy to track
 both executions through the AWS console.
 
@@ -97,54 +106,3 @@ And the subpipe execution console page will be linked back to the parent in the 
 
 Due to Step Functions execution naming restrictions, the subpipe execution will have a different name from the
 parent execution.
-
-#### Running a subpipe independently
-In some cases, it might be desirable to be able to run a subpipe in a standalone manner. This could, for
-example, be used to test the subpipe in isolation without running the entire pipeline. To accomplish
-this, it is recommended that the subpipe start with one or more initialization steps that emulate the
-input from the parent pipeline, and then use the `skip_if_output_exists` option to skip these steps when
-the subpipe is being invoked from a parent pipeline.
-
-For example, here is a simple workflow that initializes its repository and then does something useful:
-```yaml
-steps:
-  Initialize:
-    image: ubuntu
-    inputs:
-      input_reads1: ${job.READS1}
-      input_reads2: ${job.READS2}
-    commands:
-      - mv ${input_reads1} ${output_reads1}
-      - mv ${input_reads2} ${output_reads2}
-    outputs:
-      output_reads1: reads1.fq.gz
-      output_reads2: reads2.fq.gz
-    skip_if_output_exists: true
-
-  DoSomething:
-    image: worker
-    inputs:
-      reads1: reads1.fq.gz
-      reads2: reads2.fq.gz
-    commands:
-      - do_something ${reads1} ${reads2} > ${output_file}
-    outputs:
-      output_file: output.bam
-```
-
-Then the parent pipeline may call this subpipe like this:
-```yaml
-  # initial processing steps here...
-
-  RunSubpipe:
-    submit:
-      - processed_reads1.fq.gz -> reads1.fq.gz
-      - processed_reads2.fq.gz -> reads2.fq.gz
-    subpipe: sample-subpipe
-    retrieve:
-      - output.bam
-```
-
-When the parent pipeline calls the subpipe, the subpipe will skip the `Initialize`
-step because the output files have already been written to its repository by the parent.
-Execution will then proceed with the `DoSomething` step. 

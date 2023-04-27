@@ -66,7 +66,7 @@ The fields are similar to those of the main (parent) workflow, but with some imp
   possible to emulate it using the cartesian product functionality described above.
 - If the parent workflow specifies `scatter: foo: *.txt`, the child workflow references its particular `.txt` file as `${scatter.foo}`.
   This resolves to an absolute path to a location in S3.
-- The child workflow can refer to values in its parent's `input` and `outputs` with the `${parent.foo}` syntax.
+- The child workflow can refer to values in its parent's `inputS` and `outputs` with the `${parent.foo}` syntax.
   Remember that relative paths in the parent refer to the parent repo, while in the child they resolve relative to the child's repo.
   Thus, if you want the child to reference an input file in the parent repo, you need to put `input: foo: input.txt` in the parent and `input: bar: ${parent.foo}` in the child, which you can then reference as `${bar}` in the child `commands`.
   If you reference `${parent.foo}` directly in the child `commands`, it will be an absolute path in S3, and will not have been downloaded to a local file for you.
