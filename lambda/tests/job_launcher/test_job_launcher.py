@@ -109,6 +109,7 @@ def test_main(mock_state_machine_version, replay, expected_name, monkeypatch):
     monkeypatch.setenv("REGION", "us-east-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
     monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
+    monkeypatch.setenv("BC_VERSION", "v1.2.3")
 
     state_machine_arn, versioned = mock_state_machine_version
     monkeypatch.setenv("VERSIONED_SFN", versioned)
@@ -141,6 +142,7 @@ def test_main(mock_state_machine_version, replay, expected_name, monkeypatch):
             "version": "0123456789ABCDEF0123456789abcdef",
         },
         "index": "main",
+        "bclaw_version": "v1.2.3",
     }
     assert desc_input == expect
 
@@ -162,6 +164,7 @@ def test_main_duplicate_event(mock_state_machine_version, monkeypatch):
     monkeypatch.setenv("REGION", "us-east-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
     monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
+    monkeypatch.setenv("BC_VERSION", "v1.2.3")
 
     state_machine_arn, versioned = mock_state_machine_version
     monkeypatch.setenv("VERSIONED_SFN", versioned)
