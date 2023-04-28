@@ -2,7 +2,7 @@ import json
 import logging
 import os
 
-from .version import VERSION
+# from .version import VERSION
 
 
 class JSONFormatter(logging.Formatter):
@@ -20,10 +20,8 @@ class JSONFormatter(logging.Formatter):
             },
             "sfn_execution_id": os.environ.get("BC_EXECUTION_ID"),
             "branch": os.environ.get("BC_BRANCH_IDX"),
-            "batch": {
-                "runner": f"bclaw_runner v{VERSION}",
-                "job_id": os.environ.get("AWS_BATCH_JOB_ID"),
-            },
+            "batch_job_id": os.environ.get("AWS_BATCH_JOB_ID"),
+            "bclaw_version": os.environ.get("BC_VERSION"),
         }
         if record.exc_info is not None:
             obj["exception"] = self.formatException(record.exc_info)

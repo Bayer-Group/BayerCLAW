@@ -20,6 +20,7 @@ Options:
 from functools import partial, partialmethod
 import json
 import logging.config
+import os
 from typing import Dict, List
 
 from docopt import docopt
@@ -30,7 +31,7 @@ from .string_subs import substitute, substitute_image_tag
 from .repo import Repository
 from .tagging import tag_this_instance
 from .termination import spot_termination_checker
-from .version import VERSION
+# from .version import VERSION
 from .workspace import workspace, write_job_data_file, run_commands
 
 
@@ -119,7 +120,7 @@ def cli() -> int:
     logging.user_cmd = partial(logging.log, logging.USER_CMD)
 
     with spot_termination_checker():
-        args = docopt(__doc__, version=VERSION)
+        args = docopt(__doc__, version=os.environ["BC_VERSION"])
 
         logger.info(f"{args = }")
 

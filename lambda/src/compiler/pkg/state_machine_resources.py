@@ -212,6 +212,10 @@ def handle_state_machine(raw_steps: List[Dict],
                     "Key": "bclaw:core-stack-name",
                     "Value": os.environ["CORE_STACK_NAME"],
                 },
+                {
+                    "Key": "bclaw:version",
+                    "Value": os.environ["SOURCE_VERSION"]
+                },
             ],
         },
     }

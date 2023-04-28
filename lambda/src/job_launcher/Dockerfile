@@ -41,6 +41,9 @@ RUN AWS_DEFAULT_REGION=us-east-1 pytest -s -vvv /opt/lambda/tests/
 
 FROM base AS build
 
+ARG BC_VERSION_ARG
+ENV BC_VERSION=$BC_VERSION_ARG
+
 WORKDIR ${LAMBDA_TASK_ROOT}
 
 CMD ["job_launcher.lambda_handler"]

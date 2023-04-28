@@ -2,7 +2,7 @@ import json
 import logging
 
 from ..src.runner.custom_logs import JSONFormatter
-from ..src.runner.version import VERSION
+# from ..src.runner.version import VERSION
 
 
 def test_JSONFormatter(monkeypatch):
@@ -12,6 +12,7 @@ def test_JSONFormatter(monkeypatch):
     monkeypatch.setenv("BC_LAUNCH_VERSION", "testVersion")
     monkeypatch.setenv("BC_LAUNCH_BUCKET", "testLaunchBucket")
     monkeypatch.setenv("BC_STEP_NAME", "testStepName")
+    monkeypatch.setenv("BC_VERSION", "v1.2.3")
     monkeypatch.setenv("BC_WORKFLOW_NAME", "testWorkflowName")
     monkeypatch.setenv("AWS_BATCH_JOB_ID", "0987654321")
     record = logging.LogRecord(
@@ -27,10 +28,8 @@ def test_JSONFormatter(monkeypatch):
     result_str = formatter.format(record)
     result = json.loads(result_str)
     expect = {
-        "batch": {
-            "runner": f"bclaw_runner v{VERSION}",
-            "job_id": "0987654321",
-        },
+        "batch_job_id": "0987654321",
+        "bclaw_version": f"v1.2.3",
         "branch": "99",
         "function": "test_pathname.test_func",
         "job_file": {

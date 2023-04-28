@@ -59,12 +59,26 @@ phases:
       - echo $LAUNCHER_IMAGE_TAG
 
       - cd $CODEBUILD_SRC_DIR/bclaw_runner
-      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --target test -f Dockerfile.alpine .
-      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $RUNNER_IMAGE_TAG -f Dockerfile.alpine .
+      - >
+        docker build 
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --target test -f Dockerfile.alpine .
+      - >
+        docker build 
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --build-arg BC_VERSION_ARG=${SOURCE_VERSION}
+        -t $RUNNER_IMAGE_TAG -f Dockerfile.alpine .
 
       - cd $CODEBUILD_SRC_DIR/lambda
-      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --target test -f src/job_launcher/Dockerfile .
-      - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $LAUNCHER_IMAGE_TAG -f src/job_launcher/Dockerfile .
+      - > 
+        docker build 
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --target test -f src/job_launcher/Dockerfile .
+      - >
+        docker build
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --build-arg BC_VERSION_ARG=${SOURCE_VERSION}
+        -t $LAUNCHER_IMAGE_TAG -f src/job_launcher/Dockerfile .
 
   post_build:
     commands:
