@@ -70,6 +70,7 @@ def main(event: dict, context: object) -> None:
                 "version": event["job_file_version"],
             },
             "index": event["branch"],
+            "bclaw_version": os.environ["BC_VERSION"],
         }
 
         region = os.environ["REGION"]

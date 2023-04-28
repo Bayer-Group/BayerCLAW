@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 import json
 import logging
+import os
 
 
 class JSONFormatter(logging.Formatter):
@@ -21,7 +22,8 @@ class JSONFormatter(logging.Formatter):
 
 
 @contextmanager
-def custom_lambda_logs(branch: str = "unknown",
+def custom_lambda_logs(bclaw_version: str = "unknown",
+                       branch: str = "unknown",
                        job_file_bucket: str = "unknown",
                        job_file_key: str = "unknown",
                        job_file_version: str = "unknown",
@@ -44,6 +46,7 @@ def custom_lambda_logs(branch: str = "unknown",
             },
             "sfn_execution_id": sfn_execution_id,
             "branch": branch,
+            "bclaw_version": bclaw_version
         }
 
         return record
