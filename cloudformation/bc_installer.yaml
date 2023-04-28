@@ -286,7 +286,8 @@ Resources:
                 ConnectionArn: !Ref CodeStarConnectionArn
                 FullRepositoryId: !Ref CoreRepo
                 BranchName: !Ref CoreBranch
-                OutputArtifactFormat: CODE_ZIP
+#                OutputArtifactFormat: CODE_ZIP
+                OutputArtifactFormat: CODEBUILD_CLONE_REF
                 DetectChanges: false
               OutputArtifacts:
                 - Name: coreSrc
@@ -378,7 +379,8 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Action:
+              - Effect: Allow
+                Action:
                 - "ec2:*"
                 - "iam:*"
                 - "s3:*"
@@ -389,5 +391,12 @@ Resources:
                 - "cloudformation:*"
                 - "lambda:*"
                 - "ecr:*"
-                Effect: Allow
                 Resource: "*"
+        - PolicyName: UseCodestarConnection
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "codestar-connections:UseConnection"
+                Resource: !Ref CodeStarConnectionArn

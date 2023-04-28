@@ -578,10 +578,6 @@ Resources:
                 - "ecs-tasks.amazonaws.com"
             Action:
               - "sts:AssumeRole"
-#      ManagedPolicyArns:
-#        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-#        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-#        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
       Policies:
         -
           PolicyName: "LogsAccess"
@@ -604,47 +600,15 @@ Resources:
                 Resource: "arn:aws:s3:::*"
               - Effect: "Allow"
                 Action:
-                  - "s3:*Object"
+                  - "s3:PutObject"
+                  - "s3:GetObject"
                   - "s3:PutObjectAcl"
+                  - "s3:AbortMultipartUpload"
                 Resource: "arn:aws:s3:::*/*"
-#        -
-#          PolicyName: "S3Access"
-#          PolicyDocument:
-#            Version: "2012-10-17"
-#            Statement:
-#              - Effect: "Allow"
-#                Action:
-#                  - "s3:*"
-#                Resource: "arn:aws:s3:::*"
-#              - Effect: "Deny"
-#                Action:
-#                  - "s3:PutAccessPointPolicyForObjectLambda"
-#                  - "s3:PutBucketPublicAccessBlock"
-#                  - "s3:DeleteAccessPointPolicyForObjectLambda"
-#                  - "s3:PutBucketAcl"
-#                  - "s3:PutBucketPolicy"
-#                  - "s3:DeleteAccessPointPolicy"
-#                  - "s3:DeleteBucketPolicy"
-#                  - "s3:PutAccessPointPolicy"
-#                Resource:
-#                  - "arn:aws:s3-object-lambda:*:934778205429:accesspoint/*"
-#                  - "arn:aws:s3:::*"
-#                  - "arn:aws:s3:*:934778205429:accesspoint/*"
-#              - Effect: "Deny"
-#                Action:
-#                  - "s3:ObjectOwnerOverrideToBucketOwner"
-#                  - "s3:PutMultiRegionAccessPointPolicy"
-#                  - "s3:PutObjectVersionAcl"
-#                  - "s3:BypassGovernanceRetention"
-#                  - "s3:PutObjectAcl"
-#                Resource:
-#                  - "arn:aws:s3:::*/*"
-#                  - "arn:aws:s3::934778205429:accesspoint/*"
-#              - Effect: "Deny"
-#                Action:
-#                  - "s3:PutAccountPublicAccessBlock"
-#                  - "s3:PutAccessPointPublicAccessBlock"
-#                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "s3:DeleteObject"
+                Resource: "arn:aws:s3:::*/_control_/*"
         -
           PolicyName: "ECRAccess"
           PolicyDocument:
