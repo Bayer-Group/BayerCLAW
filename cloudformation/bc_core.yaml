@@ -363,6 +363,9 @@ Resources:
       Runtime: python3.9
       CodeUri: lambda/src/qc_checker
       AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
       Layers:
@@ -384,7 +387,6 @@ Resources:
               Resource: "*"
       DeploymentPreference:
         Enabled: false
-      Description: !Ref SourceVersion
 
   QCCheckerLambdaLogGroup:
     Type: AWS::Logs::LogGroup
