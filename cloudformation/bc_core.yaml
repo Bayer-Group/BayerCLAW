@@ -384,6 +384,7 @@ Resources:
               Resource: "*"
       DeploymentPreference:
         Enabled: false
+      Description: !Ref SourceVersion
 
   QCCheckerLambdaLogGroup:
     Type: AWS::Logs::LogGroup
