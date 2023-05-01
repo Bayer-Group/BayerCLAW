@@ -161,8 +161,10 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
                 "version": version,
             },
             "index": "main",
+            "bclaw_version": "v1.2.3",
         },
         "logging": {
+            "bclaw_version": "v1.2.3",
             "branch": "main",
             "job_file_bucket": launcher_bucket,
             "job_file_key": job_data_key,
@@ -186,6 +188,7 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
         "prev_outputs": {},
         "repo": "s3://repo-bucket/path/to/repo/testJob",
         "share_id": "testworkflow",
+        "bclaw_version": "v1.2.3",
     }
 
     assert result == expect

@@ -109,6 +109,7 @@ def handle_s3_launch(event: dict) -> dict:
         "prev_outputs": {},
         "repo": repo,
         "share_id": share_id,
+        "bclaw_version": event["input_obj"]["bclaw_version"],
     }
 
     return ret
