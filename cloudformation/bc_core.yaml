@@ -154,6 +154,9 @@ Resources:
       Runtime: python3.9
       CodeUri: lambda/src/chooser
       AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
       Layers:
@@ -248,6 +251,9 @@ Resources:
       Runtime: python3.9
       CodeUri: lambda/src/initializer
       AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -287,6 +293,9 @@ Resources:
       Runtime: python3.9
       CodeUri: lambda/src/scatter
       AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -326,6 +335,9 @@ Resources:
       Runtime: python3.9
       CodeUri: lambda/src/gather
       AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -411,6 +423,9 @@ Resources:
       Runtime: python3.9
       CodeUri: lambda/src/subpipes
       AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -450,6 +465,9 @@ Resources:
       Runtime: python3.9
       CodeUri: lambda/src/notifications
       AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
       Layers:
@@ -487,6 +505,9 @@ Resources:
       Runtime: python3.9
       CodeUri: lambda/src/versionator
       AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
       Layers:
