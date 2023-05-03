@@ -9,12 +9,6 @@ import boto3
 # note: target function needs to have been changed
 #   ...environment var change is sufficient
 
-# remove cfn_responder from common layer
-# make VersionatorLambda "immutable"
-#   remove common layer
-#   remove AutoPublishAlias
-#   remove BCLAW_VERSION environment var
-# replace VERSIONATOR_LAMBDA_ARN in compiler
 
 @dataclass()
 class Response:
