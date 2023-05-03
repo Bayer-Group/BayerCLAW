@@ -22,8 +22,7 @@ class JSONFormatter(logging.Formatter):
 
 
 @contextmanager
-def custom_lambda_logs(bclaw_version: str = "unknown",
-                       branch: str = "unknown",
+def custom_lambda_logs(branch: str = "unknown",
                        job_file_bucket: str = "unknown",
                        job_file_key: str = "unknown",
                        job_file_version: str = "unknown",
@@ -46,8 +45,7 @@ def custom_lambda_logs(bclaw_version: str = "unknown",
             },
             "sfn_execution_id": sfn_execution_id,
             "branch": branch,
-            "bclaw_version_a": bclaw_version,
-            "bclaw_version_b": os.environ.get("BCLAW_VERSION", "unknown")
+            "bclaw_version": os.environ.get("BCLAW_VERSION", "unknown")
         }
 
         return record
