@@ -29,7 +29,6 @@ def test_scatter_step(compiler_env):
             "scatter": json.dumps(spec["scatter"]),
             "inputs": json.dumps(spec["inputs"]),
             "logging": {
-                "bclaw_version.$": "$.bclaw_version",
                 "branch.$": "$.index",
                 "job_file_bucket.$": "$.job_file.bucket",
                 "job_file_key.$": "$.job_file.key",
@@ -86,7 +85,6 @@ def test_gather_step(next_step_name, next_or_end, compiler_env):
             "outputs": json.dumps(spec["outputs"]),
             "items.$": "$.items",
             "logging": {
-                "bclaw_version.$": "$.bclaw_version",
                 "branch.$": "$.index",
                 "job_file_bucket.$": "$.job_file.bucket",
                 "job_file_key.$": "$.job_file.key",

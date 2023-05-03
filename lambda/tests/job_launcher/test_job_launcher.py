@@ -142,7 +142,6 @@ def test_main(mock_state_machine_version, replay, expected_name, monkeypatch):
             "version": "0123456789ABCDEF0123456789abcdef",
         },
         "index": "main",
-        "bclaw_version": "v1.2.3",
     }
     assert desc_input == expect
 

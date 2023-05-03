@@ -40,7 +40,6 @@ def test_file_submit_step(sample_subpipe_spec, compiler_env):
             "job_data": "test_job_data.json",
             "submit": json.dumps(SUBMIT_BLOCK["submit"]),
             "logging": {
-                "bclaw_version.$": "$.bclaw_version",
                 "branch.$": "$.index",
                 "job_file_bucket.$": "$.job_file.bucket",
                 "job_file_key.$": "$.job_file.key",
@@ -100,7 +99,6 @@ def test_file_retrieve_step(next_step_name, next_or_end, sample_subpipe_spec, co
                 "sub_repo.$": "$.subpipe.sub_repo",
             },
             "logging": {
-                "bclaw_version.$": "$.bclaw_version",
                 "branch.$": "$.index",
                 "job_file_bucket.$": "$.job_file.bucket",
                 "job_file_key.$": "$.job_file.key",

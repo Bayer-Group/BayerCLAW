@@ -25,7 +25,6 @@ def test_qc_checker_step(next_step_name, next_or_end, compiler_env):
             "qc_expression": "test_expression",
             "execution_id.$": "$$.Execution.Id",
             "logging": {
-                "bclaw_version.$": "$.bclaw_version",
                 "branch.$": "$.index",
                 "job_file_bucket.$": "$.job_file.bucket",
                 "job_file_key.$": "$.job_file.key",

@@ -72,6 +72,7 @@ Resources:
 
   wfLauncherLambdaVersion:
     Type: AWS::CloudFormation::CustomResource
+    DeletionPolicy: Retain
     Properties:
       ServiceToken: !Ref VersionatorArn
       FunctionName: !Ref wfLauncherLambda
