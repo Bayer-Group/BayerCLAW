@@ -46,7 +46,7 @@ def custom_lambda_logs(bclaw_version: str = "unknown",
             },
             "sfn_execution_id": sfn_execution_id,
             "branch": branch,
-            "bclaw_version": bclaw_version
+            "bclaw_version": bclaw_version + "woohoo"
         }
 
         return record
