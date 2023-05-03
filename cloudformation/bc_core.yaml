@@ -201,7 +201,7 @@ Resources:
           SOURCE_VERSION: !Ref SourceVersion
           CHOOSER_LAMBDA_ARN: !Ref ChooserLambda.Version
           ECS_TASK_ROLE_ARN: !GetAtt EcsTaskRole.Arn
-          NOTIFICATIONS_LAMBDA_ARN: !Ref NotificationsLambda.Version
+          NOTIFICATIONS_LAMBDA_ARN: !GetAtt NotificationsLambda.Arn
           GATHER_LAMBDA_ARN: !Ref GatherLambda.Version
           INITIALIZER_LAMBDA_ARN: !Ref InitializerLambda.Version
           JOB_LAUNCHER_REPO_URI: !GetAtt JobLauncherRepo.RepositoryUri
@@ -464,14 +464,14 @@ Resources:
       Handler: notifications.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/notifications
-      AutoPublishAlias: current
-      Environment:
-        Variables:
-          BCLAW_VERSION: !Ref SourceVersion
+#      AutoPublishAlias: current
+#      Environment:
+#        Variables:
+#          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
-      Layers:
-        - !Ref CommonLayer
+#      Layers:
+#        - !Ref CommonLayer
       Policies:
         -
           Version: "2012-10-17"
@@ -487,7 +487,8 @@ Resources:
   PermissionToInvokeNotificationsLambda:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref NotificationsLambda.Version
+      FunctionName: !GetAtt NotificationsLambda.Arn
+#      FunctionName: !Ref NotificationsLambda.Version
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceAccount: !Ref AWS::AccountId
