@@ -156,7 +156,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          BCLAW_VERSION: !Ref SourceVersion
+          COMMON_LAYER: !Ref CommonLayer
       MemorySize: 128
       Timeout: 60
       Layers:
@@ -216,7 +216,7 @@ Resources:
           SPOT_QUEUE_ARN: !GetAtt SpotQueueStack.Outputs.BatchQueueArn
           STATES_EXECUTION_ROLE_ARN: !GetAtt StatesExecutionRole.Arn
           SUBPIPES_LAMBDA_ARN: !Ref SubpipesLambda.Version
-          VERSIONATOR_LAMBDA_ARN: !Ref VersionatorLambda.Version
+          VERSIONATOR_LAMBDA_ARN: !GetAtt VersionatorLambda.Arn
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -253,7 +253,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          BCLAW_VERSION: !Ref SourceVersion
+          COMMON_LAYER: !Ref CommonLayer
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -295,7 +295,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          BCLAW_VERSION: !Ref SourceVersion
+          COMMON_LAYER: !Ref CommonLayer
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -337,7 +337,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          BCLAW_VERSION: !Ref SourceVersion
+          COMMON_LAYER: !Ref CommonLayer
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -379,7 +379,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          BCLAW_VERSION: !Ref SourceVersion
+          COMMON_LAYER: !Ref CommonLayer
       MemorySize: 128
       Timeout: 60
       Layers:
@@ -425,7 +425,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          BCLAW_VERSION: !Ref SourceVersion
+          COMMON_LAYER: !Ref CommonLayer
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -467,7 +467,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          BCLAW_VERSION: !Ref SourceVersion
+          COMMON_LAYER: !Ref CommonLayer
       MemorySize: 128
       Timeout: 60
       Layers:
@@ -504,14 +504,8 @@ Resources:
       Handler: versionator.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/versionator
-      AutoPublishAlias: current
-      Environment:
-        Variables:
-          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
-      Layers:
-        - !Ref CommonLayer
       Policies:
         -
           Version: "2012-10-17"

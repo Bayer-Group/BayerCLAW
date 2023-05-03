@@ -5,7 +5,6 @@ import moto
 import pytest
 
 from ...src.versionator.versionator import lambda_handler
-import cfn_responder
 
 
 class FakeContext:
@@ -52,7 +51,7 @@ def test_lambda(test_role):
     ("Update", "2"),
     ("Delete", "don't care")])
 def test_lambda_handler(req_type, version, test_lambda, mocker):
-    mocker.patch("cfn_responder.respond")
+    respond_fn = mocker.patch("lambda.src.versionator.versionator.respond")
     event = {
         "RequestType": req_type,
         "RequestId": "fake-request-id",
@@ -85,11 +84,11 @@ def test_lambda_handler(req_type, version, test_lambda, mocker):
         }
 
     lambda_handler(event, ctx)
-    cfn_responder.respond.assert_called_once_with(event["ResponseURL"], expect)
+    respond_fn.assert_called_once_with(event["ResponseURL"], expect)
 
 
 def test_lambda_handler_fail(mocker):
-    mocker.patch("cfn_responder.respond")
+    respond_fn = mocker.patch("lambda.src.versionator.versionator.respond")
     event = {
         "RequestType": "Create",
         "RequestId": "fake-request-id",
@@ -115,4 +114,4 @@ def test_lambda_handler_fail(mocker):
     }
 
     lambda_handler(event, ctx)
-    cfn_responder.respond.assert_called_once_with(event["ResponseURL"], expect)
+    respond_fn.assert_called_once_with(event["ResponseURL"], expect)
