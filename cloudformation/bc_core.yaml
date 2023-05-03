@@ -156,7 +156,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          COMMON_LAYER: !Ref CommonLayer
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
       Layers:
@@ -253,7 +253,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          COMMON_LAYER: !Ref CommonLayer
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -295,7 +295,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          COMMON_LAYER: !Ref CommonLayer
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -337,7 +337,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          COMMON_LAYER: !Ref CommonLayer
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -379,7 +379,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          COMMON_LAYER: !Ref CommonLayer
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
       Layers:
@@ -425,7 +425,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          COMMON_LAYER: !Ref CommonLayer
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -467,7 +467,7 @@ Resources:
       AutoPublishAlias: current
       Environment:
         Variables:
-          COMMON_LAYER: !Ref CommonLayer
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
       Layers:
