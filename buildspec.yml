@@ -34,7 +34,7 @@ phases:
         --s3-prefix lambda
         --capabilities CAPABILITY_NAMED_IAM
         --no-fail-on-empty-changeset
-        --tags Key=BayerCLAW_Version,Value=${SOURCE_VERSION}
+        --tags "bclaw:version=${SOURCE_VERSION}"
         --parameter-overrides
         AmiId=${AMI_ID:-auto}
         CompilerMacroName=${COMPILER_MACRO_NAME}
