@@ -214,7 +214,7 @@ def handle_state_machine(raw_steps: List[Dict],
                 },
                 {
                     "Key": "bclaw:version",
-                    "Value": os.environ["SOURCE_VERSION"]
+                    "Value": os.environ["SOURCE_VERSION"],
                 },
             ],
         },
