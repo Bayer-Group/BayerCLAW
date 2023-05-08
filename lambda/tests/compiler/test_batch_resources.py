@@ -212,24 +212,24 @@ def sample_batch_step():
     return ret
 
 
-@pytest.mark.parametrize("versioned, fmt_string", [
-    ("true", "${WFName}-${Step}--${Version}"),
-    ("false", "${WFName}-${Step}")
-])
-def test_job_definition_name(versioned, fmt_string):
-    expect = {
-        "Fn::Sub": [
-            fmt_string,
-            {
-                "WFName": {"Ref": "AWS::StackName"},
-                "Step": "test_name",
-            }
-        ]
-    }
-
+@pytest.mark.parametrize("versioned", ["true", "false"])
+def test_job_definition_name(versioned):
     if versioned == "true":
-        expect["Fn::Sub"][1]["Version"] = \
-            {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]}
+        expect = {
+            "JobDefinitionName": {
+                "Fn::Sub": [
+                    "${WFName}-${Step}--${Version}",
+                    {
+                        "WFName": {"Ref": "AWS::StackName"},
+                        "Step": "test_name",
+                        "Version": {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]},
+                    }
+                ]
+            }
+        }
+
+    else:
+        expect = {}
 
     result = job_definition_name("test_name", versioned)
     assert result == expect

@@ -173,31 +173,23 @@ def get_timeout(step: Step) -> dict:
 def job_definition_name(logical_name: str, versioned: str) -> dict:
     if versioned == "true":
         ret = {
-            "Fn::Sub": [
-                "${WFName}-${Step}--${Version}",
-                {
-                    "WFName": {
-                        "Ref": "AWS::StackName",
+            "JobDefinitionName": {
+                "Fn::Sub": [
+                    "${WFName}-${Step}--${Version}",
+                    {
+                        "WFName": {
+                            "Ref": "AWS::StackName",
+                        },
+                        "Step": logical_name,
+                        "Version": {
+                            "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+                        },
                     },
-                    "Step": logical_name,
-                    "Version": {
-                        "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
-                    },
-                },
-            ],
+                ],
+            },
         }
     else:
-        ret = {
-            "Fn::Sub": [
-                "${WFName}-${Step}",
-                {
-                    "WFName": {
-                        "Ref": "AWS::StackName",
-                    },
-                    "Step": logical_name,
-                },
-            ],
-        }
+        ret = {}
 
     return ret
 
@@ -212,7 +204,7 @@ def job_definition_rc(step: Step,
         "Type": "AWS::Batch::JobDefinition",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
-            "JobDefinitionName": job_definition_name(logical_name, versioned),
+            **job_definition_name(logical_name, versioned),
             # "JobDefinitionName": {
             #     "Fn::Sub": [
             #         "${WFName}-${Step}--${Version}",
