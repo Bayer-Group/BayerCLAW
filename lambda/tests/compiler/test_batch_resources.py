@@ -6,7 +6,7 @@ import yaml
 
 from ...src.compiler.pkg.batch_resources import expand_image_uri, get_job_queue, get_memory_in_mibs, \
     get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout, batch_step, \
-    job_definition_rc, handle_batch, SCRATCH_PATH
+    job_definition_name, job_definition_rc, handle_batch, SCRATCH_PATH
 from ...src.compiler.pkg.misc_resources import LAUNCHER_STACK_NAME
 from ...src.compiler.pkg.util import Step, Resource, State
 
@@ -212,6 +212,29 @@ def sample_batch_step():
     return ret
 
 
+@pytest.mark.parametrize("versioned, fmt_string", [
+    ("true", "${WFName}-${Step}--${Version}"),
+    ("false", "${WFName}-${Step}")
+])
+def test_job_definition_name(versioned, fmt_string):
+    expect = {
+        "Fn::Sub": [
+            fmt_string,
+            {
+                "WFName": {"Ref": "AWS::StackName"},
+                "Step": "test_name",
+            }
+        ]
+    }
+
+    if versioned == "true":
+        expect["Fn::Sub"][1]["Version"] = \
+            {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]}
+
+    result = job_definition_name("test_name", versioned)
+    assert result == expect
+
+
 @pytest.mark.parametrize("task_role", [
     "arn:task:role",
     {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.EcsTaskRoleArn"]},
@@ -309,7 +332,7 @@ def test_job_definition_rc(task_role, sample_batch_step, compiler_env):
     }
 
     def helper():
-        job_def_name1 = yield from job_definition_rc(step, task_role, "bash")
+        job_def_name1 = yield from job_definition_rc(step, task_role, "bash", "true")
         assert job_def_name1 == expected_job_def_name
 
     for job_def_rc in helper():
@@ -400,8 +423,8 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
 
 
 @pytest.mark.parametrize("options", [
-    {"no_task_role": ""},
-    {"task_role": "arn:from:workflow:params"}
+    {"no_task_role": "", "versioned": "true"},
+    {"task_role": "arn:from:workflow:params", "versioned": "true"}
 ])
 @pytest.mark.parametrize("step_task_role_request", [
     {},
@@ -456,7 +479,7 @@ def test_handle_batch_with_qc(sample_batch_step, compiler_env):
     }
 
     def helper():
-        states = yield from handle_batch(step, {"wf": "params"}, False)
+        states = yield from handle_batch(step, {"wf": "params", "versioned": "true"}, False)
         assert len(states) == 2
         assert all(isinstance(s, State) for s in states)
 
@@ -482,7 +505,7 @@ def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):
     step.spec["inputs"] = None
 
     def helper():
-        states = yield from handle_batch(step, {"wf": "params"}, False)
+        states = yield from handle_batch(step, {"wf": "params", "versioned": "true"}, False)
         assert states[0].spec["Parameters"]["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())
@@ -497,7 +520,7 @@ def test_handle_batch_shell_opt(sample_batch_step, step_shell, expect, compiler_
     step.spec["compute"]["shell"] = step_shell
 
     def helper():
-        _ = yield from handle_batch(step, {"shell": "sh"}, False)
+        _ = yield from handle_batch(step, {"shell": "sh", "versioned": "true"}, False)
 
     rc = dict(helper())
     assert rc["StepNameJobDef"]["Properties"]["Parameters"]["shell"] == expect

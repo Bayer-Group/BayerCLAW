@@ -136,7 +136,8 @@ def sample_scatter_step():
 
 
 def test_handle_scatter_gather(sample_scatter_step, compiler_env):
-    options = {"wf": "options"}
+    options = {"wf": "options",
+               "versioned": "true"}
 
     def helper():
         step = Step("step_name", sample_scatter_step, "next_step_name")
@@ -189,7 +190,7 @@ def test_handle_scatter_gather_auto_inputs(sample_scatter_step, compiler_env):
 
     def helper():
         test_step = Step("step_name", sample_scatter_step, "next_step_name")
-        states = yield from handle_scatter_gather(test_step, {"wf": "params"}, 0)
+        states = yield from handle_scatter_gather(test_step, {"wf": "params", "versioned": "true"}, 0)
         assert states[0].spec["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())

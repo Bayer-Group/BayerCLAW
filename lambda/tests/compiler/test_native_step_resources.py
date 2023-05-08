@@ -201,7 +201,8 @@ def test_handle_parallel_native_step(compiler_env):
       Next: override_this
     """)
     spec = yaml.safe_load(step_yaml)
-    options = {"wf": "options"}
+    options = {"wf": "options",
+               "versioned": "true"}
 
     def helper():
         test_step = Step("step_name", spec, "next_step")
