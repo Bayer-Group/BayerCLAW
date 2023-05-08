@@ -170,29 +170,63 @@ def get_timeout(step: Step) -> dict:
     return ret
 
 
+def job_definition_name(logical_name: str, versioned: str) -> dict:
+    if versioned == "true":
+        ret = {
+            "Fn::Sub": [
+                "${WFName}-${Step}--${Version}",
+                {
+                    "WFName": {
+                        "Ref": "AWS::StackName",
+                    },
+                    "Step": logical_name,
+                    "Version": {
+                        "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+                    },
+                },
+            ],
+        }
+    else:
+        ret = {
+            "Fn::Sub": [
+                "${WFName}-${Step}",
+                {
+                    "WFName": {
+                        "Ref": "AWS::StackName",
+                    },
+                    "Step": logical_name,
+                },
+            ],
+        }
+
+    return ret
+
+
 def job_definition_rc(step: Step,
                       task_role: str,
-                      shell_opt: str) -> Generator[Resource, None, str]:
+                      shell_opt: str,
+                      versioned: str) -> Generator[Resource, None, str]:
     logical_name = make_logical_name(f"{step.name}.job.def")
 
     job_def = {
         "Type": "AWS::Batch::JobDefinition",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
-            "JobDefinitionName": {
-                "Fn::Sub": [
-                    "${WFName}-${Step}--${Version}",
-                    {
-                        "WFName": {
-                            "Ref": "AWS::StackName",
-                        },
-                        "Step": logical_name,
-                        "Version": {
-                            "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
-                        },
-                    },
-                ],
-            },
+            "JobDefinitionName": job_definition_name(logical_name, versioned),
+            # "JobDefinitionName": {
+            #     "Fn::Sub": [
+            #         "${WFName}-${Step}--${Version}",
+            #         {
+            #             "WFName": {
+            #                 "Ref": "AWS::StackName",
+            #             },
+            #             "Step": logical_name,
+            #             "Version": {
+            #                 "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+            #             },
+            #         },
+            #     ],
+            # },
             "Type": "container",
             "Parameters": {
                 "workflow_name": {
@@ -333,8 +367,9 @@ def handle_batch(step: Step,
 
     task_role = step.spec.get("task_role") or options.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
     shell_opt = step.spec["compute"]["shell"] or options.get("shell")
+    versioned = options["versioned"]
 
-    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt)
+    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt, versioned)
 
     if step.spec["qc_check"] is not None:
         qc_state = handle_qc_check(step)
