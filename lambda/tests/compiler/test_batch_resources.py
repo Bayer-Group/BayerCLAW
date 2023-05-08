@@ -302,12 +302,9 @@ def test_job_definition_rc(task_role, sample_batch_step, compiler_env):
             "Timeout": {
                 "AttemptDurationSeconds": 3600,
             },
-            "Tags": [
-                {
-                    "Key": "bclaw:version",
-                    "Value": "1234567",
-                }
-            ]
+            "Tags": {
+                "bclaw:version": "1234567",
+            }
         },
     }
 

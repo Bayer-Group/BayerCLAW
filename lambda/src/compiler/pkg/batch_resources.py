@@ -227,12 +227,9 @@ def job_definition_rc(step: Step,
             },
             "SchedulingPriority": 1,
             **get_timeout(step),
-            "Tags": [
-                {
-                    "Key": "bclaw:version",
-                    "Value": os.environ["SOURCE_VERSION"],
-                },
-            ],
+            "Tags": {
+                "bclaw:version": os.environ["SOURCE_VERSION"],
+            },
         },
     }
 
