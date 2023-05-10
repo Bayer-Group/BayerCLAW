@@ -1,4 +1,4 @@
-# Deploying BayerCLAW to a new AWS account
+# Installing BayerCLAW to a new AWS account
 ## Prerequisites
 
 - **CodeStar Connection:** A CodeStar Connection enables CodePipeline to retrieve code from GitHub.
