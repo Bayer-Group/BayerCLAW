@@ -51,6 +51,14 @@ It is also possible to perform a rollback by editing the alias on the AWS Lambda
 There's no need to explicitly roll forward after you deploy a patch -- new workflow versions
 are automatically activated. 
 
+### *Important!*
+
+Proper workflow rollbacks depend critically on the use of versioned Docker images. If you rely on Docker's
+default `:latest` tag (or even on a mutable generic tag like `:prod`), BayerCLAW could roll back your
+workflow's structure, but continue to use buggy Docker images. Consider using a CI/CD system such
+as AWS' CodeBuild to build your Docker images upon each new release, and pass the fully-qualified
+image tag to BayerCLAW (using `aws cloudformation deploy --parameter-overrides...`) as Parameter values.
+
 ## Cleaning up
 
 After you have updated a workflow many times, you may be left with an annoying number of old state
@@ -77,9 +85,3 @@ Don't do this -- at the very least, the version numbers will be screwy, and at s
 workflow construction will fail (although this is easily corrected). Instead, when moving a
 workflow from development to production, create a fresh copy of the workflow -- either in a
 different account or just with a different name -- and use it for production use.
-
-Deployment rollbacks depend critically on the use of versioned Docker images. If you rely on Docker's
-default `:latest` tag (or even on a generic mutable tag like `:prod`), BayerCLAW could roll back your
-workflow's structure, but continue to use buggy Docker images. Consider using a CI/CD system such
-as AWS' CodeBuild to build your Docker images upon each new release, and pass the fully-qualified
-image tag to BayerCLAW (through `aws cloudformation deploy...`) as Parameter values.
