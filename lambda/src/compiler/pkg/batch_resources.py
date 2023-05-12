@@ -15,7 +15,7 @@ SCRATCH_PATH = "/_bclaw_scratch"
 
 
 def expand_image_uri(uri: str) -> Union[str, dict]:
-    subbed = re.sub(r"\${", "${!", uri)
+    subbed = re.sub(r"\${(?!\s*AWS::)", "${!", uri)
     # https://stackoverflow.com/questions/37861791/how-are-docker-image-names-parsed
     #   The hostname [of a docker image uri] must contain a . dns separator,
     #   a : port separator, or the value "localhost" before the first /.
