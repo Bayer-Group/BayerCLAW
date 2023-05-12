@@ -73,10 +73,9 @@ def test_make_execution_name_pathological(s3_key, version, expect):
 
 
 @pytest.fixture(scope="function", params=["true", "false"])
-def mock_state_machine_version(request):
+def mock_state_machine_version(request, monkeypatch):
     with moto.mock_iam():
-        print(f"++++++++++ {os.environ['AWS_DEFAULT_REGION']=}")
-        iam = boto3.resource("iam", region_name="us-east-1")
+        iam = boto3.resource("iam", region_name="us-west-1")
 
         role = iam.create_role(
             RoleName="fakeRole",
@@ -84,7 +83,7 @@ def mock_state_machine_version(request):
         )
 
         with moto.mock_stepfunctions():
-            sfn = boto3.client("stepfunctions")
+            sfn = boto3.client("stepfunctions", region_name="us-west-1")
             if request.param == "true":
                 sfn_name = "test_sfn--99"
             else:
@@ -108,13 +107,13 @@ class MockContext():
     ("replay789ABCDEF", "replay789A_one-two-three-file_01234567")
 ])
 def test_main(mock_state_machine_version, replay, expected_name, monkeypatch):
-    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-1")
+    monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
     monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
     monkeypatch.setenv("BC_VERSION", "v1.2.3")
 
     state_machine_arn, versioned = mock_state_machine_version
-    print(f"********* {state_machine_arn=}")
     monkeypatch.setenv("VERSIONED_SFN", versioned)
 
     event = {
@@ -163,7 +162,8 @@ def test_make_state_machine_name(monkeypatch, versioned, expect):
 
 
 def test_main_duplicate_event(mock_state_machine_version, monkeypatch):
-    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-1")
+    monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
     monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
     monkeypatch.setenv("BC_VERSION", "v1.2.3")
@@ -188,3 +188,77 @@ def test_main_duplicate_event(mock_state_machine_version, monkeypatch):
     sfn = boto3.client("stepfunctions")
     result = sfn.list_executions(stateMachineArn=state_machine_arn)
     assert len(result["executions"]) == 1
+
+
+# @pytest.fixture(scope="function", params=["true", "false"])
+# def mock_state_machine_version1(request, monkeypatch):
+#     # monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-1")
+#
+#     with moto.mock_iam():
+#         iam = boto3.resource("iam", region_name="us-west-1")
+#
+#         role = iam.create_role(
+#             RoleName="fakeRole",
+#             AssumeRolePolicyDocument="{}"
+#         )
+#
+#         with moto.mock_stepfunctions():
+#             sfn = boto3.client("stepfunctions", region_name="us-west-1")
+#             if request.param == "true":
+#                 sfn_name = "test_sfn--99"
+#             else:
+#                 sfn_name = "test_sfn"
+#             state_machine = sfn.create_state_machine(
+#                 name=sfn_name,
+#                 definition="{}",
+#                 roleArn=role.arn
+#             )
+#
+#             yield state_machine["stateMachineArn"], request.param
+
+
+# @pytest.mark.parametrize("replay, expected_name", [
+#     ("", "one-two-three-file_01234567"),
+#     ("replay789ABCDEF", "replay789A_one-two-three-file_01234567")
+# ])
+# def test_main1(mock_state_machine_version1, replay, expected_name, monkeypatch):
+#     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-1")
+#     monkeypatch.setenv("REGION", "us-west-1")
+#     monkeypatch.setenv("ACCT_NUM", "123456789012")
+#     monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
+#     monkeypatch.setenv("BC_VERSION", "v1.2.3")
+#
+#     state_machine_arn, versioned = mock_state_machine_version1
+#     print(f"********* {state_machine_arn=}")
+#     monkeypatch.setenv("VERSIONED_SFN", versioned)
+#
+#     event = {
+#         "branch": "main",
+#         "job_file_bucket": "bucket-name",
+#         "job_file_key": "wf-name/one/two/three/file.txt",
+#         "job_file_version": "0123456789ABCDEF0123456789abcdef",
+#         "replay": replay,
+#     }
+#
+#     ctx = MockContext()
+#
+#     main(event, ctx)
+#
+#     sfn = boto3.client("stepfunctions")
+#     result = sfn.list_executions(stateMachineArn=state_machine_arn)
+#     execution = result["executions"][0]
+#     assert execution["stateMachineArn"] == state_machine_arn
+#     assert execution["name"] == expected_name
+#     assert execution["status"] == "RUNNING"
+#
+#     desc = sfn.describe_execution(executionArn=execution["executionArn"])
+#     desc_input = json.loads(desc["input"])
+#     expect = {
+#         "job_file": {
+#             "bucket": "bucket-name",
+#             "key": "wf-name/one/two/three/file.txt",
+#             "version": "0123456789ABCDEF0123456789abcdef",
+#         },
+#         "index": "main",
+#     }
+#     assert desc_input == expect
