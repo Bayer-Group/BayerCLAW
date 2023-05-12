@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 
 import boto3
@@ -74,6 +75,7 @@ def test_make_execution_name_pathological(s3_key, version, expect):
 @pytest.fixture(scope="function", params=["true", "false"])
 def mock_state_machine_version(request):
     with moto.mock_iam():
+        print(f"++++++++++ {os.environ['AWS_DEFAULT_REGION']=}")
         iam = boto3.resource("iam", region_name="us-east-1")
 
         role = iam.create_role(
@@ -112,7 +114,7 @@ def test_main(mock_state_machine_version, replay, expected_name, monkeypatch):
     monkeypatch.setenv("BC_VERSION", "v1.2.3")
 
     state_machine_arn, versioned = mock_state_machine_version
-    print(f"********* {state_machine_arn}")
+    print(f"********* {state_machine_arn=}")
     monkeypatch.setenv("VERSIONED_SFN", versioned)
 
     event = {
