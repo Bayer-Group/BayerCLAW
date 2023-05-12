@@ -112,6 +112,7 @@ def test_main(mock_state_machine_version, replay, expected_name, monkeypatch):
     monkeypatch.setenv("BC_VERSION", "v1.2.3")
 
     state_machine_arn, versioned = mock_state_machine_version
+    print(f"********* {state_machine_arn}")
     monkeypatch.setenv("VERSIONED_SFN", versioned)
 
     event = {
