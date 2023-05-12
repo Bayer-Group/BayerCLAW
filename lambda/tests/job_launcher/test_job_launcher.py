@@ -106,7 +106,7 @@ class MockContext():
     ("replay789ABCDEF", "replay789A_one-two-three-file_01234567")
 ])
 def test_main(mock_state_machine_version, replay, expected_name, monkeypatch):
-    monkeypatch.setenv("REGION", "us-east-1")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
     monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
     monkeypatch.setenv("BC_VERSION", "v1.2.3")
@@ -161,7 +161,7 @@ def test_make_state_machine_name(monkeypatch, versioned, expect):
 
 
 def test_main_duplicate_event(mock_state_machine_version, monkeypatch):
-    monkeypatch.setenv("REGION", "us-east-1")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
     monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
     monkeypatch.setenv("BC_VERSION", "v1.2.3")
