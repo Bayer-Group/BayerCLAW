@@ -1,5 +1,7 @@
 # Changelog for BayerCLAW
 
+## [v1.2.0] yada yada
+
 ## [v1.1.4] 2022-09-26 Feature release
 
 ### Added
