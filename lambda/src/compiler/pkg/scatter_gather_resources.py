@@ -34,6 +34,7 @@ def map_step(sub_branch: dict, gather_step_name: str) -> dict:
             "job_file.$": "$.job_file",
             "prev_outputs": {},
             "repo.$": "$$.Map.Item.Value.repo",
+            "share_id.$": "$.share_id",
         },
         "Iterator": sub_branch,
         "ResultPath": None,

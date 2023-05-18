@@ -52,6 +52,9 @@ def compile_template(fragment: dict, param_values: dict, state_machine_out=None)
             "LauncherBucketName": {
                 "Value": os.environ["LAUNCHER_BUCKET_NAME"],
             },
+            "LauncherURI": {
+                "Value": {"Fn::Sub": f"s3://{os.environ['LAUNCHER_BUCKET_NAME']}/${{AWS::StackName}}/"},
+            },
             "NotificationTopicArn": {
                 "Value": {"Fn::GetAtt": [deploy_substack.name, "Outputs.wfNotificationsTopicArn"]},
             },
