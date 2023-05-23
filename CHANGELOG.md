@@ -2,6 +2,11 @@
 
 ## [v1.2.0] 2023-05-xx Feature release
 
+**IMPORTANT:** Because of changes to the workflow specification language, as well as new features
+surrounding Batch job scheduling and operation, this version of BayerCLAW is not backward compatible
+with previous versions. It is recommended that users install this version alongside any previous
+installation so existing workflows can continue running until they can be converted.
+
 ### Added
 - Compile-time workflow parameters.
 - Versioned workflows and Blue/Green workflow deployment.
