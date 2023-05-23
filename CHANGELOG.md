@@ -1,9 +1,23 @@
 # Changelog for BayerCLAW
 
-## [v1.2.0] yada
+## [v1.2.0] 2023-05-xx Feature release
 
 ### Added
-yada
+- Compile-time workflow parameters.
+- Versioned workflows and Blue/Green workflow deployment.
+- Fair share batch job scheduling.
+- Improvements to Subpipes make them operate more like regular workflows.
+- Increased ability to update Batch Compute Environment parameters.
+- In Batch jobs, CloudWatch log messages originating from user commands
+are labeled with "USER_CMD".
+- Streamlined the Lambda that handles the Gather end of Scatter/Gather.
+- Optionally add log subscription filters to CloudWatch logs.
+
+### Removed
+- The global `params` has been removed to prevent confusion with thw new `Parameters` block. The
+`params.repository` field has been made into a top-level key in the workflow spec.
+- Stepwise `params` blocks (which have been deprecated since before v1.0.0) removed.
+- The `s3_request_id` field of the Step Function execution document has been removed.
 
 ## [v1.1.4] 2022-09-26 Feature release
 
