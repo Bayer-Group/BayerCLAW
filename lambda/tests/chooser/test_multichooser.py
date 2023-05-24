@@ -1,29 +1,15 @@
 import json
 import logging
-import os
-import sys
 
 import boto3
-from dotted.collection import DottedCollection, DottedDict, DottedList
+from box import Box, BoxList
 from moto import mock_s3
 import pytest
 
-# make common layer modules available
-sys.path.append(
-    os.path.realpath(
-        os.path.join(
-            os.path.dirname(__file__),  # (home)/lambda/tests/qc_checker
-            os.pardir,                  # (home)/lambda/tests
-            os.pardir,                  # (home)/lambda
-            "src", "common", "python"
-        )
-    )
-)
-
-logging.basicConfig(level=logging.INFO)
-
 from ...src.chooser.multichooser import load_s3_object, load_vals, eval_this, run_exprs,\
     lambda_handler, ConditionFailed
+
+logging.basicConfig(level=logging.INFO)
 
 job_data = {
     "job": {
@@ -38,6 +24,10 @@ job_data = {
     "parent": {"do not": "use"},
 }
 
+data0 = { "input1": 99,
+          "x": "zee",
+          "y": "why",
+          "z": "ecks",}
 data1 = {"a": 1,
          "b": [2, 3, 4],
          "c": {"d": 5, "e": 6}}
@@ -66,6 +56,11 @@ def mock_repo():
         bucket.put_object(
             Body=json.dumps(job_data).encode("utf-8"),
             Key=f"{repo_name}/_JOB_DATA_"
+        )
+
+        bucket.put_object(
+            Body=json.dumps(data0).encode("utf-8"),
+            Key=f"{repo_name}/file0.json"
         )
 
         bucket.put_object(
@@ -119,41 +114,52 @@ def test_load_vals(mock_repo):
         "input3": data3,
     }
 
-    result = dict(load_vals(inputs, mock_repo))
+    result = Box(load_vals(inputs, mock_repo))
 
-    assert isinstance(result["job"], DottedCollection)
-    assert isinstance(result["input1"], DottedCollection)
-    assert isinstance(result["input2"], DottedCollection)
-    assert isinstance(result["input3"], DottedCollection)
-    assert str(result) == str(expect)  # ugh
+    assert isinstance(result["job"], Box)
+    assert isinstance(result["input1"], Box)
+    assert isinstance(result["input2"], Box)
+    assert isinstance(result["input3"], BoxList)
+    assert result == expect
 
 
 @pytest.mark.parametrize("inputs, expect0", [
+    ({"input1": "file0.json"}, data0),
     ({"input1": "file1.json"}, data1),
     ({"input1": "file4.json"}, {"input1": data4}),
     ({"input1": "file5.json"}, {"input1": data5}),
 ])
 def test_load_vals_single_input(mock_repo, inputs, expect0):
-    result = dict(load_vals(json.dumps(inputs), mock_repo))
+    result = Box(load_vals(json.dumps(inputs), mock_repo))
 
     if inputs["input1"] == "file1.json":
         expect = {**{"job": job_data["job"]},
                   **{"input1": expect0},
                   **expect0}
-        assert str(result) == str(expect)  # ugh
+        assert result == expect
 
-        assert isinstance(result["input1"], DottedDict)
+        assert isinstance(result["input1"], Box)
         assert isinstance(result["a"], int)
-        assert isinstance(result["b"], DottedList)
-        assert isinstance(result["c"], DottedDict)
+        assert isinstance(result["b"], BoxList)
+        assert isinstance(result["c"], Box)
+
+    elif inputs["input1"] == "file0.json":
+        expect = {**{"job": job_data["job"]},
+                  **{"input1": expect0},
+                  "x": "zee",
+                  "y": "why",
+                  "z": "ecks"}
+
+        assert result == expect
+
     else:
         expect = {**{"job": job_data["job"]}, **expect0}
         assert str(result) == str(expect)  # ugh
 
         if inputs["input1"] == "file4.json":
-            assert isinstance(result["input1"], DottedList)
+            assert isinstance(result.input1, BoxList)
         else:
-            assert isinstance(result["input1"], str)
+            assert isinstance(result.input1, str)
 
 
 @pytest.mark.parametrize("expr, expect", [
@@ -164,7 +170,8 @@ def test_load_vals_single_input(mock_repo, inputs, expect0):
     ("input1.b[1] == 3", True),  # nested list
     ("input1.c.e == 6", True),  # nested object
     ("input3[2].m.a == input1.a", True),  # compare values from different files
-    ("input2.f + input2.h.j == 1 + input3['1.2'] + input3[2].m.b", True),  # math
+    # ("input2.f + input2.h.j == 1 + input3['1.2'] + input3[2].m.b", True),  # math
+    ("input2.f + input2.h.j == 1 + input3[1][2] + input3[2].m.b", True),  # math
     ("7 < input2.g[1] < 10", True),  # chained
     ("input1.a == 1 and input2.f == 7", True),  # logical expression
     ("input2.g[0] != 8", False),  # false expression
@@ -178,11 +185,11 @@ def test_load_vals_single_input(mock_repo, inputs, expect0):
     ("8 in input2.g", True),  # list lookup
 ])
 def test_eval_this(expr, expect):
-    vals = {
-        "input1": DottedCollection.factory(data1),
-        "input2": DottedCollection.factory(data2),
-        "input3": DottedCollection.factory(data3),
-    }
+    vals = Box({
+        "input1": data1,
+        "input2": data2,
+        "input3": data3,
+    }, box_dots=True)
 
     result = eval_this(expr, vals)
     assert result == expect

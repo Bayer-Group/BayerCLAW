@@ -15,7 +15,44 @@ logger.setLevel(logging.INFO)
 logger.handlers[0].setFormatter(JSONFormatter())
 
 
-def copy_file_impl(spec: str, bucket: str, src_path: str, dst_path: str) -> None:
+def get_s3_object(s3_uri: str) -> dict:
+    logger.info(f"reading {s3_uri}")
+    bucket, key = s3_uri.split("/", 3)[2:]
+    obj = boto3.resource("s3").Object(bucket, key)
+    response = obj.get()
+    with closing(response["Body"]) as fp:
+        ret = json.load(fp)
+    return ret
+
+
+def put_s3_object(s3_uri: str, body: bytes) -> None:
+    logger.info(f"writing {s3_uri}")
+    bucket, key = s3_uri.split("/", 3)[2:]
+    obj = boto3.resource("s3").Object(bucket, key)
+    obj.put(Body=body)
+
+
+def copy_file_impl(spec: str, src_repo_uri: str, dst_repo_uri: str) -> None:
+    try:
+        src_file, dst_file = re.split(r"\s*->\s*", spec)
+    except ValueError:
+        src_file = dst_file = spec
+
+    src_uri = f"{src_repo_uri}/{src_file}"
+    dst_uri = f"{dst_repo_uri}/{dst_file}"
+
+    src_bucket, src_key = src_uri.split("/", 3)[2:]
+    dst_bucket, dst_key = dst_uri.split("/", 3)[2:]
+
+    copy_src = {
+        "Bucket": src_bucket,
+        "Key": src_key
+    }
+    dst_obj = boto3.resource("s3").Object(dst_bucket, dst_key)
+    dst_obj.copy(copy_src)
+
+
+def copy_file_impl0(spec: str, bucket: str, src_path: str, dst_path: str) -> None:
     try:
         src_file, dst_file = re.split(r"\s*->\s*", spec)
     except ValueError:
@@ -32,47 +69,67 @@ def copy_file_impl(spec: str, bucket: str, src_path: str, dst_path: str) -> None
 
 
 def lambda_handler(event: dict, context: object) -> dict:
+    # submit event = {
+    #   repo: str
+    #   job_data: str | None
+    #   submit: json-formatted list of str
+    #   logging: {}
+    # }
+    # retrieve event = {
+    #   repo: str
+    #   retrieve: json-formatted list of str
+    #   subpipe: {
+    #     sub_repo: str
+    #   }
+    #   logging: {}
+    # }
+
     with custom_lambda_logs(**event["logging"]):
         logger.info(str(event))
 
-        # read job data object
-        s3 = boto3.client("s3")
-        repo_bucket, parent_repo_path = event["repo"].split("/", 3)[2:]
-        parent_job_data_key = f"{parent_repo_path}/_JOB_DATA_"
-        response = s3.get_object(Bucket=repo_bucket, Key=parent_job_data_key)
-        with closing(response["Body"]) as fp:
-            parent_job_data = json.load(fp)
+        parent_repo = event["repo"]
+        parent_job_data = get_s3_object(f"{parent_repo}/_JOB_DATA_")
 
         if "submit" in event:
-            src_repo_path = parent_repo_path
-
             # establish subpipe repo
-            dst_repo_path = sub_repo_path = f"{parent_repo_path}/{event['logging']['step_name']}"
-            logger.info(f"sub repo is {dst_repo_path}")
+            sub_repo = f"{parent_repo}/{event['logging']['step_name']}"
+            logger.info(f"{sub_repo=}")
 
-            # edit job data
+            if (sub_job_data_uri := event.get("job_data")) is not None:
+                if not sub_job_data_uri.startswith("s3://"):
+                    sub_job_data_uri = f"{parent_repo}/{sub_job_data_uri}"
+                logger.info(f"{sub_job_data_uri=}")
+                sub_job_data = get_s3_object(sub_job_data_uri)
+
+            else:
+                logger.info("using parent job data for subpipe")
+                sub_job_data = parent_job_data["job"]
+
+            # create job data for subpipe
             sub_job_data = {
-                "job": parent_job_data["job"],
+                "job": sub_job_data,
                 "parent": {},
                 "scatter": {},
             }
 
             # write job data to subpipe repo
-            sub_job_data_key = f"{dst_repo_path}/_JOB_DATA_"
-            logger.info(f"writing job data to s3://{repo_bucket}/{sub_job_data_key}")
-            s3.put_object(Bucket=repo_bucket, Key=sub_job_data_key, Body=json.dumps(sub_job_data).encode("utf-8"))
+            sub_job_data_dst = f"{sub_repo}/_JOB_DATA_"
+            logger.info(f"writing job data to {sub_job_data_dst}")
+            put_s3_object(sub_job_data_dst, json.dumps(sub_job_data).encode("utf-8"))
 
             # get submit strings -> spec strings
             spec_strings = json.loads(event["submit"])
 
+            src_repo_uri = parent_repo
+            dst_repo_uri = sub_repo
+
         elif "retrieve" in event:
-            dst_repo_path = parent_repo_path
-
-            # get subpipe repo
-            src_repo_path = sub_repo_path = event["subpipe"]["sub_repo"].split("/", 3)[-1]
-
             # get retrieve strings -> spec strings
             spec_strings = json.loads(event["retrieve"])
+
+            # get subpipe repo
+            src_repo_uri = sub_repo = event["subpipe"]["sub_repo"]
+            dst_repo_uri = parent_repo
 
         else:
             raise RuntimeError("unknown input type")
@@ -84,12 +141,11 @@ def lambda_handler(event: dict, context: object) -> dict:
             # copy files from src repo to dest
             with ThreadPoolExecutor(max_workers=len(subbed_specs)) as executor:
                 copy_file = partial(copy_file_impl,
-                                    bucket=repo_bucket,
-                                    src_path=src_repo_path,
-                                    dst_path=dst_repo_path)
+                                    src_repo_uri=src_repo_uri,
+                                    dst_repo_uri=dst_repo_uri)
                 _ = list(executor.map(copy_file, subbed_specs))
 
-        # return dest repo
-        ret = {"sub_repo": f"s3://{repo_bucket}/{sub_repo_path}"}
+        # return sub repo
+        ret = {"sub_repo": sub_repo}
 
         return ret

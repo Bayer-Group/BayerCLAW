@@ -71,6 +71,12 @@ def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> G
 
         elif "DockerName" in volume_spec:
             # this handles per-job EFS mounts
+            # template:
+            #   efs_id: fs-b5a4dd01
+            #   host_path: /efs
+            # volume_spec:
+            #   {'DockerName': 'ecs-jax-efs-test-EfsTestJobDef--1-1-fs-b5a4dd01-volume-bcd3a18fd8e28a9fe901',
+            #    'Destination': '/efs'}
             yield Mount(volume_spec["Destination"], volume_spec["DockerName"], type="volume", read_only=True,
                         driver_config=DriverConfig("amazon-ecs-volume-plugin"))
 
@@ -133,7 +139,8 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
             try:
                 with closing(container.logs(stream=True)) as fp:
                     for line in fp:
-                        logger.info(line.decode("utf-8"))
+                        logger.user_cmd(line.decode("utf-8"))
+                        # logger.info(line.decode("utf-8"))
 
             except Exception:
                 logger.exception("----- error during subprocess logging: ")

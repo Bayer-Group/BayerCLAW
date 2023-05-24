@@ -4,7 +4,7 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.native_step_resources import handle_native_step
-from ...src.compiler.pkg.util import CoreStack, Step, State
+from ...src.compiler.pkg.util import Step, State
 
 
 pass_test = {
@@ -70,11 +70,11 @@ fail_test = {
     (fail_test, "unused"),
 ])
 def test_handle_native_step(test_input, next_or_end):
-    wf_params = {"wf": "params"}
+    options = {"wf": "options"}
 
     def helper():
         test_step = Step("step_name", test_input, next_or_end)
-        result, *more = yield from handle_native_step("core_stack_placeholder", test_step, wf_params, 0)
+        result, *more = yield from handle_native_step(test_step, options, 0)
         assert len(more) == 0
         assert isinstance(result, State)
         assert result.name == "step_name"
@@ -119,11 +119,11 @@ def test_handle_native_step_stet():
         "_stet": True,
         "Other": "stuff",
     }
-    wf_params = {"wf": "params"}
+    options = {"wf": "options"}
 
     def helper():
         test_step = Step("step_name", test_input, "next_step")
-        result, *more = yield from handle_native_step("core_stack_placeholder", test_step, wf_params, 0)
+        result, *more = yield from handle_native_step(test_step, options, 0)
         expect = {
             "Type": "AnyType",
             "ResultPath": "keep_this_result_path",
@@ -141,10 +141,7 @@ def test_handle_native_step_stet():
     assert len(resources) == 0
 
 
-def test_handle_parallel_native_step(monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_handle_parallel_native_step(compiler_env):
     step_yaml = textwrap.dedent("""
       Type: Parallel
       inputs: {}
@@ -154,8 +151,6 @@ def test_handle_parallel_native_step(monkeypatch, mock_core_stack):
             -
               do_this:
                 image: bclaw-blank
-                params:
-                  i: 1
                 references:
                   m: s3://n
                 inputs:
@@ -172,8 +167,6 @@ def test_handle_parallel_native_step(monkeypatch, mock_core_stack):
             -
               do_that:
                 image: bclaw-wut
-                params:
-                  i: 1
                 references:
                   m: s3://n
                 inputs:
@@ -192,8 +185,6 @@ def test_handle_parallel_native_step(monkeypatch, mock_core_stack):
             -
               do_the_other:
                 image: who-dat
-                params:
-                  i: 1
                 references:
                   m: s3://n
                 inputs:
@@ -210,11 +201,12 @@ def test_handle_parallel_native_step(monkeypatch, mock_core_stack):
       Next: override_this
     """)
     spec = yaml.safe_load(step_yaml)
-    wf_params = {"wf": "params"}
+    options = {"wf": "options",
+               "versioned": "true"}
 
     def helper():
         test_step = Step("step_name", spec, "next_step")
-        result, *more = yield from handle_native_step(core_stack, test_step, wf_params, 0)
+        result, *more = yield from handle_native_step(test_step, options, 0)
         # print(str(result))
         assert len(more) == 0
         assert isinstance(result, State)

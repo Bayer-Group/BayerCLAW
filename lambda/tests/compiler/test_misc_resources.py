@@ -1,23 +1,27 @@
-from ...src.compiler.pkg.misc_resources import launcher_substack_rc, notifications_substack_rc, \
-    LAUNCHER_STACK_NAME, NOTIFICATIONS_STACK_NAME
-from ...src.compiler.pkg.util import CoreStack, Resource
+from ...src.compiler.pkg.misc_resources import launcher_substack_rc, deploy_substack_rc, \
+    LAUNCHER_STACK_NAME, DEPLOY_STACK_NAME
+from ...src.compiler.pkg.misc_resources import uuid as uu
+from ...src.compiler.pkg.util import Resource
 
 
-def test_launcher_substack_rc(monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
+def test_launcher_substack_rc(monkeypatch, compiler_env):
+    monkeypatch.setattr(uu, "uuid4", lambda: "fake_uuid")
+    options = {"versioned": "Y"}
 
-    result = launcher_substack_rc(core_stack, "FakeStateMachine")
+    result = launcher_substack_rc(options)
     expect = {
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
             "Parameters": {
+                "LauncherImageUri": "job_launcher_repo_uri:1234567",
+                "LogRetentionDays": "99",
+                "LoggingDestinationArn": "logging_destination_arn",
+                "Uniqifier": "fake_uuid",
+                "VersionatorArn": "versionator_lambda_arn",
+                "VersionedSFN": "Y",
                 "WorkflowName": {"Ref": "AWS::StackName"},
-                "StateMachineArn": {"Ref": "FakeStateMachine"},
-                "LauncherBucketName": "launcher_bucket_name",
-                "NamerLambdaArn": "namer_lambda_arn",
             },
-            "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/wf_launcher.yaml",
+            "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/1234567/wf_launcher.yaml",
         },
     }
     assert isinstance(result, Resource)
@@ -25,23 +29,29 @@ def test_launcher_substack_rc(monkeypatch, mock_core_stack):
     assert result.spec == expect
 
 
-def test_notifications_substack_rc(monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-    
-    result = notifications_substack_rc(core_stack, "FakeStateMachine")
+def test_deploy_substack_rc(monkeypatch, compiler_env):
+    state_machine_logical_name = "FakeStateMachineLogicalName"
+
+    result = deploy_substack_rc(state_machine_logical_name)
     expect = {
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
             "Parameters": {
+                "LauncherBucketName": "launcher_bucket_name",
+                "LauncherLambdaName": {
+                    "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaName"],
+                },
+                "LauncherLambdaVersion": {
+                    "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+                },
+                "NotificationsLambdaArn": "notifications_lambda_arn",
+                "StateMachineArn": {"Ref": state_machine_logical_name},
                 "WorkflowName": {"Ref": "AWS::StackName"},
-                "HandlerLambdaArn": "event_handler_lambda_arn",
-                "JobStatusLambdaArn": "job_status_lambda_arn",
-                "StateMachineArn": {"Ref": "FakeStateMachine"},
             },
-            "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/wf_notifications.yaml",
+            "TemplateURL": "https://s3.amazonaws.com/resource_bucket_name/cloudformation/1234567/wf_deploy.yaml"
         },
     }
+
     assert isinstance(result, Resource)
-    assert result.name == NOTIFICATIONS_STACK_NAME
+    assert result.name == DEPLOY_STACK_NAME
     assert result.spec == expect

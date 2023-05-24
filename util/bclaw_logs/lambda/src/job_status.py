@@ -1,4 +1,6 @@
-from datetime import datetime, timedelta
+import datetime as dt
+# from datetime import datetime, timedelta
+import json
 import os
 
 import boto3
@@ -7,21 +9,30 @@ from botocore.exceptions import ClientError
 
 
 def lambda_handler(event: dict, context: object) -> None:
+    print(f"{event=}")
+
     dynamodb = boto3.resource("dynamodb")
     table = dynamodb.Table(os.environ["JOB_STATUS_TABLE"])
 
-    for sns_record in event["Records"]:
-        time_str = sns_record["Sns"]["Timestamp"]
-        exec_id = sns_record["Sns"]["MessageAttributes"]["execution_id"]["Value"]
-        wf_name = sns_record["Sns"]["MessageAttributes"]["workflow_name"]["Value"]
+    # todo:
+    #    should launcher put wf name in input object?
+    #    should eventbridge rule put something bclaw-specific in input object for recognition?
 
-        # drop top level directory, it'll be the same as wf_name
-        job_file_name = sns_record["Sns"]["MessageAttributes"]["job_file"]["Value"].split("/", 1)[1]
-        job_file_version = sns_record["Sns"]["MessageAttributes"]["job_file_version"]["Value"]
-        job_status = sns_record["Sns"]["MessageAttributes"]["status"]["Value"]
+    try:
+        wf_name = event["detail"]["stateMachineArn"].rsplit(":", 1)[-1]
+        exec_id = event["detail"]["name"]
+        job_status = event["detail"]["status"]
 
-        timestamp = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S.%f%z")
-        expiration = timestamp + timedelta(days=int(os.environ["EXPIRATION_DAYS"]))
+        input_obj = json.loads(event["detail"]["input"])
+
+        # HEY! this causes subpipe executions to look like superpipe executions
+        # wf_name, job_file_name = input_obj["job_file"]["key"].split("/", 1)
+        job_file_name = input_obj["job_file"]["key"].split("/", 1)[-1]
+        job_file_version = input_obj["job_file"]["version"]
+
+        time_str = event["time"]
+        timestamp = dt.datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%S%z")
+        expiration = timestamp + dt.timedelta(days=int(os.environ["EXPIRATION_DAYS"]))
 
         item = {
             "Item": {
@@ -34,7 +45,7 @@ def lambda_handler(event: dict, context: object) -> None:
             }
         }
 
-        # notifications might arrive out of order: this prevents
+        # events might arrive out of order: this condition prevents
         # existing SUCCEEDED, FAILED, or ABORTED records in the table
         # from being overwritten by incoming RUNNING records
         if job_status == "RUNNING":
@@ -51,3 +62,5 @@ def lambda_handler(event: dict, context: object) -> None:
             if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
                 pass
 
+    except (KeyError, ValueError):
+        print("not a bayerclaw execution")

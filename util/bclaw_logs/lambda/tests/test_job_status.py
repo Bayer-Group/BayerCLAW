@@ -1,12 +1,13 @@
-from datetime import datetime, timedelta
+import datetime as dt
 from decimal import Decimal
+import json
 
 import boto3
 from boto3.dynamodb.conditions import Key
 from moto import mock_dynamodb2
 import pytest
 
-from ...src.job_status.job_status import lambda_handler
+from ..src.job_status import lambda_handler
 
 
 @pytest.fixture(scope="function")
@@ -47,37 +48,22 @@ def test_lambda_handler(status, ddb_table, monkeypatch):
     monkeypatch.setenv("EXPIRATION_DAYS", "90")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
 
-    timestamp_str = "2021-05-28T17:53:54.991Z"
-    timestamp_obj = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S.%f%z")
-    expiration_obj = timestamp_obj + timedelta(days=90)
-    expected_timestamp = Decimal(int(timestamp_obj.timestamp()))
-    expected_expiration = Decimal(int(expiration_obj.timestamp()))
+    timestamp_str = "2023-02-24T15:18:13Z"
 
     event = {
-        "Records": [
-            {
-                "Sns": {
-                    "Timestamp": timestamp_str,
-                    "MessageAttributes": {
-                        "execution_id": {
-                            "Value": "12345678-1234...",
-                        },
-                        "workflow_name": {
-                            "Value": "test-workflow",
-                        },
-                        "job_file": {
-                            "Value": "test-workflow/path/to/job.file",
-                        },
-                        "job_file_version": {
-                            "Value": "987654321",
-                        },
-                        "status": {
-                            "Value": status,
-                        }
-                    }
+        "time": timestamp_str,
+        "detail": {
+            "name": "12345678-1234...",
+            "status": status,
+            "input": json.dumps(
+                {
+                    "job_file": {
+                        "key": "test-workflow/path/to/job.file",
+                        "version": "987654321",
+                    },
                 }
-            }
-        ]
+            ),
+        },
     }
 
     lambda_handler(event, {})
@@ -86,6 +72,11 @@ def test_lambda_handler(status, ddb_table, monkeypatch):
         KeyConditionExpression=Key("workflow_name").eq("test-workflow"),
         Select="ALL_ATTRIBUTES"
     )
+
+    timestamp_obj = dt.datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S%z")
+    expiration_obj = timestamp_obj + dt.timedelta(days=90)
+    expected_timestamp = Decimal(int(timestamp_obj.timestamp()))
+    expected_expiration = Decimal(int(expiration_obj.timestamp()))
 
     expect = {
         "executionId": "12345678-1234...",
@@ -122,30 +113,21 @@ def test_lambda_handler_overwrite(old_status, new_status, expected_file_version,
     )
 
     event = {
-        "Records": [
-            {
-                "Sns": {
-                    "Timestamp": "2021-05-28T17:53:54.991Z",
-                    "MessageAttributes": {
-                        "execution_id": {
-                            "Value": "12345678-1234...",
-                        },
-                        "workflow_name": {
-                            "Value": "test-workflow",
-                        },
-                        "job_file": {
-                            "Value": "test-workflow/path/to/job.file",
-                        },
-                        "job_file_version": {
-                            "Value": "new",
-                        },
-                        "status": {
-                            "Value": new_status,
-                        },
-                    }
+        "time": "2021-05-28T17:53:54Z",
+        "detail": {
+            "name": "12345678-1234...",
+            "status": new_status,
+            "input": json.dumps(
+                {
+                    "job_file": {
+                        "key": "test-workflow/path/to/job.file",
+                        # job file versions won't actually change during a run, this is just
+                        # a hack to check whether the record was overwritten
+                        "version": "new",
+                    },
                 }
-            }
-        ]
+            ),
+        },
     }
 
     lambda_handler(event, {})

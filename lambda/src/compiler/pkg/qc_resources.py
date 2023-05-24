@@ -1,8 +1,8 @@
-from .util import CoreStack, Step, State, lambda_logging_block
+import os
+from .util import Step, State, lambda_logging_block
 
 
-def qc_checker_step(core_stack: CoreStack,
-                    batch_step: Step,
+def qc_checker_step(batch_step: Step,
                     retry_attempts: int = 3,
                     wait_interval: int = 3,
                     backoff_rate: float = 1.5) -> dict:
@@ -10,7 +10,7 @@ def qc_checker_step(core_stack: CoreStack,
 
     ret = {
         "Type": "Task",
-        "Resource": core_stack.output("QCCheckerLambdaArn"),
+        "Resource": os.environ["QC_CHECKER_LAMBDA_ARN"],
         "Parameters": {
             "repo.$": "$.repo",
             "qc_result_file": qc_spec["qc_result_file"],
@@ -41,7 +41,7 @@ def qc_checker_step(core_stack: CoreStack,
     return ret
 
 
-def handle_qc_check(core_stack: CoreStack, batch_step: Step) -> State:
+def handle_qc_check(batch_step: Step) -> State:
     qc_checker_step_name = f"{batch_step.name}.qc_checker"
-    ret = State(qc_checker_step_name, qc_checker_step(core_stack, batch_step))
+    ret = State(qc_checker_step_name, qc_checker_step(batch_step))
     return ret

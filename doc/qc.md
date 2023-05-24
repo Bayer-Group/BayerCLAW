@@ -11,7 +11,7 @@ For quality control and notification purposes, you can include steps that will h
 
 ## Example QC step
 
-Here is an example definition for including a step like this:
+Here is a step definition example that includes QC check:
 
 ```yaml
 -
@@ -20,7 +20,7 @@ Here is an example definition for including a step like this:
       inputs:
         filter_3_in: MQ20filter_reads.bam
       commands:
-        - "export RESULT=`${SAMTOOLS0119}/samtools depth -q 20 ${filter_3_in} | awk 'BEGIN {sum=0} {sum+=$3} END {print sum}'` ; printf '{\"qc_result\": \"%s\"}' \"${RESULT}\" > ${output_file}"
+        - "export RESULT=`samtools depth -q 20 ${filter_3_in} | awk 'BEGIN {sum=0} {sum+=$3} END {print sum}'` printf '{\"qc_result\": \"%s\"}' \"${RESULT}\" > ${output_file}"
       outputs:
         output_file: qc_out.json
       qc_check:
@@ -36,7 +36,7 @@ Here is an example definition for including a step like this:
 in s3.
 - Lambda QC checker function reads in the S3 object contents and substitues in the appropriate values into the
 `stop_early_if` expression.
-- Lambda QC checker runs an `eval` on the `stop_early_if`.
+- Lambda QC checker runs an `eval` on the `stop_early_if` expression.
 - Lambda QC checker aborts the Step Functions execution if the `stop_early_if` condition is true.
 
 ## IMPORTANT NOTES
@@ -51,7 +51,7 @@ value of that key.
 
 ## Explanation of fields
 - `qc_check` is the overarching block that signifies there should be a quality control check in place.
-- `qc_result_file` = the file where the results are currently written to. This assumes it is sitting in the output
+- `qc_result_file`is the file where the results are currently written to. This assumes it is sitting in the output
 repository bucket.
 - `stop_early_if` is the expression to use for determining whether or not to notify and stop the pipeline or continue on.
 

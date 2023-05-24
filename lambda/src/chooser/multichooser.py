@@ -6,7 +6,7 @@ import re
 from typing import Generator, Tuple, Any
 
 import boto3
-from dotted.collection import DottedCollection
+from box import Box, BoxList
 
 from lambda_logs import JSONFormatter, custom_lambda_logs
 from substitutions import substitute_job_data
@@ -38,21 +38,19 @@ def load_s3_object(repo: str, input_file: str) -> Any:
 
 
 def load_vals(inputs_json: str, repo: str) -> Generator[Tuple, None, None]:
-    inputs = json.loads(inputs_json)
-
     job_data = load_s3_object(repo, "_JOB_DATA_")
-    yield "job", DottedCollection.factory(job_data["job"])
+    yield "job", job_data["job"]
 
+    inputs = json.loads(inputs_json)
     jobby_inputs = substitute_job_data(inputs, job_data)
-
     for name, input_file in jobby_inputs.items():
         vals = load_s3_object(repo, input_file)
-        yield name, DottedCollection.factory(vals)
+        yield name, vals
 
         if len(inputs) == 1 and isinstance(vals, dict):
-            for name2, val in vals.items():
-                if name2 != name:
-                    yield name2, DottedCollection.factory(val)
+            vals.pop(name, None)
+            for name2, val2 in vals.items():
+                yield name2, val2
 
 
 def eval_this(expr: str, vals: dict):
@@ -81,7 +79,7 @@ def lambda_handler(event: dict, context: object):
     with custom_lambda_logs(**event["logging"]):
         logger.info(f"event: {str(event)}")
 
-        vals = dict(load_vals(event["inputs"], event["repo"]))
+        vals = Box(load_vals(event["inputs"], event["repo"]))
 
         if "expressions" in event:
             ret = run_exprs(event["expressions"], vals)

@@ -1,15 +1,16 @@
 import json
 import logging
+import os
 from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import CoreStack, Step, Resource, State, do_param_substitution, lambda_logging_block, lambda_retry
+from .util import Step, Resource, State, lambda_logging_block, lambda_retry
 
 
-def scatter_step(core_stack: CoreStack, step: Step, map_step_name: str) -> dict:
+def scatter_step(step: Step, map_step_name: str) -> dict:
     ret = {
         "Type": "Task",
-        "Resource": core_stack.output("ScatterLambdaArn"),
+        "Resource": os.environ["SCATTER_LAMBDA_ARN"],
         "Parameters": {
             "repo.$": "$.repo",
             "scatter": json.dumps(step.spec["scatter"]),
@@ -33,6 +34,7 @@ def map_step(sub_branch: dict, gather_step_name: str) -> dict:
             "job_file.$": "$.job_file",
             "prev_outputs": {},
             "repo.$": "$$.Map.Item.Value.repo",
+            "share_id.$": "$.share_id",
         },
         "Iterator": sub_branch,
         "ResultPath": None,
@@ -42,10 +44,10 @@ def map_step(sub_branch: dict, gather_step_name: str) -> dict:
     return ret
 
 
-def gather_step(core_stack: CoreStack, step: Step) -> dict:
+def gather_step(step: Step) -> dict:
     ret = {
         "Type": "Task",
-        "Resource": core_stack.output("GatherLambdaArn"),
+        "Resource": os.environ["GATHER_LAMBDA_ARN"],
         "Parameters": {
             "repo.$": "$.repo",
             "outputs": json.dumps(step.spec["outputs"]),
@@ -61,9 +63,8 @@ def gather_step(core_stack: CoreStack, step: Step) -> dict:
     return ret
 
 
-def handle_scatter_gather(core_stack: CoreStack,
-                          step: Step,
-                          wf_params: dict,
+def handle_scatter_gather(step: Step,
+                          options: dict,
                           map_depth: int
                           ) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
@@ -72,19 +73,16 @@ def handle_scatter_gather(core_stack: CoreStack,
     if map_depth > 0:
         raise RuntimeError("Nested Scatter steps are not supported")
 
-    subbed_spec = do_param_substitution(step.spec)
-    subbed_step = Step(step.name, subbed_spec, step.next)
+    sub_branch = yield from sm.make_branch(step.spec["steps"], options, depth=map_depth + 1)
 
-    sub_branch = yield from sm.make_branch(core_stack, subbed_step.spec["steps"], wf_params, depth=map_depth + 1)
-
-    scatter_step_name = subbed_step.name
-    map_step_name = f"{subbed_step.name}.map"
-    gather_step_name = f"{subbed_step.name}.gather"
+    scatter_step_name = step.name
+    map_step_name = f"{step.name}.map"
+    gather_step_name = f"{step.name}.gather"
 
     ret = [
-        State(scatter_step_name, scatter_step(core_stack, subbed_step, map_step_name)),
+        State(scatter_step_name, scatter_step(step, map_step_name)),
         State(map_step_name, map_step(sub_branch, gather_step_name)),
-        State(gather_step_name, gather_step(core_stack, subbed_step))
+        State(gather_step_name, gather_step(step))
     ]
 
     return ret

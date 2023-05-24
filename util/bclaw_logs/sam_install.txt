@@ -1,0 +1,8 @@
+sam build -b ./build -s . -t template.yaml
+
+sam deploy \
+--template-file build/template.yaml \
+--stack-name bclaw-logs \
+--resolve-s3 \
+--capabilities CAPABILITY_IAM \
+--profile bclaw-public

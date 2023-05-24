@@ -311,7 +311,7 @@ def test_cli(capsys, requests_mock, mock_ec2_instance, monkeypatch, argv, expect
     monkeypatch.setenv("BC_WORKFLOW_NAME", "testWorkflowName")
     monkeypatch.setenv("BC_STEP_NAME", "test:step:name")
     monkeypatch.setenv("BC_JOB_NAME", "test*job")
-    monkeypatch.setenv("BC_S3_REQUEST_ID", "12345ELVISLIVES")
+    monkeypatch.setenv("BC_VERSION", "v1.2.3")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     monkeypatch.setattr("sys.argv", argv.split())
     monkeypatch.setattr("bclaw_runner.src.runner.runner_main.main", fake_main)

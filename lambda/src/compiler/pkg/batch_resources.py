@@ -1,48 +1,38 @@
 import json
 import logging
 import math
+import os
 import re
-from typing import Generator, List, Tuple, Union
+from typing import Generator, List, Union
 
 import humanfriendly
 
+from .misc_resources import LAUNCHER_STACK_NAME
 from .qc_resources import handle_qc_check
-from .util import CoreStack, Step, Resource, State, make_logical_name, do_param_substitution,\
-    time_string_to_seconds
+from .util import Step, Resource, State, make_logical_name, time_string_to_seconds
 
 SCRATCH_PATH = "/_bclaw_scratch"
 
 
-# "registry/path/image_name:version" -> ("registry/path", "image_name", "version")
-# "registry/path/image_name"         -> ("registry/path", "image_name", None)
-# "image_name:version"               -> (None, "image_name", "version")
-# "image_name"                       -> (None, "image_name", None)
-URI_PARSER = re.compile(r"^(?:(.+)/)?([^:]+)(?::(.+))?$")
-
 def expand_image_uri(uri: str) -> Union[str, dict]:
-    registry, image, version = URI_PARSER.fullmatch(uri).groups()
-
-    if registry is None:
-        if version is None:
-            tag = ""
-        else:
-            tag = ":" + re.sub(r"\${", "${!", version)
-        ret = {
-            "Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{image}{tag}",
-        }
+    subbed = re.sub(r"\${", "${!", uri)
+    # https://stackoverflow.com/questions/37861791/how-are-docker-image-names-parsed
+    #   The hostname [of a docker image uri] must contain a . dns separator,
+    #   a : port separator, or the value "localhost" before the first /.
+    # ...but it's unlikely that localhost will be used in a batch job
+    if re.match(r"^.*[.:].*/", subbed):
+        return subbed
     else:
-        ret = uri
-
-    return ret
+        return {"Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed}"}
 
 
-def get_job_queue(core_stack: CoreStack, compute_spec: dict) -> str:
+def get_job_queue(compute_spec: dict) -> str:
     if (queue_name := compute_spec.get("queue_name")) is not None:
         ret = f"arn:aws:batch:${{AWSRegion}}:${{AWSAccountId}}:job-queue/{queue_name}"
     elif compute_spec["spot"]:
-        ret = core_stack.output("SpotQueueArn")
+        ret = os.environ["SPOT_QUEUE_ARN"]
     else:
-        ret = core_stack.output("OnDemandQueueArn")
+        ret = os.environ["ON_DEMAND_QUEUE_ARN"]
     return ret
 
 
@@ -77,6 +67,10 @@ def get_environment(step: Step) -> dict:
             "Name": "AWS_DEFAULT_REGION",
             "Value": {"Ref": "AWS::Region"},
         },
+        {
+            "Name": "AWS_ACCOUNT_ID",
+            "Value": {"Ref": "AWS::AccountId"}
+        }
     ]
 
     ret = {"Environment": vars}
@@ -176,15 +170,55 @@ def get_timeout(step: Step) -> dict:
     return ret
 
 
-def job_definition_rc(core_stack: CoreStack,
-                      step: Step,
+def job_definition_name(logical_name: str, versioned: str) -> dict:
+    if versioned == "true":
+        ret = {
+            "JobDefinitionName": {
+                "Fn::Sub": [
+                    "${WFName}-${Step}--${Version}",
+                    {
+                        "WFName": {
+                            "Ref": "AWS::StackName",
+                        },
+                        "Step": logical_name,
+                        "Version": {
+                            "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+                        },
+                    },
+                ],
+            },
+        }
+    else:
+        ret = {}
+
+    return ret
+
+
+def job_definition_rc(step: Step,
                       task_role: str,
-                      shell_opt: str) -> Generator[Resource, None, str]:
-    job_def_name = make_logical_name(f"{step.name}.job.def")
+                      shell_opt: str,
+                      versioned: str) -> Generator[Resource, None, str]:
+    logical_name = make_logical_name(f"{step.name}.job.def")
 
     job_def = {
         "Type": "AWS::Batch::JobDefinition",
+        "UpdateReplacePolicy": "Retain",
         "Properties": {
+            **job_definition_name(logical_name, versioned),
+            # "JobDefinitionName": {
+            #     "Fn::Sub": [
+            #         "${WFName}-${Step}--${Version}",
+            #         {
+            #             "WFName": {
+            #                 "Ref": "AWS::StackName",
+            #             },
+            #             "Step": logical_name,
+            #             "Version": {
+            #                 "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+            #             },
+            #         },
+            #     ],
+            # },
             "Type": "container",
             "Parameters": {
                 "workflow_name": {
@@ -211,20 +245,22 @@ def job_definition_rc(core_stack: CoreStack,
                     "--shell", "Ref::shell",
                     "--skip", "Ref::skip",
                 ],
-                "Image": core_stack.output("RunnerImageURI"),
+                "Image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
                 "JobRoleArn": task_role,
                 **get_environment(step),
                 **get_resource_requirements(step),
                 **get_volume_info(step),
             },
-            # 20220909: save for v1.2
-            # "SchedulingPriority": 1,
-            **get_timeout(step)
+            "SchedulingPriority": 1,
+            **get_timeout(step),
+            "Tags": {
+                "bclaw:version": os.environ["SOURCE_VERSION"],
+            },
         },
     }
 
-    yield Resource(job_def_name, job_def)
-    return job_def_name
+    yield Resource(logical_name, job_def)
+    return logical_name
 
 
 def get_skip_behavior(spec: dict) -> str:
@@ -238,9 +274,8 @@ def get_skip_behavior(spec: dict) -> str:
     return ret
 
 
-def batch_step(core_stack: CoreStack,
-               step: Step,
-               job_definition_name: str,
+def batch_step(step: Step,
+               job_definition_logical_name: str,
                scattered: bool,
                next_step_override: str = None,
                attempts: int = 3,
@@ -266,10 +301,9 @@ def batch_step(core_stack: CoreStack,
         ],
         "Parameters": {
             "JobName.$": job_name,
-            "JobDefinition": f"${{{job_definition_name}}}",
-            "JobQueue": get_job_queue(core_stack, step.spec["compute"]),
-            # 20220909: save for v1.2
-            # "ShareIdentifier": "${WorkflowName}",
+            "JobDefinition": f"${{{job_definition_logical_name}}}",
+            "JobQueue": get_job_queue(step.spec["compute"]),
+            "ShareIdentifier.$": "$.share_id",
             "Parameters": {
                 "repo.$": "$.repo",
                 **step.input_field,
@@ -299,11 +333,6 @@ def batch_step(core_stack: CoreStack,
                         "Name": "BC_LAUNCH_VERSION",
                         "Value.$": "$.job_file.version",
                     },
-                    {
-                        # deprecated
-                        "Name": "BC_LAUNCH_S3_REQUEST_ID",
-                        "Value.$": "$.job_file.s3_request_id",
-                    },
                 ],
             },
         },
@@ -322,30 +351,26 @@ def batch_step(core_stack: CoreStack,
     return ret
 
 
-def handle_batch(core_stack: CoreStack,
-                 step: Step,
-                 wf_params: dict,
+def handle_batch(step: Step,
+                 options: dict,
                  scattered: bool) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
     logger.info(f"making batch step {step.name}")
 
-    task_role = step.spec.get("task_role") or wf_params.get("task_role") or core_stack.output("ECSTaskRoleArn")
-    shell_opt = step.spec["compute"]["shell"] or wf_params.get("shell")
+    task_role = step.spec.get("task_role") or options.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
+    shell_opt = step.spec["compute"]["shell"] or options.get("shell")
+    versioned = options["versioned"]
 
-    subbed_spec = do_param_substitution(step.spec)
-    subbed_step = Step(step.name, subbed_spec, step.next)
+    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt, versioned)
 
-    job_def_name = yield from job_definition_rc(core_stack, subbed_step, task_role, shell_opt)
-
-    if subbed_spec["qc_check"] is not None:
-        qc_state = handle_qc_check(core_stack, subbed_step)
-        ret0 = batch_step(core_stack, subbed_step, job_def_name, scattered,
-                          **subbed_step.spec["retry"],
+    if step.spec["qc_check"] is not None:
+        qc_state = handle_qc_check(step)
+        ret0 = batch_step(step, job_def_logical_name, scattered, **step.spec["retry"],
                           next_step_override=qc_state.name)
         ret = [State(step.name, ret0), qc_state]
 
     else:
-        ret = [State(step.name, batch_step(core_stack, subbed_step, job_def_name,
-                                           **subbed_step.spec["retry"], scattered=scattered))]
+        ret = [State(step.name, batch_step(step, job_def_logical_name, **step.spec["retry"],
+                                           scattered=scattered))]
 
     return ret

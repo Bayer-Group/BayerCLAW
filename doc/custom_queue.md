@@ -11,34 +11,33 @@ Instead, the [bc_batch](../cloudformation/bc_batch.yaml) cloudformation template
 standalone manner to build a custom Batch job queue and associated resources.
 
 The parameters for the `bc_batch` template are as follows:
-- Batch parameters
-    - QueueName: The name of the job queue to create. [Required]
-    - QueuePriority: Priority level for the job queue. Jobs from a queue with a higher QueuePriority
+- **Batch parameters**
+    - `QueueName`: The name of the job queue to create. [Required]
+    - `QueuePriority`: Priority level for the job queue. Jobs from a queue with a higher QueuePriority
     number will be prioritized those from a queue with lower QueuePriority (but see
       [below](#on-queue-priority-levels) for caveats). [Optional, default=10]
-- Source parameters
-    - ResourceBucketName: The resource S3 bucket associated with your BayerCLAW installation. This
-    will usually be something like `<installation name>-resources-<account id>`. [Required]
-- Compute parameters
-    - AmiId: The Amazon Machine Image (AMI) to use to launch EC2 instances. [Required]
-    - RequestType: Choose whether to run Spot or On-Demand instances. [Optional, defaul=Spot]
-    - InstanceTypes: A comma-separated list of EC2 instance types to use. Enter `optimal` to allow
+- **Compute parameters**
+    - `AmiId`: The Amazon Machine Image (AMI) to use to launch EC2 instances. If set to
+      `Auto`, AWS Batch will select an appropriate machine image for the EC2 instance being
+      launched. Otherwise, you may specify a custom (ECS-enabled!) AMI. [Optional, default=auto]
+    - `RequestType`: Choose whether to run Spot or On-Demand instances. [Optional, default=Spot]
+    - `InstanceTypes`: A comma-separated list of EC2 instance types to use. Enter `optimal` to allow
       AWS Batch to choose a suitable instance type from among the M4, C4, or R4 instance families.
       [Optional, default=optimal]
-    - MinvCpus: The minimum number of EC2 vCPUs that Batch will keep running at all times.
+    - `MinvCpus`: The minimum number of EC2 vCPUs that Batch will keep running at all times.
       [Optional, default=0]
-    - MaxvCpus: The maximum number of EC@ vCPUs that Batch will allow to run simultaneously.
+    - `MaxvCpus`: The maximum number of EC2 vCPUs that Batch will allow to run simultaneously.
       [Optional, default=256]
-- Storage parameters
-    - RootVolumeSize: The size (in GB) of the EBS root volume to be used by Batch jobs.
+- **Storage parameters**
+    - `RootVolumeSize`: The size (in GB) of the EBS root volume to be used by Batch jobs.
       [Optional, default=100]
-    - ScratchVolumeSize: The size (in GB) of the EBS scratch volume to be used by Batch jobs.
+    - `ScratchVolumeSize`: The size (in GB) of the EBS scratch volume to be used by Batch jobs.
       [Optional, default=1000]
-- Network parameters
-    - SecurityGroupIds: Security groups for your Batch jobs to run under. [Required]
-    - Subnets: Subnets where your Batch jobs will run. [Required]
-- Advanced parameters
-    - Uniqifier: Attempts to update a custom queue stack may fail with and error message that reads
+- **Network parameters**
+    - `SecurityGroupIds`: Security groups for your Batch jobs to run under. [Required]
+    - `Subnets`: Subnets where your Batch jobs will run. [Required]
+- **Advanced parameters**
+    - `Uniqifier`: Attempts to update a custom queue stack may fail with and error message that reads
       `CloudFormation cannot update a stack when a custom-named resource requires replacing.` When
       this happens, you may enter a Uniqifier string that will cause the resource to be renamed. The
       Uniqifier string may contain only upper- and lowercase letters, numbers, underscores, and
@@ -84,15 +83,16 @@ One of the major motivations for providing BayerCLAW with custom job queue capab
 use of GPU-enabled compute resources in workflows. Here are some special considerations for creating
 job queues with GPU support:
 
-AMI ID: You must choose an AMI that both supports GPU and is ECS-optimized. You can typically find 
+`AMI ID`: If the AmiID parameter is set to `auto`, AWS Batch will select a GPU-enabled AMI for you.
+Otherwise, you must choose an AMI that both supports GPU and is ECS-optimized. You can typically find 
 these by searching for the strings "gpu" and "ecs" in the EC2 AMI console. Again, Amazon Linux 2
 is recommended.
 
-Instance types: At the time of writing, AWS Batch supports the p2, p3, p4, g3, g3s, and g4
+`Instance types`: At the time of writing, AWS Batch supports the p2, p3, p4, g3, g3s, and g4
 accelerated EC2 instance families. See [the documentation](https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing)
 for details.
 
-GPU allocation: In your workflow, each step that needs GPU support must request the number of 
+`GPU allocatio`n: In your workflow, each step that needs GPU support must request the number of 
 GPUs to allocate to each job. This is done using the `gpu` parameter of the `compute` block:
 
 ```yaml
@@ -113,7 +113,7 @@ GPUs to allocate to each job. This is done using the `gpu` parameter of the `com
 ```
 
 Note that although GPU-enabled EC2 instances can usually run ordinary compute jobs, they are typically
-much more expensive than general purpose instances. Be careful to only submit jobs that require GPU
+much more expensive than general purpose instances. Be careful to only submit jobs that actually require GPU
 support to a GPU-enabled queue.
 
 ## On queue priority levels

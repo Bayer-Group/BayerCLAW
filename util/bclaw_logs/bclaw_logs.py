@@ -14,11 +14,17 @@ from typing import Generator, Iterable
 
 import boto3
 
-cfn = boto3.resource("cloudformation")
-sfn = boto3.client("stepfunctions")
-ddb = boto3.client("dynamodb")
-batch = boto3.client("batch")
-cwlog = boto3.client("logs")
+session = boto3.Session(profile_name="bclaw-public")
+cfn = session.resource("cloudformation")
+sfn = session.client("stepfunctions")
+ddb = session.client("dynamodb")
+batch = session.client("batch")
+cwlog = session.client("logs")
+# cfn = boto3.resource("cloudformation")
+# sfn = boto3.client("stepfunctions")
+# ddb = boto3.client("dynamodb")
+# batch = boto3.client("batch")
+# cwlog = boto3.client("logs")
 
 HAS_COLOR = bool(os.environ.get('PS1'))
 if HAS_COLOR:
@@ -568,8 +574,9 @@ def main(args: list):
     else:
         raise RuntimeError(f"{machine['name']} is not a BayerCLAW workflow")
 
-    ddb_table_rc = cfn.StackResource(core_stack_name, "JobStatusTable")
-    ddb_table_name = ddb_table_rc.physical_resource_id
+    # ddb_table_rc = cfn.StackResource(core_stack_name, "JobStatusTable")
+    # ddb_table_name = ddb_table_rc.physical_resource_id
+    ddb_table_name = "bclawLogsTable"
 
     max_hours = int(input("Look at executions from the last ___ hours [24]:    ") or 24)
     min_execs = int(input("Return ___ executions at minimum [10]:    ") or 10)

@@ -1,30 +1,16 @@
 from contextlib import closing
 import json
 import logging
-import os
 import re
-import sys
 
 import boto3
 from moto import mock_s3
 import pytest
 
-# make common layer modules available
-sys.path.append(
-    os.path.realpath(
-        os.path.join(
-            os.path.dirname(__file__),  # (home)/lambda/tests/scatter
-            os.pardir,                  # (home)/lambda/tests
-            os.pardir,                  # (home)/lambda
-            "src", "common", "python"
-        )
-    )
-)
+from ...src.initializer.initializer import read_s3_object, lookup, substitute_job_data, check_recursive_launch, \
+    write_extended_job_data_object, lambda_handler
 
 logging.basicConfig(level=logging.INFO)
-
-from ...src.launcher.launcher import read_s3_object, lookup, substitute_job_data, check_recursive_launch, \
-    copy_job_data_to_repo, write_extended_job_data_object, write_execution_record, lambda_handler
 
 
 @pytest.fixture(scope="function")
@@ -173,7 +159,6 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
                 "bucket": launcher_bucket,
                 "key": job_data_key,
                 "version": version,
-                "s3_request_id": "ELVISLIVES",
             },
             "index": "main",
         },
@@ -182,7 +167,6 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
             "job_file_bucket": launcher_bucket,
             "job_file_key": job_data_key,
             "job_file_version": version,
-            "job_file_s3_request_id": "ELVISLIVES",
             "sfn_execution_id": "test-execution-id",
             "step_name": "test-step",
             "workflow_name": "test-workflow",
@@ -194,15 +178,14 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
     # return value to send to step functions
     expect = {
         "index": "main",
-        # "id_prefix": "test",
         "job_file": {
             "bucket": launcher_bucket,
             "key": job_data_key,
             "version": version,
-            "s3_request_id": "ELVISLIVES",
         },
         "prev_outputs": {},
         "repo": "s3://repo-bucket/path/to/repo/testJob",
+        "share_id": "testworkflow",
     }
 
     assert result == expect
@@ -238,7 +221,6 @@ def test_lambda_handler_subpipe_execution(caplog):
             "bucket": "testBucket",
             "key": "path/to/job/file.txt",
             "version": "testVersion",
-            "s3_request_id": "ELVISLIVES",
         },
         "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID": "1234567890",
         "repo": "path/to/sub/repo"
@@ -251,7 +233,6 @@ def test_lambda_handler_subpipe_execution(caplog):
             "job_file_bucket": "testBucket",
             "job_file_key": "path/to/job_file",
             "job_file_version": "testVersion",
-            "job_file_s3_request_id": "ELVISLIVES",
             "sfn_execution_id": "test_execution_id",
             "step_name": "test-step",
             "workflow_name": "test-workflow",

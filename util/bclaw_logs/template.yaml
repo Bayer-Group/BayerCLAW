@@ -1,0 +1,123 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  # dynamo db
+  JobStatusTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: "bclawLogsTable"
+      AttributeDefinitions:
+        -
+          AttributeName: "workflowName"
+          AttributeType: "S"
+        -
+          AttributeName: "executionId"
+          AttributeType: "S"
+        -
+          AttributeName: "timestamp"
+          AttributeType: "N"
+        -
+          AttributeName: "jobFile"
+          AttributeType: "S"
+      KeySchema:
+        -
+          AttributeName: "workflowName"
+          KeyType: "HASH"
+        -
+          AttributeName: "executionId"
+          KeyType: "RANGE"
+      LocalSecondaryIndexes:
+        -
+          IndexName: executionsByTimestamp
+          KeySchema:
+            -
+              AttributeName: "workflowName"
+              KeyType: "HASH"
+            -
+              AttributeName: "timestamp"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - "executionId"
+              - "jobFile"
+              - "status"
+        -
+          IndexName: executionsByJobFile
+          KeySchema:
+            -
+              AttributeName: "workflowName"
+              KeyType: "HASH"
+            -
+              AttributeName: "jobFile"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes:
+              - "executionId"
+              - "timestamp"
+              - "status"
+      TimeToLiveSpecification:
+        AttributeName: "expiration"
+        Enabled: true
+      BillingMode: PAY_PER_REQUEST
+
+  # job status lambda
+  JobStatusLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: job_status.lambda_handler
+      Runtime: python3.9
+      CodeUri: lambda/src
+      Environment:
+        Variables:
+          JOB_STATUS_TABLE: !Ref JobStatusTable
+          EXPIRATION_DAYS: "90"
+      MemorySize: 128
+      Timeout: 60
+      Policies:
+        -
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: Allow
+              Action:
+                - "dynamodb:DescribeTable"
+                - "dynamodb:PutItem"
+                - "dynamodb:UpdateItem"
+              Resource: !GetAtt JobStatusTable.Arn
+      DeploymentPreference:
+        Enabled: False
+
+  JobStatusLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${JobStatusLambda}"
+      RetentionInDays: 30
+
+  # event bridge rule
+  JobStatusSFNRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - aws.states
+        detail-type:
+          - Step Functions Execution Status Change
+      State: ENABLED
+      Targets:
+        -
+          Id: job-status-lambda
+          Arn: !GetAtt JobStatusLambda.Arn
+
+  # connector: event bridge -> lambda
+  JobStatusSFNtoLambda:
+    Type: AWS::Serverless::Connector
+    Properties:
+      Source:
+        Id: JobStatusSFNRule
+      Destination:
+        Id: JobStatusLambda
+      Permissions:
+        - Write

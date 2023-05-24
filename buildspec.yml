@@ -1,77 +1,97 @@
 version: 0.2
 
 env:
+  variables:
+    DOCKER_BUILDKIT: 1
   exported-variables:
     - CORE_STACK_NAME
+    - SOURCE_VERSION
 
 phases:
   install:
     runtime-versions:
       python: 3.9
     commands:
-      - pip install aws-sam-cli
       - pip install -r lambda/tests/requirements.txt
 
   pre_build:
     commands:
-      - pytest -s -vvv lambda/tests/
-      - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
-      - export ECR_REPO_NAME=${CORE_STACK_NAME}/bclaw_runner
+      - PYTHONPATH=${CODEBUILD_SRC_DIR}/lambda/src/common/python:$PYTHONPATH pytest -s -vvv lambda/tests/
       - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
-      - aws ecr create-repository --repository-name $ECR_REPO_NAME || true
-      - >
-        export ECR_REPO_URI=$(aws ecr describe-repositories
-        --repository-name $ECR_REPO_NAME
-        --query "repositories[0].repositoryUri"
-        --output text)
+      - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
+      - export SOURCE_VERSION=$(git describe --tags)
+      - export BATCH_FILTER=$(aws logs describe-subscription-filters --log-group-name "/aws/batch/job" --query "subscriptionFilters[].filterName" --output text || true)
 
   build:
     commands:
-      - cd bclaw_runner
-      - docker build --target test -f Dockerfile.alpine .
-      - docker build -t $ECR_REPO_URI -f Dockerfile.alpine .
-
-      - cd $CODEBUILD_SRC_DIR
       - sam build -b ./build -s . -t cloudformation/bc_core.yaml
       - >
-        sam package
+        sam deploy
         --template-file build/template.yaml
+        --stack-name ${CORE_STACK_NAME}
         --s3-bucket ${RESOURCE_BUCKET_NAME}
         --s3-prefix lambda
-        --output-template-file build/packaged.yaml
-      - >
-        sam deploy
-        --template-file build/packaged.yaml
-        --stack-name ${CORE_STACK_NAME}
         --capabilities CAPABILITY_NAMED_IAM
-        --s3-prefix lambda
         --no-fail-on-empty-changeset
+        --tags "bclaw:version=${SOURCE_VERSION}"
         --parameter-overrides
-        AmiId=${AMI_ID_SSM}
+        AmiId=${AMI_ID:-auto}
         CompilerMacroName=${COMPILER_MACRO_NAME}
+        ExistingBatchSubscriptionFilter="${BATCH_FILTER:-none}"
         InstallationName=${INSTALLATION_NAME}
         LauncherBucketName=${LAUNCHER_BUCKET_NAME}
         LogRetentionDays=${LOG_RETENTION_DAYS}
+        LoggingDestinationArn=${LOGGING_DESTINATION}
         MaxvCpus=${MAX_VCPUS}
         MinvCpus=${MIN_VCPUS}
         ResourceBucketName=${RESOURCE_BUCKET_NAME}
         RootVolumeSize=${ROOT_VOLUME_SIZE}
-        RunnerImageURI=${ECR_REPO_URI}
         ScratchVolumeSize=${SCRATCH_VOLUME_SIZE}
         SecurityGroups=${SECURITY_GROUPS}
+        SourceVersion=${SOURCE_VERSION}
         Subnets=${SUBNETS}
         Uniqifier=$(date | md5sum | head -c 16)
         VpcId=${VPC_ID}
+
+      - export RUNNER_IMAGE_TAG=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='RunnerImageUri'].OutputValue" --output text)
+      - echo $RUNNER_IMAGE_TAG
+      - export LAUNCHER_IMAGE_TAG=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='JobLauncherImageUri'].OutputValue" --output text)
+      - echo $LAUNCHER_IMAGE_TAG
+
+      - cd $CODEBUILD_SRC_DIR/bclaw_runner
+      - >
+        docker build 
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --target test -f Dockerfile.alpine .
+      - >
+        docker build 
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --build-arg BC_VERSION_ARG=${SOURCE_VERSION}
+        -t $RUNNER_IMAGE_TAG -f Dockerfile.alpine .
+
+      - cd $CODEBUILD_SRC_DIR/lambda
+      - > 
+        docker build 
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --target test -f src/job_launcher/Dockerfile .
+      - >
+        docker build
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --build-arg BC_VERSION_ARG=${SOURCE_VERSION}
+        -t $LAUNCHER_IMAGE_TAG -f src/job_launcher/Dockerfile .
 
   post_build:
     commands:
       - >
         aws ecr get-login-password --region ${AWS_REGION} |
         docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-      - docker push ${ECR_REPO_URI}
+
+      # don't crash on tag collision
+      - docker push ${RUNNER_IMAGE_TAG} || true
+      - docker push ${LAUNCHER_IMAGE_TAG} || true
 
 artifacts:
   discard-paths: yes
   files:
     - cloudformation/wf_launcher.yaml
-    - cloudformation/wf_notifications.yaml
+    - cloudformation/wf_deploy.yaml

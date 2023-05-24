@@ -1,21 +1,29 @@
-from .util import CoreStack, Resource
+import os
+import uuid
 
+from .util import Resource
+
+DEPLOY_STACK_NAME = "deployStack"
 LAUNCHER_STACK_NAME = "launcherStack"
-NOTIFICATIONS_STACK_NAME = "notificationsStack"
 
 
-def launcher_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -> Resource:
-    rc_bucket = core_stack.output("ResourceBucketName")
-    template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/wf_launcher.yaml"
+def launcher_substack_rc(options: dict) -> Resource:
+    rc_bucket = os.environ["RESOURCE_BUCKET_NAME"]
+    source_version = os.environ["SOURCE_VERSION"]
+    template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/{source_version}/wf_launcher.yaml"
+    # versioned_sfn = "" if options["versioned"] else "N"
 
     ret = {
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
             "Parameters": {
+                "LauncherImageUri": os.environ["JOB_LAUNCHER_REPO_URI"] + ":" + source_version,
+                "LogRetentionDays": os.environ["LOG_RETENTION_DAYS"],
+                "LoggingDestinationArn": os.environ["LOGGING_DESTINATION_ARN"],
+                "Uniqifier": str(uuid.uuid4()),
+                "VersionatorArn": os.environ["VERSIONATOR_LAMBDA_ARN"],
+                "VersionedSFN": options["versioned"],
                 "WorkflowName": {"Ref": "AWS::StackName"},
-                "StateMachineArn": {"Ref": state_machine_logical_name},
-                "LauncherBucketName": core_stack.output("LauncherBucketName"),
-                "NamerLambdaArn": core_stack.output("NamerLambdaArn"),
             },
             "TemplateURL": template_url,
         }
@@ -24,23 +32,28 @@ def launcher_substack_rc(core_stack: CoreStack, state_machine_logical_name: str)
     return Resource(LAUNCHER_STACK_NAME, ret)
 
 
-def notifications_substack_rc(core_stack: CoreStack, state_machine_logical_name: str) -> Resource:
-    rc_bucket = core_stack.output("ResourceBucketName")
-    template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/wf_notifications.yaml"
-    handler_lambda_arn = core_stack.output("EventHandlerLambdaArn")
-    job_status_lambda_arn = core_stack.output("JobStatusLambdaArn")
+def deploy_substack_rc(state_machine_logical_name: str) -> Resource:
+    rc_bucket = os.environ["RESOURCE_BUCKET_NAME"]
+    source_version = os.environ["SOURCE_VERSION"]
+    template_url = f"https://s3.amazonaws.com/{rc_bucket}/cloudformation/{source_version}/wf_deploy.yaml"
 
     ret = {
         "Type": "AWS::CloudFormation::Stack",
         "Properties": {
             "Parameters": {
-                "WorkflowName": {"Ref": "AWS::StackName"},
-                "HandlerLambdaArn": handler_lambda_arn,
-                "JobStatusLambdaArn": job_status_lambda_arn,
+                "LauncherBucketName": os.environ["LAUNCHER_BUCKET_NAME"],
+                "LauncherLambdaName": {
+                    "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaName"],
+                },
+                "LauncherLambdaVersion": {
+                    "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+                },
+                "NotificationsLambdaArn": os.environ["NOTIFICATIONS_LAMBDA_ARN"],
                 "StateMachineArn": {"Ref": state_machine_logical_name},
+                "WorkflowName": {"Ref": "AWS::StackName"},
             },
             "TemplateURL": template_url,
         },
     }
 
-    return Resource(NOTIFICATIONS_STACK_NAME, ret)
+    return Resource(DEPLOY_STACK_NAME, ret)

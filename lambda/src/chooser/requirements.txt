@@ -1,1 +1,1 @@
-dotted
+python-box[all]~=6.0

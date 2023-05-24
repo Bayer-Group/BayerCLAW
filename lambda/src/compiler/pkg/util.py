@@ -43,22 +43,6 @@ class State(NamedTuple):
     spec: dict
 
 
-class CoreStack(object):
-    def __init__(self):
-        self.name = os.environ["CORE_STACK_NAME"]
-
-        cfn = boto3.resource("cloudformation")
-        self.core_stack = cfn.Stack(self.name)
-
-    def output(self, output_key: str) -> str:
-        try:
-            query = f"[?OutputKey=='{output_key}'].OutputValue"
-            ret = jmespath.search(query, self.core_stack.outputs)[0]
-        except IndexError:
-            raise RuntimeError(f"{output_key} not found in core stack outputs")
-        return ret
-
-
 def make_logical_name(s: str) -> str:
     words = (w.capitalize() for w in re.split(r"[\W_]+", s))
     ret = "".join(words)
@@ -68,15 +52,15 @@ def make_logical_name(s: str) -> str:
 # given "${something}":
 #   match.group(0) == "${something}"
 #   match.group(1) == "something"
-PARAM_FINDER = re.compile(r"\${([\w.]+)}")
+PARAM_FINDER = re.compile(r"\${([A-Za-z0-9]+)}")
 
-def _param_subber(params: dict, target: Any):
+def substitute_params(params: dict, target: Any):
     if isinstance(target, str):
         ret = PARAM_FINDER.sub(lambda m: str(params.get(m.group(1), m.group(0))), target)
     elif isinstance(target, list):
-        ret = [_param_subber(params, v) for v in target]
+        ret = [substitute_params(params, v) for v in target]
     elif isinstance(target, dict):
-        ret = {k: _param_subber(params, v) for k, v in target.items()}
+        ret = {k: substitute_params(params, v) for k, v in target.items()}
     else:
         ret = target
     return ret
@@ -94,23 +78,6 @@ def lambda_logging_block(step_name: str) -> dict:
             "workflow_name": "${WorkflowName}",
         },
     }
-    return ret
-
-
-def do_param_substitution(spec: dict) -> dict:
-    ret = {}
-
-    for k, v in spec.items():
-        if k in {"inputs", "commands", "outputs"}:
-            ret[k] = _param_subber(spec["params"], v)
-        elif k == "steps":
-            parent_params = {f"parent.{k}": v for k, v in spec["params"].items()}
-            ret[k] = _param_subber(parent_params, v)
-        elif k == "params":
-            ret[k] = {}
-        else:
-            ret[k] = v
-
     return ret
 
 

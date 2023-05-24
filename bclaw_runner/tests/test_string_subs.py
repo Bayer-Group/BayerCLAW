@@ -129,11 +129,13 @@ def test_substitute_recursion():
 
 @pytest.mark.parametrize("original, expect", [
     ("docker.io/library/single:${sub}", "docker.io/library/single:tag"),
+    ("no_${a}_registry:${sub}", "no_eh_registry:tag"),
+    ("no_registry:no_subs", "no_registry:no_subs"),
     ("public.ecr.aws/docker/library/multi:${a}_${b}_${c}", "public.ecr.aws/docker/library/multi:eh_bee_sea"),
     ("123456789012.dkr.ecr.us-east-1.amazonaws.com/no:subs", "123456789012.dkr.ecr.us-east-1.amazonaws.com/no:subs"),
     ("123456789012.dkr.ecr.us-east-1.amazonaws.com/no_tags", "123456789012.dkr.ecr.us-east-1.amazonaws.com/no_tags"),
     ("myregistryhost:5000/fedora/httpd:${sub}", "myregistryhost:5000/fedora/httpd:tag"),  # https://docs.docker.com/engine/reference/commandline/tag/#tag-an-image-for-a-private-repository
-    ("probably:${a}/highly/${b}/illegal/${c}:${sub}", "probably:${a}/highly/${b}/illegal/${c}:tag"),
+    ("probably:${a}/highly/${b}/illegal/${c}:${sub}", "probably:${a}/highly/${b}/illegal/sea:tag"),
 ])
 def test_substitute_image_tag(original, expect):
     spec = {

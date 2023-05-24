@@ -1,13 +1,13 @@
 import logging
+import os
 from typing import Generator, List
 
 from . import state_machine_resources as sm
-from .util import CoreStack, Step, Resource, State, lambda_logging_block, lambda_retry
+from .util import Step, Resource, State, lambda_logging_block, lambda_retry
 
 
-def handle_parallel_step(core_stack: CoreStack,
-                         step: Step,
-                         wf_params: dict,
+def handle_parallel_step(step: Step,
+                         options: dict,
                          map_depth: int) -> Generator[Resource, None, List[State]]:
     logger = logging.getLogger(__name__)
     logger.info(f"making enhanced parallel step {step.name}")
@@ -28,7 +28,7 @@ def handle_parallel_step(core_stack: CoreStack,
                 {
                     f"{step.name}: {expression}?": {
                         "Type": "Task",
-                        "Resource": core_stack.output("ChooserLambdaArn"),
+                        "Resource": os.environ["CHOOSER_LAMBDA_ARN"],
                         "Parameters": {
                             "repo.$": "$.repo",
                             **step.input_field,
@@ -64,7 +64,7 @@ def handle_parallel_step(core_stack: CoreStack,
         except KeyError:
             pass
 
-        sfn_branch = yield from sm.make_branch(core_stack, steps, wf_params, depth=map_depth)
+        sfn_branch = yield from sm.make_branch(steps, options, depth=map_depth)
         sfn_branches.append(sfn_branch)
 
     ret = {

@@ -64,6 +64,6 @@ If a task fails, you will be able to see it in either place, and there will be l
 BayerCLAW's StepFunction job names are derived from the name of the job data file. Some characters
 may be transformed or removed due to naming constraints. Therefore, if you submit a file named 
 `my.input.json`, you my trigger a StepFunctions job named something like `my-input_Q7Pz7WYb`.
-The trailing `Q7Pz7WYb` is the first 8 characters of the file's version ID, assigned by S3. Note
-that StepFunction execution names are limited to 80 characters, so BayerCLAW may truncate very
+The trailing `Q7Pz7WYb` is the first 8 characters of the file's version ID, assigned by S3.
+StepFunction execution names are limited to 80 characters, so BayerCLAW may truncate very
 long file names.

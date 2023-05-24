@@ -1,93 +1,72 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Transform: AWS::Serverless-2016-10-31
+Transform:
+  - AWS::LanguageExtensions
+  - AWS::Serverless-2016-10-31
 
 Parameters:
   AmiId:
-    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
-    Description: >
-      Location of an Amazon Machine Image (AMI) ID in Systems Manager Parameter Store.
-      This AMI will be used by AWS Batch to create EC2 instances. Default is the
-      location of the latest Amazon Linux 2 ECS image ID.
-    Default: "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
+    Type: String
+    Default: "auto"
 
   CompilerMacroName:
     Type: String
-    Description: Compiler macro name, change this only for testing and development instances
-    Default: "BC_Compiler"
+    Default: "BC2_Compiler"
+
+  ExistingBatchSubscriptionFilter:
+    Type: String
+    Default: "none"
 
   InstallationName:
     Type: String
-    Default: bayerclaw
+    Default: "bayerclaw2"
 
   LauncherBucketName:
     Type: String
-    Description: >
-      Use this to specify a custom name for the job launcher S3 bucket. You must make sure that
-      this bucket name is globally unique. Enter "Default" to automatically generate a launcher
-      bucket name.
-    Default: "Default"
+    Default: "default"
 
   LogRetentionDays:
     Type: Number
-    Description: How long to keep CloudWatch log entries, in days.
     AllowedValues: [ 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653 ]
     Default: 30
 
+  LoggingDestinationArn:
+    Type: String
+    Default: "none"
+
   MaxvCpus:
     Type: Number
-    Description: >
-      Maximum number of CPUs that Batch will spin up simultaneously.
-      Actual maximum may be less depending on EC2 limits in the AWS account.
-      Once the maximum is reached, additional jobs will be queued until some jobs finish.
     Default: 256
 
   MinvCpus:
     Type: Number
-    Description: >
-      Minimum number of CPUs that Batch will maintain at all times, even when there are no jobs to process.
-      Setting this to something greater than zero (e.g. 2) will decrease the Batch cold-start time during testing,
-      at the expense of some always-on EC2 instances.
     Default: 0
 
   ResourceBucketName:
     Type: String
-    Description: S3 bucket containing resources for the main stack
 
   RootVolumeSize:
     Type: Number
-    Description: Size (in GB) of the EBS root volume used by Batch jobs
     Default: 100
-
-  RunnerImageURI:
-    Type: String
-    Description: URI of the Docker image containing bclaw_runner
 
   ScratchVolumeSize:
     Type: Number
-    Description: Size (in GB) of the EBS scratch volume used by Batch jobs
     Default: 1000
 
   SecurityGroups:
     Type: String
-    Description: >
-      Comma-separated list of security group IDs for Batch jobs to run under. Must allow outbound HTTP
-      and HTTPS traffic. Enter "Auto" to automatically create a suitable security group.
-    Default: Auto
+    Default: auto
+
+  SourceVersion:
+    Type: String
 
   Subnets:
     Type: CommaDelimitedList
-    Description: >
-      Comma-separated list of subnet IDs for Batch jobs to run in. Subnets must have internet access
-       either through a direct Internet Gateway connection or through a NAT Gateway.
 
   Uniqifier:
     Type: String
-    Description: >
-      This is a string that will be appended to certain resource names to make them unique.
 
   VpcId:
     Type: AWS::EC2::VPC::Id
-    Description: ID of the VPC where BayerCLAW will live
 
 
 Conditions:
@@ -97,6 +76,14 @@ Conditions:
   MakeSecurityGroup: !Or [ !Equals [!Ref SecurityGroups, "Auto"],
                            !Equals [!Ref SecurityGroups, "auto"] ]
 
+  MakeSubscriptionFilters: !Not [!Or [ !Equals [!Ref LoggingDestinationArn, "None"],
+                                       !Equals [!Ref LoggingDestinationArn, "none"] ] ]
+
+  NoBatchSubscriptionFilter: !Or [ !Equals [!Ref ExistingBatchSubscriptionFilter, "None"],
+                                   !Equals [!Ref ExistingBatchSubscriptionFilter, "none"] ]
+
+  MakeBatchSubscriptionFilter: !And [ !Condition MakeSubscriptionFilters,
+                                      !Condition NoBatchSubscriptionFilter ]
 
 Resources:
   # network
@@ -166,6 +153,10 @@ Resources:
       Handler: multichooser.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/chooser
+      AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
       Layers:
@@ -189,15 +180,43 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${ChooserLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  ChooserLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "chooser.*"}'
+      LogGroupName: !Ref ChooserLambdaLogGroup
+
   CompilerLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/compiler
+      AutoPublishAlias: current
       Environment:
         Variables:
           CORE_STACK_NAME: !Ref "AWS::StackName"
+          SOURCE_VERSION: !Ref SourceVersion
+          CHOOSER_LAMBDA_ARN: !Ref ChooserLambda.Version
+          ECS_TASK_ROLE_ARN: !GetAtt EcsTaskRole.Arn
+          NOTIFICATIONS_LAMBDA_ARN: !GetAtt NotificationsLambda.Arn
+          GATHER_LAMBDA_ARN: !Ref GatherLambda.Version
+          INITIALIZER_LAMBDA_ARN: !Ref InitializerLambda.Version
+          JOB_LAUNCHER_REPO_URI: !GetAtt JobLauncherRepo.RepositoryUri
+          LAUNCHER_BUCKET_NAME: !Ref LauncherBucket
+          LOG_RETENTION_DAYS: !Ref LogRetentionDays
+          LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
+          ON_DEMAND_QUEUE_ARN: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
+          QC_CHECKER_LAMBDA_ARN: !Ref QCCheckerLambda.Version
+          RESOURCE_BUCKET_NAME: !Ref ResourceBucketName
+          RUNNER_REPO_URI: !GetAtt RunnerRepo.RepositoryUri
+          SCATTER_LAMBDA_ARN: !Ref ScatterLambda.Version
+          SPOT_QUEUE_ARN: !GetAtt SpotQueueStack.Outputs.BatchQueueArn
+          STATES_EXECUTION_ROLE_ARN: !GetAtt StatesExecutionRole.Arn
+          SUBPIPES_LAMBDA_ARN: !Ref SubpipesLambda.Version
+          VERSIONATOR_LAMBDA_ARN: !GetAtt VersionatorLambda.Arn
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -225,12 +244,16 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${CompilerLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
-  LauncherLambda:
+  InitializerLambda:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: launcher.lambda_handler
+      Handler: initializer.lambda_handler
       Runtime: python3.9
-      CodeUri: lambda/src/launcher
+      CodeUri: lambda/src/initializer
+      AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -249,11 +272,19 @@ Resources:
       DeploymentPreference:
         Enabled: false
 
-  LauncherLambdaLogGroup:
+  InitializerLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${LauncherLambda}"
+      LogGroupName: !Sub "/aws/lambda/${InitializerLambda}"
       RetentionInDays: !Ref LogRetentionDays
+
+  InitializerLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "initializer.*"}'
+      LogGroupName: !Ref InitializerLambdaLogGroup
 
   ScatterLambda:
     Type: AWS::Serverless::Function
@@ -261,6 +292,10 @@ Resources:
       Handler: scatter.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/scatter
+      AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -285,12 +320,24 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${ScatterLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  ScatterLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "scatter.*"}'
+      LogGroupName: !Ref ScatterLambdaLogGroup
+
   GatherLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: gather.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/gather
+      AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -315,12 +362,24 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${GatherLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  GatherLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "gather.*"}'
+      LogGroupName: !Ref GatherLambdaLogGroup
+
   QCCheckerLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: qc_checker.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/qc_checker
+      AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
       Layers:
@@ -349,12 +408,24 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${QCCheckerLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
+  QCCheckerLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "qc_checker.*"}'
+      LogGroupName: !Ref QCCheckerLambdaLogGroup
+
   SubpipesLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: subpipes.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/subpipes
+      AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -379,52 +450,28 @@ Resources:
       LogGroupName: !Sub "/aws/lambda/${SubpipesLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
-  NamerLambda:
-    Type: AWS::Serverless::Function
+  SubpipesLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
     Properties:
-      Handler: namer.lambda_handler
-      Runtime: python3.9
-      CodeUri: lambda/src/sfn_namer
-      MemorySize: 128
-      Timeout: 5
-      Layers:
-        - !Ref CommonLayer
-      Policies:
-        -
-          Version: "2012-10-17"
-          Statement:
-            -
-              Effect: Allow
-              Action:
-                - "states:StartExecution"
-              Resource: "*"
-      DeploymentPreference:
-        Enabled: False
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "subpipes.*"}'
+      LogGroupName: !Ref SubpipesLambdaLogGroup
 
-  PermissionToInvokeNamer:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref NamerLambda
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
-
-  NamerLambdaLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/lambda/${NamerLambda}"
-      RetentionInDays: !Ref LogRetentionDays
-
-  EventHandlerLambda:
+  NotificationsLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: notifications.lambda_handler
       Runtime: python3.9
       CodeUri: lambda/src/notifications
+#      AutoPublishAlias: current
+#      Environment:
+#        Variables:
+#          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
-      Layers:
-        - !Ref CommonLayer
+#      Layers:
+#        - !Ref CommonLayer
       Policies:
         -
           Version: "2012-10-17"
@@ -437,30 +484,27 @@ Resources:
       DeploymentPreference:
         Enabled: False
 
-  PermissionToInvokeEventHandler:
+  PermissionToInvokeNotificationsLambda:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref EventHandlerLambda
+      FunctionName: !GetAtt NotificationsLambda.Arn
+#      FunctionName: !Ref NotificationsLambda.Version
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceAccount: !Ref AWS::AccountId
 
-  EventHandlerLambdaLogGroup:
+  NotificationsLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${EventHandlerLambda}"
+      LogGroupName: !Sub "/aws/lambda/${NotificationsLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
-  JobStatusLambda:
+  VersionatorLambda:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: job_status.lambda_handler
+      Handler: versionator.lambda_handler
       Runtime: python3.9
-      CodeUri: lambda/src/job_status
-      Environment:
-        Variables:
-          JOB_STATUS_TABLE: !Ref JobStatusTable
-          EXPIRATION_DAYS: "90"
+      CodeUri: lambda/src/versionator
       MemorySize: 128
       Timeout: 60
       Policies:
@@ -470,25 +514,15 @@ Resources:
             -
               Effect: Allow
               Action:
-                - "dynamodb:DescribeTable"
-                - "dynamodb:PutItem"
-                - "dynamodb:UpdateItem"
-              Resource: !GetAtt JobStatusTable.Arn
+                - "lambda:PublishVersion"
+              Resource: "*"
       DeploymentPreference:
         Enabled: False
 
-  PermissionToInvokeJobStatusLambda:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !Ref JobStatusLambda
-      Action: lambda:InvokeFunction
-      Principal: sns.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
-
-  JobStatusLambdaLogGroup:
+  VersionatorLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${JobStatusLambda}"
+      LogGroupName: !Sub "/aws/lambda/${VersionatorLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
   CompilerMacro:
@@ -565,11 +599,37 @@ Resources:
                 - "ecs-tasks.amazonaws.com"
             Action:
               - "sts:AssumeRole"
-      ManagedPolicyArns:
-        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
-        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
-        - "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
       Policies:
+        -
+          PolicyName: "LogsAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+        -
+          PolicyName: "S3Access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "s3:ListBucket"
+                Resource: "arn:aws:s3:::*"
+              - Effect: "Allow"
+                Action:
+                  - "s3:PutObject"
+                  - "s3:GetObject"
+                  - "s3:PutObjectAcl"
+                  - "s3:AbortMultipartUpload"
+                Resource: "arn:aws:s3:::*/*"
+              - Effect: "Allow"
+                Action:
+                  - "s3:DeleteObject"
+                Resource: "arn:aws:s3:::*/_control_/*"
         -
           PolicyName: "ECRAccess"
           PolicyDocument:
@@ -582,7 +642,16 @@ Resources:
                   - "ecr:GetDownloadUrlForLayer"
                   - "ecr:BatchGetImage"
                 Resource: "*"
-
+        -
+          PolicyName: "EC2Access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "ec2:CreateTags"
+                  - "ec2:DeleteTags"
+                Resource: "*"
 
   SpotQueueStack:
     Type: AWS::Serverless::Application
@@ -594,7 +663,6 @@ Resources:
         MinvCpus: !Ref MinvCpus
         QueueName: !Sub ${AWS::StackName}-spot-queue
         RequestType: "Spot"
-        ResourceBucketName: !Ref ResourceBucketName
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
         SecurityGroupIds:
@@ -612,7 +680,6 @@ Resources:
         MinvCpus: !Ref MinvCpus
         QueueName: !Sub ${AWS::StackName}-on-demand-queue
         RequestType: "On-demand"
-        ResourceBucketName: !Ref ResourceBucketName
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
         SecurityGroupIds:
@@ -620,141 +687,43 @@ Resources:
         Subnets: !Join [",", !Ref Subnets]
         Uniqifier: !Ref Uniqifier
 
-  # dynamodb
-  JobStatusTable:
-    Type: AWS::DynamoDB::Table
+  BatchLogSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeBatchSubscriptionFilter
+    DeletionPolicy: Retain
     Properties:
-      AttributeDefinitions:
-        -
-          AttributeName: "workflowName"
-          AttributeType: "S"
-        -
-          AttributeName: "executionId"
-          AttributeType: "S"
-        -
-          AttributeName: "timestamp"
-          AttributeType: "N"
-        -
-          AttributeName: "jobFile"
-          AttributeType: "S"
-      KeySchema:
-        -
-          AttributeName: "workflowName"
-          KeyType: "HASH"
-        -
-          AttributeName: "executionId"
-          KeyType: "RANGE"
-      LocalSecondaryIndexes:
-        -
-          IndexName: executionsByTimestamp
-          KeySchema:
-            -
-              AttributeName: "workflowName"
-              KeyType: "HASH"
-            -
-              AttributeName: "timestamp"
-              KeyType: "RANGE"
-          Projection:
-            ProjectionType: INCLUDE
-            NonKeyAttributes:
-              - "executionId"
-              - "jobFile"
-              - "status"
-        -
-          IndexName: executionsByJobFile
-          KeySchema:
-            -
-              AttributeName: "workflowName"
-              KeyType: "HASH"
-            -
-              AttributeName: "jobFile"
-              KeyType: "RANGE"
-          Projection:
-            ProjectionType: INCLUDE
-            NonKeyAttributes:
-              - "executionId"
-              - "timestamp"
-              - "status"
-      TimeToLiveSpecification:
-        AttributeName: "expiration"
-        Enabled: true
-      BillingMode: PAY_PER_REQUEST
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.workflow_name = "*"}'
+      LogGroupName: /aws/batch/job
+
+  # ecr repositories
+  RunnerRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}/runner"
+      ImageTagMutability: IMMUTABLE
+
+  JobLauncherRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}/launcher"
+      ImageTagMutability: IMMUTABLE
 
 Outputs:
-  ChooserLambdaArn:
-    Value: !GetAtt ChooserLambda.Arn
-
-  ChooserLambdaLogGroupName:
-    Value: !Ref ChooserLambdaLogGroup
-
   ECSTaskRoleArn:
     Value: !GetAtt EcsTaskRole.Arn
 
-  EventHandlerLambdaArn:
-    Value: !GetAtt EventHandlerLambda.Arn
-
-  GatherLambdaArn:
-    Value: !GetAtt GatherLambda.Arn
-
-  GatherLambdaLogGroupName:
-    Value: !Ref GatherLambdaLogGroup
-
-  JobStatusLambdaArn:
-    Value: !GetAtt JobStatusLambda.Arn
-
-  JobStatusTableName:
-    Value: !Ref JobStatusTable
+  JobLauncherImageUri:
+    Value: !Sub
+      - "${repo}:${tag}"
+      - repo: !GetAtt JobLauncherRepo.RepositoryUri
+        tag: !Ref SourceVersion
 
   LauncherBucketName:
     Value: !Ref LauncherBucket
 
-  LauncherLambdaArn:
-    Value: !GetAtt LauncherLambda.Arn
-
-  LauncherLambdaLogGroupName:
-    Value: !Ref LauncherLambdaLogGroup
-
-  LogRetentionDays:
-    Value: !Ref LogRetentionDays
-
-  NamerLambdaArn:
-    Value: !GetAtt NamerLambda.Arn
-
-  NamerLambdaLogGroupName:
-    Value: !Ref NamerLambdaLogGroup
-
-  OnDemandQueueArn:
-    Value: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
-
-  QCCheckerLambdaArn:
-    Value: !GetAtt QCCheckerLambda.Arn
-
-  QCCheckerLambdaLogGroupName:
-    Value: !Ref QCCheckerLambdaLogGroup
-
-  ResourceBucketName:
-    Value: !Ref ResourceBucketName
-
-  RunnerImageURI:
-    Value: !Ref RunnerImageURI
-
-  ScatterLambdaArn:
-    Value: !GetAtt ScatterLambda.Arn
-
-  ScatterLambdaLogGroupName:
-    Value: !Ref ScatterLambdaLogGroup
-
-  SecurityGroupIds:
-    Value: !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
-
-  SpotQueueArn:
-    Value: !GetAtt SpotQueueStack.Outputs.BatchQueueArn
-
-  StatesExecutionRoleArn:
-    Value: !GetAtt StatesExecutionRole.Arn
-
-  SubpipesLambdaArn:
-    Value: !GetAtt SubpipesLambda.Arn
-
-  SubpipesLambdaLogGroupName:
-    Value: !Ref SubpipesLambdaLogGroup
+  RunnerImageUri:
+    Value: !Sub
+      - "${repo}:${tag}"
+      - repo: !GetAtt RunnerRepo.RepositoryUri
+        tag: !Ref SourceVersion

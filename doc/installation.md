@@ -1,4 +1,4 @@
-# Deploying BayerCLAW to a new AWS account
+# Installing BayerCLAW to a new AWS account
 ## Prerequisites
 
 - **CodeStar Connection:** A CodeStar Connection enables CodePipeline to retrieve code from GitHub.
@@ -25,11 +25,21 @@
   
     If you're using the default VPC provided by AWS, any of the subnets should be suitable (it's best to use more 
     than one). For custom VPCs, be sure to choose a subnet with outbound internet access.
-  
+
+The following options are highly specialized and may be safely ignored if they make no sense to you:
 
 - **Security group IDs (optional):** If your jobs need network access to external resources, you can specify one
-  or more custom security groups that permit traffic to reach those resources. Otherwise, you can use the `Auto`
+  or more custom security groups that permit traffic to reach those resources. Otherwise, you can use the `auto`
   feature to have BayerCLAW create a suitable security group.
+
+
+- **Custom AMI ID (optional):** BayerCLAW normally allows the Batch service to choose the best Amazon Machine Image
+  (AMI) to run each job with. However, BayerCLAW does allow you to specify a custom-built AMI to use if desired. The
+  AMI ID should be of the form `ami-1234567890123456`.
+
+
+- **Logging destination (optional):** Some AWS accounts may perform real-time aggregation or analysis on the logging
+  messages produced by BayerCLAW. If so, you can provide the ARN of the logging destination stream.
 
 ## Installation
 1. In the CloudFormation console for your AWS account, click on the `Create stack` button.
@@ -48,17 +58,19 @@
             - CoreRepo: Location (account and repo name) of the BayerCLAW repository. You shouldn't need to change this.
             - CoreBranch: Git branch to build. You shouldn't need to change this.
         - **Identifiers**
-            - InstallationName: Name of the main BayerCLAW stack. Default is `bayerclaw`, don't change it for the 
+            - InstallationName: Name of the main BayerCLAW stack. Default is `bayerclaw2`, don't change it for the 
             initial deployment.
-            - CompilerMacroName: The name of the BayerCLAW compiler that will be created. Default is `BC_Compiler`,
+            - CompilerMacroName: The name of the BayerCLAW compiler that will be created. Default is `BC2_Compiler`,
             don't change this for the initial deployment.
         - **Enviroment parameters**
             - VpcId: The ID of the VPC where Batch jobs will run, as described above.
             - Subnets: Select the subnets where Batch jobs will run. All subnets must have outbound internet
             access, either through an Internet Gateway or Network Address Translation (NAT) gateway.
             - SecurityGroups: Comma-separated list of security group IDs that Batch jobs will run under. Security groups
-            must allow all outbound HTTP and HTTPS traffic. Enter `Auto` to create a suitable security group.
+            must allow all outbound HTTP and HTTPS traffic. Enter `auto` to create a suitable security group.
         - **Batch parameters**
+            - AmiID: If you want to run Batch jobs in a custom AMI, enter its ID here. Otherwise, accept the default
+            ("auto").
             - RootVolumeSize: Size (in Gb) of the EBS volume that hosts Docker images in Batch jobs. Default is 100 Gb.
             - ScratchVolumeSize: Size (in Gb) of the EBS volumes that hold the working directories for Batch jobs.
             Default is 1 Tb.
@@ -70,6 +82,8 @@
             name is globally unique. Note that this does **not** allow you to use an existing bucket as the launcher
             bucket, it only lets you choose the name of the launcher bucket.            
             - LogRetentionDays: Number of days to keep CloudWatch log entries before deleting them. Default is 30 days.
+            - LoggingDestination: If required by your AWS account, enter the logging destination ARN here. Otherwise
+            leave the default value.
 4. On the `Configure stack options` page, keep the default options.
 5. Check all of the "I acknowledge..." statements at the bottom of the Review page, then click `Create stack`.
 
@@ -89,13 +103,13 @@ This CloudFormation stack contains resources used to create and update a BayerCL
 - A `resources` S3 bucket, which is used for store items BayerCLAW needs.
 - A CodeBuild project that constructs pieces of BayerCLAW.
 - The CodePipeline that builds everything.
-- An `admin` SNS topic that users can subscribe to to get notifications about BayerCLAW builds and updates.
 
 #### The core stack
 The core stack contains the major functional components of BayerCLAW, including:
 - The `launcher` bucket, where users deposit data files to run through workflows.
 - Lambda functions that perform various processing duties during an execution.
 - Batch components, including compute environments and queues.
+- ECR repositories for BayerCLAW component containers.
 
 ## Updating BayerCLAW
 

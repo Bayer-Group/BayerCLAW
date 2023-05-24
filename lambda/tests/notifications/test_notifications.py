@@ -1,23 +1,9 @@
 import json
-import os
-import sys
 
 import boto3
 from moto import mock_sns
 import pytest
 import yaml
-
-# make common layer modules available
-sys.path.append(
-    os.path.realpath(
-        os.path.join(
-            os.path.dirname(__file__),  # (home)/lambda/tests/scatter
-            os.pardir,                  # (home)/lambda/tests
-            os.pardir,                  # (home)/lambda
-            "src", "common", "python"
-        )
-    )
-)
 
 from ...src.notifications.notifications import make_sfn_console_url, make_state_change_message, \
     make_message_attributes, make_sns_payload, lambda_handler
@@ -27,13 +13,14 @@ WORKFLOW_NAME = "test_workflow"
 
 REGION = "us-east-1"
 EXECUTION_NAME = "12345678-etc-etc"
-EXECUTION_ARN = f"arn:aws:states:{REGION}:123456789012:execution:test:{EXECUTION_NAME}"
+STATE_MACHINE_NAME = "testStateMachine"
+STATE_MACHINE_ARN = f"arn:aws:states:{REGION}:123456789012:stateMachine:{STATE_MACHINE_NAME}"
+EXECUTION_ARN = f"arn:aws:states:{REGION}:123456789012:execution:{STATE_MACHINE_NAME}:{EXECUTION_NAME}"
 
 LAUNCHER_BUCKET = "test-bucket"
 JOB_DATA_KEY = "path/to/job.json"
 JOB_DATA_VERSION = "1234567890"
 JOB_DATA_URI = f"s3://{LAUNCHER_BUCKET}/{JOB_DATA_KEY}"
-REQUEST_ID = "ELVISLIVES"
 
 
 @pytest.fixture(scope="module")
@@ -43,7 +30,6 @@ def state_change_event_factory():
             "bucket": LAUNCHER_BUCKET,
             "key": JOB_DATA_KEY,
             "version": JOB_DATA_VERSION,
-            "s3_request_id": REQUEST_ID,
         },
         "index": "main",
     }
@@ -58,11 +44,12 @@ def state_change_event_factory():
             },
             "detail": {
                 "executionArn": EXECUTION_ARN,
+                "stateMachineArn": STATE_MACHINE_ARN,
                 "name": EXECUTION_NAME,
                 "status": status,
                 "input": json.dumps(input_obj),
                 "inputDetails": {
-                    "included": True
+                    "included": True,
                 },
             },
         }
@@ -90,6 +77,7 @@ def test_make_state_change_message(state_change_event_factory, status, action):
     expected_details = {
         "details": {
             "workflow_name": WORKFLOW_NAME,
+            "state_machine_name": STATE_MACHINE_NAME,
             "sfn_execution_id": EXECUTION_NAME,
             "job_status": status,
             "job_data": JOB_DATA_URI,
@@ -120,6 +108,10 @@ def test_make_message_attributes(state_change_event_factory):
         "workflow_name": {
             "DataType": "String",
             "StringValue": WORKFLOW_NAME,
+        },
+        "state_machine_name": {
+            "DataType": "String",
+            "StringValue": STATE_MACHINE_NAME,
         },
         "execution_id": {
             "DataType": "String",

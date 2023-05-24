@@ -28,8 +28,9 @@ def substitute(target: Any, spec: dict) -> Any:
 
 
 def substitute_image_tag(image_tag: str, spec: dict) -> str:
-    name, *version_tag = image_tag.rsplit(":", 1)
+    parts = image_tag.split("/")
+    name_ver = parts.pop(-1)
     _lookup = partial(lookup, spec=spec)
-    subbed = [SUB_FINDER.sub(_lookup, v) for v in version_tag]
-    ret = ":".join([name] + subbed)
+    subbed = SUB_FINDER.sub(_lookup, name_ver)
+    ret = "/".join(parts + [subbed])
     return ret

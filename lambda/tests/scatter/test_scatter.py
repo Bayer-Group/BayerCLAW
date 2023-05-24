@@ -2,27 +2,15 @@ from contextlib import closing
 import json
 import logging
 import os
-import sys
 
 import boto3
 import moto
 import pytest
 
-# make common layer modules available
-sys.path.append(
-    os.path.realpath(
-        os.path.join(
-            os.path.dirname(__file__),  # (home)/lambda/tests/scatter
-            os.pardir,                  # (home)/lambda/tests
-            os.pardir,                  # (home)/lambda
-            "src", "common", "python"
-        )
-    )
-)
+from ...src.scatter.scatter import prepend_repo, expand_glob, expand_scatter_data, scatterator, lambda_handler
 
 logging.basicConfig(level=logging.INFO)
 
-from ...src.scatter.scatter import prepend_repo, expand_glob, expand_scatter_data, scatterator, lambda_handler
 
 TEST_BUCKET = "test-bucket"
 JOB_DATA = {"job": {"job": "data"}, "parent": {}, "scatter": {}}

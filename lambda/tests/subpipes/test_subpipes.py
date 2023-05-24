@@ -1,28 +1,14 @@
 from contextlib import closing
 import json
 import logging
-import os
-import sys
 
 import boto3
 import moto
 import pytest
 
-# make common layer modules available
-sys.path.append(
-    os.path.realpath(
-        os.path.join(
-            os.path.dirname(__file__),  # (home)/lambda/tests/scatter
-            os.pardir,                  # (home)/lambda/tests
-            os.pardir,                  # (home)/lambda
-            "src", "common", "python"
-        )
-    )
-)
+from ...src.subpipes.subpipes import copy_file_impl, lambda_handler
 
 logging.basicConfig(level=logging.INFO)
-
-from ...src.subpipes.subpipes import copy_file_impl, lambda_handler
 
 TEST_BUCKET = "test-bucket"
 JOB_DATA = {
@@ -33,6 +19,11 @@ JOB_DATA = {
     },
     "scatter": {"scatter": "stuff"},
     "parent": {"parent": "stuff"}
+}
+ALT_JOB_DATA = {
+    "key9": "value9",
+    "key8": "value8",
+    "key7": "value7"
 }
 
 
@@ -51,7 +42,7 @@ def repo_bucket():
 def test_copy_file_impl(src_key, dst_key, spec, repo_bucket):
     repo_bucket.put_object(Key=src_key, Body=b"file contents")
 
-    copy_file_impl(spec, repo_bucket.name, "src/path", "dst/path")
+    copy_file_impl(spec, f"s3://{repo_bucket.name}/src/path", f"s3://{repo_bucket.name}/dst/path")
 
     expect_obj = repo_bucket.Object(dst_key)
     response = expect_obj.get()
@@ -61,12 +52,18 @@ def test_copy_file_impl(src_key, dst_key, spec, repo_bucket):
     assert lines[0] == b"file contents"
 
 
-def test_lambda_handler_submit(repo_bucket):
+@pytest.mark.parametrize("sub_job_data, expect", [
+    (None, JOB_DATA),
+    ("alt.json", ALT_JOB_DATA),
+    ("s3://test-bucket/repo/alt.json", ALT_JOB_DATA),
+])
+def test_lambda_handler_submit(repo_bucket, sub_job_data, expect):
     repo_bucket.put_object(Key="repo/file1.txt", Body=b"file one")
     repo_bucket.put_object(Key="repo/file2.txt", Body=b"file two")
     repo_bucket.put_object(Key="repo/value1.txt", Body=b"value one")
     repo_bucket.put_object(Key="repo/value3.txt", Body=b"value three")
     repo_bucket.put_object(Key="repo/_JOB_DATA_", Body=json.dumps(JOB_DATA).encode())
+    repo_bucket.put_object(Key="repo/alt.json", Body=json.dumps(ALT_JOB_DATA).encode())
 
     submit = [
         "file1.txt -> fileA.txt",
@@ -78,6 +75,7 @@ def test_lambda_handler_submit(repo_bucket):
 
     event = {
         "repo": f"s3://{repo_bucket.name}/repo",
+        "job_data": sub_job_data,
         "submit": json.dumps(submit),
         "logging": {
             "step_name": "subpipe",
@@ -104,11 +102,14 @@ def test_lambda_handler_submit(repo_bucket):
     obj3 = repo_bucket.Object("repo/subpipe/_JOB_DATA_")
     response = obj3.get()
     with closing(response["Body"]) as fp:
-        sub_job_data = json.load(fp)
+        sub_job_data_out = json.load(fp)
 
-    assert sub_job_data["job"] == JOB_DATA["job"]
-    assert sub_job_data["parent"] == {}
-    assert sub_job_data["scatter"] == {}
+    if sub_job_data is None:
+        assert sub_job_data_out["job"] == JOB_DATA["job"]
+    else:
+        assert sub_job_data_out["job"] == ALT_JOB_DATA
+    assert sub_job_data_out["parent"] == {}
+    assert sub_job_data_out["scatter"] == {}
 
     obj4 = repo_bucket.Object("repo/subpipe/value2.txt")
     response = obj4.get()

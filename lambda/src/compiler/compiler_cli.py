@@ -8,6 +8,8 @@ import logging
 import yaml
 import sys
 
+from dotenv import load_dotenv
+
 from pkg.compiler import compile_template
 
 if __name__ == "__main__":
@@ -18,12 +20,14 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", "-v", action="count")
     args = parser.parse_args()
 
+    load_dotenv()
+
     logging.basicConfig(level=(logging.DEBUG if args.verbose else logging.INFO))
 
     wf_spec = yaml.safe_load(args.infile)
     wf_spec.pop("Transform", None)
 
-    result = compile_template(wf_spec, state_machine_out=args.sfn_file)
+    result = compile_template(wf_spec, {}, state_machine_out=args.sfn_file)
     yaml.safe_dump(result, args.cfn_file)
 
     sys.exit(0)

@@ -1,24 +1,22 @@
 import pytest
 
-from ...src.compiler.pkg.state_machine_resources import make_launcher_step, make_step_list
-from ...src.compiler.pkg.util import CoreStack, Step, lambda_logging_block, lambda_retry
+from ...src.compiler.pkg.state_machine_resources import make_initializer_step, make_step_list, \
+    make_physical_name
+from ...src.compiler.pkg.util import Step, lambda_logging_block, lambda_retry
 
 
-def test_make_launcher_step(monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
+def test_make_initializer_step(compiler_env):
+    repository = "s3://bucket/repo/path/${template}"
 
-    wf_params = {"repository": "s3://bucket/repo/path/${template}"}
-
-    result = make_launcher_step(core_stack, wf_params)
+    result = make_initializer_step(repository)
     expect = {
-        "Launch": {
+        "Initialize": {
             "Type": "Task",
-            "Resource": "launcher_lambda_arn",
+            "Resource": "initializer_lambda_arn",
             "Parameters": {
-                "repo_template": wf_params["repository"],
+                "repo_template": repository,
                 "input_obj.$": "$",
-                **lambda_logging_block("Launch"),
+                **lambda_logging_block("Initialize"),
             },
             **lambda_retry(),
             "ResultPath": "$",
@@ -58,3 +56,27 @@ def test_make_step_list():
         assert result.name == k
         assert result.spec == v
         assert result.next == exp_next
+
+
+@pytest.mark.parametrize("versioned", ["true", "false"])
+def test_make_physical_name(versioned):
+    result = make_physical_name(versioned)
+    if versioned == "true":
+        expect = {
+            "StateMachineName": {
+                "Fn::Sub": [
+                    "${Root}--${Version}",
+                    {
+                        "Root": {"Ref": "AWS::StackName"},
+                        "Version": {
+                            "Fn::GetAtt": ["launcherStack", "Outputs.LauncherLambdaVersion"],
+                        },
+                    },
+                ],
+            },
+        }
+    else:
+        expect = {
+            "StateMachineName": {"Ref": "AWS::StackName"}
+        }
+    assert result == expect

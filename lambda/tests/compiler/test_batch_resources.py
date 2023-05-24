@@ -4,32 +4,27 @@ import textwrap
 import pytest
 import yaml
 
-from ...src.compiler.pkg.batch_resources import URI_PARSER, expand_image_uri, get_job_queue,\
-    get_memory_in_mibs, get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, \
-    get_timeout, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH
+from ...src.compiler.pkg.batch_resources import expand_image_uri, get_job_queue, get_memory_in_mibs, \
+    get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout, batch_step, \
+    job_definition_name, job_definition_rc, handle_batch, SCRATCH_PATH
 from ...src.compiler.pkg.misc_resources import LAUNCHER_STACK_NAME
-from ...src.compiler.pkg.util import CoreStack, Step, Resource, State
+from ...src.compiler.pkg.util import Step, Resource, State
 
 
+# Docker image tag format:
+#   https://docs.docker.com/engine/reference/commandline/tag/#description
 @pytest.mark.parametrize("uri, expected", [
-    ("registry/path/image:version", ("registry/path", "image", "version")),
-    ("registry/path/image",         ("registry/path", "image", None)),
-    ("image:version",               (None, "image", "version")),
-    ("image",                       (None, "image", None))
-])
-def test_uri_parser(uri, expected):
-    result = URI_PARSER.fullmatch(uri).groups()
-    assert result == expected
-
-
-@pytest.mark.parametrize("uri, expected", [
-    ("registry/path/image_name:version", "registry/path/image_name:version"),
-    ("registry/path/image_name:${version}", "registry/path/image_name:${version}"),
-    ("registry/path/image_name", "registry/path/image_name"),
-    ("image_name:version", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name:version"}),
-    ("image_name:${version}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name:${!version}"}),
-    ("image_name:${ver}${sion}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name:${!ver}${!sion}"}),
-    ("image_name", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image_name"}),
+    ("image", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image"}),
+    ("image:ver", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:ver"}),
+    ("image:with.dots", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:with.dots"}),
+    ("registry/image", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image"}),
+    ("image:${tag}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:${!tag}"}),
+    ("registry/image:tag", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image:tag"}),
+    ("level1/level2/${env}/image:${tag}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/level1/level2/${!env}/image:${!tag}"}),
+    ("docker.io/library/ubuntu", "docker.io/library/ubuntu"),
+    ("quay.io/biocontainers/edta:1.9.6--1", "quay.io/biocontainers/edta:1.9.6--1"),
+    ("something.weird.com/really/deep/path/image:version", "something.weird.com/really/deep/path/image:version"),
+    ("host-with-port:1234/image", "host-with-port:1234/image"),
 ])
 def test_expand_image_uri(uri, expected):
     result = expand_image_uri(uri)
@@ -47,10 +42,8 @@ def test_get_memory_in_mibs(req, mibs):
     ({"spot": False}, "on_demand_queue_arn"),
     ({"spot": True, "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue")
 ])
-def test_get_job_queue(spec, expected, monkeypatch, mock_core_stack):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-    result = get_job_queue(core_stack, spec)
+def test_get_job_queue(spec, expected, compiler_env):
+    result = get_job_queue(spec)
     assert result == expected
 
 
@@ -67,6 +60,8 @@ def test_get_environment():
              "Value": "test_step"},
             {"Name": "AWS_DEFAULT_REGION",
              "Value": {"Ref": "AWS::Region"}},
+            {"Name": "AWS_ACCOUNT_ID",
+             "Value": {"Ref": "AWS::AccountId"}},
         ]
     }
     assert result == expect
@@ -167,10 +162,20 @@ def test_get_timeout(timeout, expect):
 
 @pytest.fixture(scope="function")
 def sample_batch_step():
-    # todo: remove params block
     ret = yaml.safe_load(textwrap.dedent("""
           commands: 
-            - ${FASTP0200}/fastp --in1 ${reads1} --in2 ${reads2} --out1 ${paired1} --outdir ${outdir} --out2 ${paired2} --unpaired1 ${unpaired1} --unpaired2 ${unpaired2} --adapter_fasta ${adapter_file} --length_required 25 --json ${trim_log}
+            - >
+             ${FASTP0200}/fastp 
+             --in1 ${reads1}
+             --in2 ${reads2}
+             --outdir outt
+             --out1 ${paired1}
+             --out2 ${paired2} 
+             --unpaired1 ${unpaired1} 
+             --unpaired2 ${unpaired2}
+             --adapter_fasta ${adapter}
+             --length_required 25
+             --json ${trim_log}
           compute:
             cpus: 4
             memory: 4 Gb
@@ -185,7 +190,7 @@ def sample_batch_step():
               root_dir: /path/to/my/data
           image: skim3-fastp
           inputs: 
-            adapter: ${adapter_path}${adapter_file}
+            adapter: s3://bayer-skim-sequence-processing-696164428135/adapters/${job.ADAPTER_FILE}
             reads1: ${job.READ_PATH1}
             reads2: ${job.READ_PATH2}
           outputs: 
@@ -193,15 +198,9 @@ def sample_batch_step():
             paired2: paired_trim_2.fq
             unpaired1: unpaired_trim_1.fq
             unpaired2: unpaired_trim_2.fq
-            trim_log: ${sample_id}-fastP.json
+            trim_log: ${job.SAMPLE_ID}-fastP.json
           references:
             reference1: s3://ref-bucket/path/to/reference.file
-          # params: {}
-          params:
-            outdir: outt
-            sample_id: ${job.SAMPLE_ID}
-            adapter_path: s3://bayer-skim-sequence-processing-696164428135/adapters/
-            adapter_file: ${job.ADAPTER_FILE}
           qc_check: null
           skip_on_rerun: false
           timeout: 1h
@@ -213,14 +212,34 @@ def sample_batch_step():
     return ret
 
 
+@pytest.mark.parametrize("versioned", ["true", "false"])
+def test_job_definition_name(versioned):
+    if versioned == "true":
+        expect = {
+            "JobDefinitionName": {
+                "Fn::Sub": [
+                    "${WFName}-${Step}--${Version}",
+                    {
+                        "WFName": {"Ref": "AWS::StackName"},
+                        "Step": "test_name",
+                        "Version": {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]},
+                    }
+                ]
+            }
+        }
+
+    else:
+        expect = {}
+
+    result = job_definition_name("test_name", versioned)
+    assert result == expect
+
+
 @pytest.mark.parametrize("task_role", [
     "arn:task:role",
     {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.EcsTaskRoleArn"]},
 ])
-def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch_step):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_job_definition_rc(task_role, sample_batch_step, compiler_env):
     step_name = "skim3-fastp"
     expected_job_def_name = f"Skim3FastpJobDef"
 
@@ -228,7 +247,22 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
 
     expected_job_def = {
         "Type": "AWS::Batch::JobDefinition",
+        "UpdateReplacePolicy": "Retain",
         "Properties": {
+            "JobDefinitionName": {
+                "Fn::Sub": [
+                    "${WFName}-${Step}--${Version}",
+                    {
+                        "WFName": {
+                            "Ref": "AWS::StackName"
+                        },
+                        "Step": expected_job_def_name,
+                        "Version": {
+                            "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+                        }
+                    },
+                ],
+            },
             "Type": "container",
             "Parameters": {
                 "workflow_name": {"Ref": "AWS::StackName"},
@@ -255,12 +289,13 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                     "--shell", "Ref::shell",
                     "--skip", "Ref::skip",
                 ],
-                "Image": "runner_image_uri",
+                "Image": "runner_repo_uri:1234567",
                 "Environment": [
                     {"Name": "BC_WORKFLOW_NAME",   "Value": {"Ref": "AWS::StackName"}},
                     {"Name": "BC_SCRATCH_PATH",    "Value": SCRATCH_PATH},
                     {"Name": "BC_STEP_NAME",       "Value": step_name},
                     {"Name": "AWS_DEFAULT_REGION", "Value": {"Ref": "AWS::Region"}},
+                    {"Name": "AWS_ACCOUNT_ID",     "Value": {"Ref": "AWS::AccountId"}},
                 ],
                 "ResourceRequirements": [
                     {"Type": "VCPU",   "Value": "4"},
@@ -286,16 +321,18 @@ def test_job_definition_rc(monkeypatch, mock_core_stack, task_role, sample_batch
                      }}
                 ],
             },
-            # 20220909: save for v1.2
-            # "SchedulingPriority": 1,
+            "SchedulingPriority": 1,
             "Timeout": {
                 "AttemptDurationSeconds": 3600,
             },
+            "Tags": {
+                "bclaw:version": "1234567",
+            }
         },
     }
 
     def helper():
-        job_def_name1 = yield from job_definition_rc(core_stack, step, task_role, "bash")
+        job_def_name1 = yield from job_definition_rc(step, task_role, "bash", "true")
         assert job_def_name1 == expected_job_def_name
 
     for job_def_rc in helper():
@@ -324,7 +361,7 @@ def test_get_skip_behavior(spec, expect):
     ("next_step", {"Next": "next_step"}),
     ("", {"End": True}),
 ])
-def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step, mock_core_stack, scattered, job_name):
+def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, job_name, compiler_env):
     step = Step("step_name", sample_batch_step, next_step_name)
 
     expected_body = {
@@ -342,8 +379,7 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step,
             "JobName.$": job_name,
             "JobDefinition": "${TestJobDef}",
             "JobQueue": "spot_queue_arn",
-            # 20220909: save for v1.2
-            # "ShareIdentifier": "${WorkflowName}",
+            "ShareIdentifier.$": "$.share_id",
             "Parameters": {
                 "repo.$": "$.repo",
                 "references": json.dumps(step.spec["references"]),
@@ -373,10 +409,6 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step,
                         "Name": "BC_LAUNCH_VERSION",
                         "Value.$": "$.job_file.version",
                     },
-                    {
-                        "Name": "BC_LAUNCH_S3_REQUEST_ID",
-                        "Value.$": "$.job_file.s3_request_id",
-                    },
                 ],
             },
         },
@@ -385,36 +417,31 @@ def test_batch_step(next_step_name, next_or_end, monkeypatch, sample_batch_step,
         "OutputPath": "$",
         **next_or_end
     }
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
 
-    result = batch_step(core_stack, step, "TestJobDef", scattered)
+    result = batch_step(step, "TestJobDef", scattered)
     assert result == expected_body
 
 
-@pytest.mark.parametrize("wf_params", [
-    {"no_task_role": ""},
-    {"task_role": "arn:from:workflow:params"}
+@pytest.mark.parametrize("options", [
+    {"no_task_role": "", "versioned": "true"},
+    {"task_role": "arn:from:workflow:params", "versioned": "true"}
 ])
 @pytest.mark.parametrize("step_task_role_request", [
     {},
     {"task_role": "arn:from:step:spec"}
 ])
-def test_handle_batch(wf_params, mock_core_stack, step_task_role_request, monkeypatch, sample_batch_step):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_handle_batch(options, step_task_role_request, sample_batch_step, compiler_env):
     if "task_role" in step_task_role_request:
         expected_job_role_arn = step_task_role_request["task_role"]
-    elif "task_role" in wf_params:
-        expected_job_role_arn = wf_params["task_role"]
+    elif "task_role" in options:
+        expected_job_role_arn = options["task_role"]
     else:
         expected_job_role_arn = "ecs_task_role_arn"
 
     def helper():
         test_spec = {**sample_batch_step, **step_task_role_request}
         test_step = Step("step_name", test_spec, "next_step_name")
-        states = yield from handle_batch(core_stack, test_step, wf_params, False)
+        states = yield from handle_batch(test_step, options, False)
         assert len(states) == 1
         assert isinstance(states[0], State)
         assert states[0].name == "step_name"
@@ -438,10 +465,7 @@ def test_handle_batch(wf_params, mock_core_stack, step_task_role_request, monkey
         assert " --outdir outt " in resource.spec["Properties"]["Parameters"]["command"]
 
 
-def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_handle_batch_with_qc(sample_batch_step, compiler_env):
     step = Step("step_name", sample_batch_step, "next_step_name")
 
     step.spec["qc_check"] = {
@@ -455,7 +479,7 @@ def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
     }
 
     def helper():
-        states = yield from handle_batch(core_stack, step, {"wf": "params"}, False)
+        states = yield from handle_batch(step, {"wf": "params", "versioned": "true"}, False)
         assert len(states) == 2
         assert all(isinstance(s, State) for s in states)
 
@@ -476,15 +500,12 @@ def test_handle_batch_with_qc(monkeypatch, mock_core_stack, sample_batch_step):
     assert resource_dict["StepNameJobDef"]["Type"] == "AWS::Batch::JobDefinition"
 
 
-def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_step):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):
     step = Step("step_name", sample_batch_step, "next_step")
     step.spec["inputs"] = None
 
     def helper():
-        states = yield from handle_batch(core_stack, step, {"wf": "params"}, False)
+        states = yield from handle_batch(step, {"wf": "params", "versioned": "true"}, False)
         assert states[0].spec["Parameters"]["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())
@@ -494,15 +515,12 @@ def test_handle_batch_auto_inputs(monkeypatch, mock_core_stack, sample_batch_ste
     (None, "sh"),
     ("bash", "bash"),
 ])
-def test_handle_batch_shell_opt(monkeypatch, mock_core_stack, sample_batch_step, step_shell, expect):
-    monkeypatch.setenv("CORE_STACK_NAME", "bclaw-core")
-    core_stack = CoreStack()
-
+def test_handle_batch_shell_opt(sample_batch_step, step_shell, expect, compiler_env):
     step = Step("step_name", sample_batch_step, "next_step")
     step.spec["compute"]["shell"] = step_shell
 
     def helper():
-        _ = yield from handle_batch(core_stack, step, {"shell": "sh"}, False)
+        _ = yield from handle_batch(step, {"shell": "sh", "versioned": "true"}, False)
 
     rc = dict(helper())
     assert rc["StepNameJobDef"]["Properties"]["Parameters"]["shell"] == expect

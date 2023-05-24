@@ -1,7 +1,8 @@
 from collections import deque
 import json
 import logging
-from typing import Generator, List, Dict, Tuple
+import os
+from typing import Generator, List, Dict
 from uuid import uuid4
 
 import boto3
@@ -9,25 +10,26 @@ import boto3
 from . import batch_resources as b
 from . import chooser_resources as c
 from . import enhanced_parallel_resources as ep
+from . import misc_resources as m
 from . import native_step_resources as ns
 from . import scatter_gather_resources as sg
 from . import subpipe_resources as sp
-from .util import CoreStack, Step, Resource, State, make_logical_name, lambda_logging_block, lambda_retry
+from .util import Step, Resource, State, make_logical_name, lambda_logging_block, lambda_retry
 from .validation import validate_batch_step, validate_native_step, validate_parallel_step, validate_scatter_step, \
     validate_subpipe_step, validate_chooser_step
 
 
-def make_launcher_step(core_stack: CoreStack, wf_params: dict) -> dict:
-    launch_step_name = "Launch"
+def make_initializer_step(repository: str) -> dict:
+    initialize_step_name = "Initialize"
 
     ret = {
-        launch_step_name: {
+        initialize_step_name: {
             "Type": "Task",
-            "Resource": core_stack.output("LauncherLambdaArn"),
+            "Resource": os.environ["INITIALIZER_LAMBDA_ARN"],
             "Parameters": {
-                "repo_template": wf_params["repository"],
+                "repo_template": repository,
                 "input_obj.$": "$",
-                **lambda_logging_block(launch_step_name),
+                **lambda_logging_block(initialize_step_name),
             },
             **lambda_retry(),
             "ResultPath": "$",
@@ -61,47 +63,40 @@ def make_step_list(steps: List[Dict]) -> List[Step]:
     return list(ret)
 
 
-def process_step(core_stack: CoreStack,
-                 step: Step,
-                 wf_params: dict,
+def process_step(step: Step,
+                 options: dict,
                  depth: int) -> Generator[Resource, None, List[State]]:
     if "scatter" in step.spec:
         normalized_step = validate_scatter_step(step)
-        states_to_add = yield from sg.handle_scatter_gather(core_stack,
-                                                            normalized_step,
-                                                            wf_params,
+        states_to_add = yield from sg.handle_scatter_gather(normalized_step,
+                                                            options,
                                                             depth)
 
     elif "image" in step.spec:
         normalized_step = validate_batch_step(step)
         scattered = depth > 0
-        states_to_add = yield from b.handle_batch(core_stack,
-                                                  normalized_step,
-                                                  wf_params,
+        states_to_add = yield from b.handle_batch(normalized_step,
+                                                  options,
                                                   scattered)
 
     elif "subpipe" in step.spec:
         normalized_step = validate_subpipe_step(step)
-        states_to_add = sp.handle_subpipe(core_stack,
-                                          normalized_step)
+        states_to_add = sp.handle_subpipe(normalized_step)
 
     elif "Type" in step.spec:
         normalized_step = validate_native_step(step)
-        states_to_add = yield from ns.handle_native_step(core_stack,
-                                                         normalized_step,
-                                                         wf_params,
+        states_to_add = yield from ns.handle_native_step(normalized_step,
+                                                         options,
                                                          depth)
 
     elif "choices" in step.spec:
         normalized_step = validate_chooser_step(step)
-        states_to_add = c.handle_chooser_step(core_stack,
-                                              normalized_step)
+        states_to_add = c.handle_chooser_step(normalized_step)
 
     elif "branches" in step.spec:
         normalized_step = validate_parallel_step(step)
-        states_to_add = yield from ep.handle_parallel_step(core_stack,
-                                                           normalized_step,
-                                                           wf_params,
+        states_to_add = yield from ep.handle_parallel_step(normalized_step,
+                                                           options,
                                                            depth)
 
     else:
@@ -110,22 +105,21 @@ def process_step(core_stack: CoreStack,
     return states_to_add
 
 
-def make_branch(core_stack: CoreStack,
-                raw_steps: list,
-                wf_params: dict,
-                include_launcher: bool = False,
+def make_branch(raw_steps: list,
+                options: dict,
+                repository: str = None,
                 depth: int = 0) -> Generator[Resource, None, dict]:
     logger = logging.getLogger(__name__)
 
-    if include_launcher:
-        launcher_step = make_launcher_step(core_stack, wf_params)
-        raw_steps.insert(0, launcher_step)
+    if repository is not None:
+        initializer_step = make_initializer_step(repository)
+        raw_steps.insert(0, initializer_step)
 
     steps = make_step_list(raw_steps)
     states = {}
 
     for step in steps:
-        states_to_add = yield from process_step(core_stack, step, wf_params, depth)
+        states_to_add = yield from process_step(step, options, depth)
         states.update(states_to_add)
 
     ret = {
@@ -148,10 +142,10 @@ def write_state_machine_to_fh(sfn_def: dict, fh) -> dict:
     return ret
 
 
-def write_state_machine_to_s3(sfn_def: dict, core_stack: CoreStack) -> dict:
+def write_state_machine_to_s3(sfn_def: dict) -> dict:
     def_json = json.dumps(sfn_def, indent=4)
 
-    bucket = core_stack.output("ResourceBucketName")
+    bucket = os.environ["RESOURCE_BUCKET_NAME"]
 
     base_filename = uuid4().hex
     key = f"stepfunctions/{base_filename}.json"
@@ -174,43 +168,72 @@ def write_state_machine_to_s3(sfn_def: dict, core_stack: CoreStack) -> dict:
     return ret
 
 
-def handle_state_machine(core_stack: CoreStack,
-                         raw_steps: List[Dict],
-                         wf_params: dict,
+def make_physical_name(versioned: str) -> dict:
+    if versioned == "true":
+        body = {
+            "Fn::Sub": [
+                "${Root}--${Version}",
+                {
+                    "Root": {"Ref": "AWS::StackName"},
+                    "Version": {
+                        "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+                    },
+                },
+            ],
+        }
+    else:
+        body = {"Ref": "AWS::StackName"}
+
+    ret = {"StateMachineName": body}
+    return ret
+
+
+def handle_state_machine(raw_steps: List[Dict],
+                         options: dict,
+                         repository: str,
                          dst_fh=None) -> Generator[Resource, None, str]:
-    state_machine_def = yield from make_branch(core_stack, raw_steps, wf_params, include_launcher=True)
+    state_machine_def = yield from make_branch(raw_steps, options, repository=repository)
 
     if dst_fh is None:
-        state_machine_location = write_state_machine_to_s3(state_machine_def, core_stack)
+        state_machine_location = write_state_machine_to_s3(state_machine_def)
     else:
         state_machine_location = write_state_machine_to_fh(state_machine_def, dst_fh)
 
-    state_machine_name = make_logical_name("main.state.machine")
     ret = {
         "Type": "AWS::StepFunctions::StateMachine",
+        "UpdateReplacePolicy": "Retain",
         "Properties": {
-            "StateMachineName": {
-                "Ref": "AWS::StackName",
-            },
-            "RoleArn": core_stack.output("StatesExecutionRoleArn"),
+            **make_physical_name(options["versioned"]),
+            "RoleArn": os.environ["STATES_EXECUTION_ROLE_ARN"],
             "DefinitionS3Location": state_machine_location,
             "DefinitionSubstitutions": None,
             "Tags": [
                 {
                     "Key": "bclaw:core-stack-name",
-                    "Value": core_stack.name,
+                    "Value": os.environ["CORE_STACK_NAME"],
+                },
+                {
+                    "Key": "bclaw:version",
+                    "Value": os.environ["SOURCE_VERSION"],
                 },
             ],
         },
     }
 
-    yield Resource(state_machine_name, ret)
-    return state_machine_name
+    state_machine_logical_name = make_logical_name("main.state.machine")
+
+    yield Resource(state_machine_logical_name, ret)
+    return state_machine_logical_name
 
 
 def add_definition_substitutions(sfn_resource: Resource, other_resources: dict) -> None:
+    # job definition logical names
     defn_subs = {k: {"Ref": k} for k in other_resources.keys() if k != sfn_resource.name}
+
+    # used in lambda logging block
     defn_subs["WorkflowName"] = {"Ref": "AWS::StackName"}
+
+    # these are used to construct batch job queue arn, subpipe state machine arn
     defn_subs["AWSRegion"] = {"Ref": "AWS::Region"}
     defn_subs["AWSAccountId"] = {"Ref": "AWS::AccountId"}
 
