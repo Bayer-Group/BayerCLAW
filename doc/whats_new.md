@@ -44,6 +44,8 @@ for more information on the (rather clunky) syntax and available options.
 Parameter values can be supplied at compile time through the AWS Cloudformation console or using the AWS CLI using
 `aws cloudformation deploy (yada yada) --parameter-overrides <key1=value1> [<key2=value2>...]`.
 
+See the [options and parameters documentation](options_and_parameters.md) for more information.
+
 ## Fair share scheduling
 
 BayerCLAW2's batch job queues use a fair share job scheduler. Formerly, batch jobs were handled in a
@@ -105,6 +107,8 @@ case the changes need to be rolled back.
 Blue/Green deployment is intended for use in production environments where downtime and failure risks need to be
 minimized. It can be cumbersome to use in development environments though. As such, Blue/Green deployment
 is an option that is activated using the `versioned` workflow template option.
+
+See the [versioned workflow documentation](versioned_wf.md) for more information.
 
 ## Upgrading to BayerCLAW2
 

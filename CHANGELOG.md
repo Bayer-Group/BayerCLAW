@@ -1,6 +1,6 @@
 # Changelog for BayerCLAW
 
-## [v1.2.0] 2023-05-xx Feature release
+## [v1.2.0] 2023-05-24 Feature release
 
 **IMPORTANT:** Because of changes to the workflow specification language, as well as new features
 surrounding Batch job scheduling and operation, this version of BayerCLAW is not backward compatible
