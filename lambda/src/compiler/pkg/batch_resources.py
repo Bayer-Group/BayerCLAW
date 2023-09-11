@@ -151,7 +151,7 @@ def get_volume_info(step: Step) -> dict:
         mount_points.append({
             "SourceVolume": volume_name,
             "ContainerPath": filesystem["host_path"],
-            "ReadOnly": True,
+            "ReadOnly": False,
         })
 
     ret = {
