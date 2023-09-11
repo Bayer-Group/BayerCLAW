@@ -141,7 +141,7 @@ def test_get_volume_info(step_efs_specs):
                        },}
         assert mp == {"SourceVolume": vol["Name"],
                       "ContainerPath": spec["host_path"],
-                      "ReadOnly": True,}
+                      "ReadOnly": False,}
 
 
 @pytest.mark.parametrize("timeout, expect", [
@@ -307,7 +307,7 @@ def test_job_definition_rc(task_role, sample_batch_step, compiler_env):
                     {"ContainerPath": "/var/run/docker.sock", "SourceVolume": "docker_socket",   "ReadOnly": False},
                     {"ContainerPath": "/_bclaw_scratch",      "SourceVolume": "scratch",         "ReadOnly": False},
                     {"ContainerPath": "/.scratch",            "SourceVolume": "docker_scratch",  "ReadOnly": False},
-                    {"ContainerPath": "/step_efs",            "SourceVolume": "fs-12345-volume", "ReadOnly": True},
+                    {"ContainerPath": "/step_efs",            "SourceVolume": "fs-12345-volume", "ReadOnly": False},
                 ],
                 "Volumes": [
                     {"Name": "docker_socket",  "Host": {"SourcePath": "/var/run/docker.sock"}},
