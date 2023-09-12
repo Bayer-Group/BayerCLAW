@@ -63,9 +63,9 @@ def test_get_mounts(monkeypatch):
     expect = [
         Mount(child_workspace, "/scratch/parent_workspace", type="bind", read_only=False),
         Mount("/.scratch", "/docker_scratch", type="bind", read_only=False),
-        Mount("/efs", "volume12345", type="volume", read_only=True,
+        Mount("/efs", "volume12345", type="volume", read_only=False,
               driver_config=DriverConfig("amazon-ecs-volume-plugin")),
-        Mount("/somewhere", "/miscellaneous/host/volume", type="bind", read_only=True)
+        Mount("/somewhere", "/miscellaneous/host/volume", type="bind", read_only=False)
     ]
 
     result = list(get_mounts(metadata, parent_workspace, child_workspace))
