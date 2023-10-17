@@ -18,7 +18,7 @@ The workflow state machine uses AWS Batch to actually run the Docker containers,
 - [Quick start -- deploying a BayerCLAW workflow](doc/quick-start.md)
 - [Tutorial -- detailed example of writing, deploying, and debugging](doc/tutorial.md)
 
-- [Installing BayerCLAW into a new AWS account](doc/deployment.md)
+- [Installing BayerCLAW into a new AWS account](doc/installation.md)
 - [The BayerCLAW language reference](doc/language.md)
 - [The BayerCLAW language -- scatter/gather](doc/scatter.md)
 - [The BayerCLAW language -- QC checks](doc/qc.md)
