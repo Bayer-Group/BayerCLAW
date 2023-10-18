@@ -51,7 +51,7 @@ def test_make_chooser_steps(compiler_env):
         "Type": "Task",
         "Resource": "chooser_lambda_arn",
         "Parameters": {
-            "repo.$": "$.repo",
+            "repo.$": "$.repo.uri",
             "inputs": json.dumps(spec["inputs"]),
             "expressions": [
                 "infile1.var1 == 1",

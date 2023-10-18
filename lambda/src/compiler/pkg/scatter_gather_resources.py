@@ -12,7 +12,7 @@ def scatter_step(step: Step, map_step_name: str) -> dict:
         "Type": "Task",
         "Resource": os.environ["SCATTER_LAMBDA_ARN"],
         "Parameters": {
-            "repo.$": "$.repo",
+            "repo.$": "$.repo.uri",
             "scatter": json.dumps(step.spec["scatter"]),
             **step.input_field,
             **lambda_logging_block(step.name),
@@ -44,12 +44,59 @@ def map_step(sub_branch: dict, gather_step_name: str) -> dict:
     return ret
 
 
+def map_step1(sub_branch: dict, gather_step_name: str) -> dict:
+    step_name = "needStepName"
+
+    ret = {
+        "Type": "Task",
+        "ItemReader": {
+            "ReaderConfig": {
+                "InputType": "JSON"
+            },
+            "Resource": "arn:aws:states:::s3:getObject",
+            "Parameters": {
+                "Bucket.$": "$.repo.bucket",
+                "Key.$": f"States.Format('{{}}/{step_name}/items.json', $.repo.prefix)",
+            }
+        },
+        # "ItemsPath": {},
+        "ItemSelector": {
+            "index.$": "States.Format('{}', $$.Map.Item.Index)",  # stringify the index
+            "job_file.$": "$.job_file",
+            "prev_outputs": {},
+            "repo.$": "$$.Map.Item.Value",
+            "share_id.$": "$.share_id"
+        },
+        # ItemBatcher?
+        # MaxConcurrency*?
+        # ToleratedFailure*?
+        "Label": step_name,
+        "ItemProcessor": {
+            "ProcessorConfig": {
+                "Mode": "DISTRIBUTED",
+                "ExecutionType": "STANDARD"
+            },
+            **sub_branch
+        },
+        "ResultWriter": {
+            "Resource": "arn:aws:states:::s3:putObject",
+            "Parameters": {
+                "Bucket.$": "$.repo.bucket",
+                "Prefix.$": "$.repo.prefix",
+            }
+        },
+        "ResultPath": None,
+        "Next": gather_step_name,
+    }
+
+    return ret
+
 def gather_step(step: Step) -> dict:
     ret = {
         "Type": "Task",
         "Resource": os.environ["GATHER_LAMBDA_ARN"],
         "Parameters": {
-            "repo.$": "$.repo",
+            "repo.$": "$.repo.uri",
             "outputs": json.dumps(step.spec["outputs"]),
             "items.$": "$.items",
             **lambda_logging_block(step.name),

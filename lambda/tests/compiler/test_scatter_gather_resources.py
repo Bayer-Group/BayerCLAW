@@ -25,7 +25,7 @@ def test_scatter_step(compiler_env):
         "Type": "Task",
         "Resource": "scatter_lambda_arn",
         "Parameters": {
-            "repo.$": "$.repo",
+            "repo.$": "$.repo.uri",
             "scatter": json.dumps(spec["scatter"]),
             "inputs": json.dumps(spec["inputs"]),
             "logging": {
@@ -82,7 +82,7 @@ def test_gather_step(next_step_name, next_or_end, compiler_env):
         "Type": "Task",
         "Resource": "gather_lambda_arn",
         "Parameters": {
-            "repo.$": "$.repo",
+            "repo.$": "$.repo.uri",
             "outputs": json.dumps(spec["outputs"]),
             "items.$": "$.items",
             "logging": {

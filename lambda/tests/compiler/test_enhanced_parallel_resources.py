@@ -74,7 +74,7 @@ def test_handle_parallel_step_enhanced(next_step_name, next_or_end, compiler_env
             "Type": "Task",
             "Resource": "chooser_lambda_arn",
             "Parameters": {
-                "repo.$": "$.repo",
+                "repo.$": "$.repo.uri",
                 "inputs": expected_inputs,
                 "expression": condition_1,
                 **lambda_logging_block("step_name")
@@ -110,7 +110,7 @@ def test_handle_parallel_step_enhanced(next_step_name, next_or_end, compiler_env
             "Type": "Task",
             "Resource": "chooser_lambda_arn",
             "Parameters": {
-                "repo.$": "$.repo",
+                "repo.$": "$.repo.uri",
                 "inputs": expected_inputs,
                 "expression": condition_2,
                 **lambda_logging_block("step_name")
