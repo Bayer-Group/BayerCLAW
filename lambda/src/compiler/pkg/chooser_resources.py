@@ -35,7 +35,7 @@ def handle_chooser_step(step: Step) -> List[State]:
         "Type": "Task",
         "Resource": os.environ["CHOOSER_LAMBDA_ARN"],
         "Parameters": {
-            "repo.$": "$.repo",
+            "repo.$": "$.repo.uri",
             **step.input_field,
             "expressions": exprs,
             **lambda_logging_block(step.name),

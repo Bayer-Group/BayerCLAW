@@ -11,7 +11,7 @@ def file_submit_step(step: Step, run_subpipe_step_name: str) -> dict:
         "Type": "Task",
         "Resource": os.environ["SUBPIPES_LAMBDA_ARN"],
         "Parameters": {
-            "repo.$": "$.repo",
+            "repo.$": "$.repo.uri",
             "job_data": step.spec["job_data"],
             "submit": json.dumps(step.spec["submit"]),
             **lambda_logging_block(step.name),
@@ -61,7 +61,7 @@ def file_retrieve_step(step: Step) -> dict:
         "Type": "Task",
         "Resource": os.environ["SUBPIPES_LAMBDA_ARN"],
         "Parameters": {
-            "repo.$": "$.repo",
+            "repo.$": "$.repo.uri",
             "retrieve": json.dumps(step.spec["retrieve"]),
             "subpipe": {
                 "sub_repo.$": "$.subpipe.sub_repo",
