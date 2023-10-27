@@ -163,13 +163,29 @@ chooser_step_schema = Schema(
 )
 
 
+et_msg = "error_tolerance must be a count or percent, not both"
+
 scatter_step_schema = Schema(All(
     {
         Required("scatter"): {str: str},
-        Optional("inputs", default=None): Any(None, {str: str}),
+        Optional("inputs", default=None):
+            Maybe({str: str}),
         Required("steps", "steps list is required"):
             All(Length(min=1, msg="at least one step is required"), [{str: dict}]),
-        Optional("outputs", default={}): Any(None, {str: str}),
+        Optional("outputs", default={}):
+            {str: str},
+        Optional("max_concurrency", default=0):
+            All(Coerce(int), Range(min=0, msg="max_concurrency must be nonnegative")),
+        Optional("error_tolerance", default={"count": 0}):
+            All(
+                Length(min=1, msg="must specify count or percent in error_tolerance"),
+                {
+                    Exclusive("count", "et", msg=et_msg):
+                        All(Coerce(int), Range(min=0), msg="error_tolerance count must be nonnegative"),
+                    Exclusive("percent", "et", msg=et_msg):
+                        All(Coerce(int), Range(min=0, max=100, msg="error_tolerance percent must be between 0 and 100")),
+                }
+            ),
         **next_or_end,
     },
     # It's technically OK if scatter shares keys with these, because it's namespaced as ${scatter.foo}

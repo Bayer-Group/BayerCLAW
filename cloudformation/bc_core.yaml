@@ -338,7 +338,7 @@ Resources:
       Environment:
         Variables:
           BCLAW_VERSION: !Ref SourceVersion
-      MemorySize: 128
+      MemorySize: 1024
       Timeout: 900
       Layers:
         - !Ref CommonLayer
