@@ -5,8 +5,8 @@ import boto3
 import moto
 import pytest
 
-
 from ...src.common.python.file_select import select_file_contents, read_json, read_yaml
+
 csv = b"""\
 id,one,two,three,four
 a,11,12,13,14

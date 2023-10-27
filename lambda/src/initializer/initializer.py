@@ -101,11 +101,6 @@ def handle_s3_launch(event: dict) -> dict:
 
     ret = {
         "index": event["input_obj"]["index"],
-        "job_data": {
-            "job": job_data,
-            "scatter": {},
-            "parent": {},
-        },
         "job_file": {
             "bucket": src_bucket,
             "key": src_key,

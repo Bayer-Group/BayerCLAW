@@ -73,6 +73,7 @@ The fields are similar to those of the main (parent) workflow, but with some imp
 - The child workflow can reference job-level parameters the same way as the parent, with `${job.foo}` syntax.
 
 ## Sample scatter/gather template
+TODO: add max_concurrency, error_tolerance fields
 ```YAML
 Transform: BC2_Compiler
 

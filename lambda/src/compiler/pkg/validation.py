@@ -163,7 +163,7 @@ chooser_step_schema = Schema(
 )
 
 
-et_msg = "error_tolerance must be a count or percent, not both"
+et_msg = "specify error_tolerance count or percent, not both"
 
 scatter_step_schema = Schema(All(
     {
