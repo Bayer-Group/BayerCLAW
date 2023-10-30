@@ -5,7 +5,7 @@ import boto3
 import moto
 import pytest
 
-from scatter_init.scatter_init import lambda_handler
+from ...src.scatter_init.scatter_init import lambda_handler
 
 JOB_DATA_TEMPLATE = {
     "job": {"job": "data"},
