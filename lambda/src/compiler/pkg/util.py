@@ -96,6 +96,7 @@ def lambda_retry() -> dict:
         "Retry": [
             {
                 "ErrorEquals": [
+                    "Lambda.ClientExecutionTimeoutException",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException",
