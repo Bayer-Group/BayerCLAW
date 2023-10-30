@@ -99,10 +99,12 @@ def lambda_retry() -> dict:
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException",
+                    "Lambda.TooManyRequestsException",
                 ],
                 "MaxAttempts": 5,
                 "IntervalSeconds": 2,
                 "BackoffRate": 2,
+                "JitterStrategy": "FULL",
             },
         ]
     }
