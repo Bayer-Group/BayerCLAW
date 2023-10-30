@@ -213,6 +213,7 @@ Resources:
           RESOURCE_BUCKET_NAME: !Ref ResourceBucketName
           RUNNER_REPO_URI: !GetAtt RunnerRepo.RepositoryUri
           SCATTER_LAMBDA_ARN: !Ref ScatterLambda.Version
+          SCATTER_INIT_LAMBDA_ARN: !Ref ScatterInitLambda.Version
           SPOT_QUEUE_ARN: !GetAtt SpotQueueStack.Outputs.BatchQueueArn
           STATES_EXECUTION_ROLE_ARN: !GetAtt StatesExecutionRole.Arn
           SUBPIPES_LAMBDA_ARN: !Ref SubpipesLambda.Version
@@ -327,6 +328,48 @@ Resources:
       DestinationArn: !Ref LoggingDestinationArn
       FilterPattern: '{$.function = "scatter.*"}'
       LogGroupName: !Ref ScatterLambdaLogGroup
+
+  ScatterInitLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: scatter_init.lambda_handler
+      Runtime: python3.10
+      CodeUri: lambda/src/scatter_init
+      AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
+      MemorySize: 128
+      Timeout: 300
+      Layers:
+        - !Ref CommonLayer
+      Policies:
+        -
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: Allow
+              Action:
+                - "s3:PutObject"
+                - "s3:GetObject"
+                - "s3:ListBucket"
+              Resource: "*"
+      DeploymentPreference:
+        Enabled: false
+
+  ScatterInitLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ScatterInitLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  ScatterInitLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '$.function = "scatter_init.*"}'
+      LogGroupName: !Ref ScatterInitLambdaLogGroup
 
   GatherLambda:
     Type: AWS::Serverless::Function
