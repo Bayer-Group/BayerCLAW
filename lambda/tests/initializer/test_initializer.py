@@ -178,22 +178,13 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
     # return value to send to step functions
     expect = {
         "index": "main",
-        "job_data": {
-            "job": job_data,
-            "scatter": {},
-            "parent": {},
-        },
         "job_file": {
             "bucket": launcher_bucket,
             "key": job_data_key,
             "version": version,
         },
         "prev_outputs": {},
-        "repo": {
-            "bucket": "repo-bucket",
-            "prefix": "path/to/repo/testJob",
-            "uri": "s3://repo-bucket/path/to/repo/testJob",
-        },
+        "repo": "s3://repo-bucket/path/to/repo/testJob",
         "share_id": "testworkflow",
     }
 

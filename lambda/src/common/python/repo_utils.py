@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 
 
@@ -15,6 +15,11 @@ class S3File:
 class Repo:
     bucket: str
     prefix: str
+
+    @classmethod
+    def from_uri(cls, uri: str):
+        bucket, key = uri.split("/", 3)[2:]
+        return cls(bucket, key)
 
     def qualify(self, uri: str) -> S3File:
         if uri.startswith("s3://"):

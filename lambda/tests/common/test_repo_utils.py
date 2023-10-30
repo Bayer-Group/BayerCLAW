@@ -11,6 +11,29 @@ def test_s3file_repr():
     assert str(result) == expect
 
 
+# @pytest.mark.parametrize("repo_spec", [
+#     {"bucket": "repo-bucket", "prefix": "path/to/repo"},
+#     {"bucket": "repo-bucket", "prefix": "path/to/repo", "uri": "never gets used"}
+# ])
+# def test_repo_init(repo_spec):
+#     result = Repo(**repo_spec)
+#     assert result.bucket == repo_spec["bucket"]
+#     assert result.prefix == repo_spec["prefix"]
+#
+#
+# def test_repo_init_from_uri():
+#     uri = "s3://repo-bucket/path/to/repo"
+#     result = Repo(*uri.split("/", 3)[2:])
+#     assert result.bucket == "repo-bucket"
+#     assert result.prefix == "path/to/repo"
+
+def test_repo_from_uri():
+    uri = "s3://repo-bucket/path/to/repo"
+    result = Repo.from_uri(uri)
+    assert result.bucket == "repo-bucket"
+    assert result.prefix == "path/to/repo"
+
+
 @pytest.mark.parametrize("uri, expected_bucket, expected_key", [
     ("plain_filename.txt", "repo-bucket", "repo/prefix/plain_filename.txt"),
     ("s3://other-bucket/other/dir/filename.txt", "other-bucket", "other/dir/filename.txt")

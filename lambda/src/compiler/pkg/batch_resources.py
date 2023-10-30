@@ -305,7 +305,7 @@ def batch_step(step: Step,
             "JobQueue": get_job_queue(step.spec["compute"]),
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
-                "repo.$": "$.repo.uri",
+                "repo.$": "$.repo",
                 **step.input_field,
                 "references": json.dumps(step.spec["references"]),
                 "outputs": json.dumps(step.spec["outputs"]),

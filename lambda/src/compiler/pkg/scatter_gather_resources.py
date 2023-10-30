@@ -12,7 +12,7 @@ def scatter_step(step: Step, map_step_name: str) -> dict:
         "Type": "Task",
         "Resource": os.environ["SCATTER_LAMBDA_ARN"],
         "Parameters": {
-            "repo.$": "$.repo.uri",
+            "repo.$": "$.repo",
             "scatter": json.dumps(step.spec["scatter"]),
             **step.input_field,
             **lambda_logging_block(step.name),
@@ -96,7 +96,7 @@ def gather_step(step: Step) -> dict:
         "Type": "Task",
         "Resource": os.environ["GATHER_LAMBDA_ARN"],
         "Parameters": {
-            "repo.$": "$.repo.uri",
+            "repo.$": "$.repo",
             "outputs": json.dumps(step.spec["outputs"]),
             "items.$": "$.items",
             **lambda_logging_block(step.name),

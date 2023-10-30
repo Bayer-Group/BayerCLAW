@@ -12,7 +12,7 @@ def qc_checker_step(batch_step: Step,
         "Type": "Task",
         "Resource": os.environ["QC_CHECKER_LAMBDA_ARN"],
         "Parameters": {
-            "repo.$": "$.repo.uri",
+            "repo.$": "$.repo",
             "qc_result_file": qc_spec["qc_result_file"],
             "qc_expression": qc_spec["stop_early_if"],
             "execution_id.$": "$$.Execution.Id",
