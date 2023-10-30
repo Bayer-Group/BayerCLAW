@@ -1,136 +1,146 @@
 from contextlib import closing
+import csv
 import fnmatch
 import itertools
-import jmespath
 import json
 import logging
 import re
-from typing import Dict, Any, Generator
+from typing import Any, Dict, Generator, Tuple
 
 import boto3
+import jmespath
 
 from file_select import select_file_contents
 from lambda_logs import JSONFormatter, custom_lambda_logs
-from substitutions import substitute_job_data, substitute_into_filenames
+from repo_utils import Repo, S3File, RepoEncoder
+from substitutions import substitute_job_data
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.handlers[0].setFormatter(JSONFormatter())
 
 
-def prepend_repo(file: str, repo: str) -> str:
-    if file.startswith("s3://"):
-        return file
-    else:
-        return f"{repo}/{file}"
+def get_job_data(repo: Repo) -> dict:
+    job_data = repo.job_data_file
+    obj = boto3.resource("s3").Object(job_data.bucket, job_data.key)
+    response = obj.get()
+    with closing(response["Body"]) as fp:
+        ret = json.load(fp)
+    return ret
 
 
-def expand_glob(glob: str, repo: str) -> list:
-    glob = prepend_repo(glob, repo)
-
-    bucket_name, globby_s3_key = glob.split('/', 3)[2:]
-
+def expand_glob(globby_file: S3File) -> Generator[S3File, None, None]:
     # get the invariant part of the s3 key glob
-    #   example: dir1/dir2/dir*/yada_yada.txt --> dir1/dir2
+    #   example: dir1/dir2/dir*/yada_yada.txt --> dir1/dir2/dir
     # this will be used to limit the number of s3 objects to search
-    prefix = re.search(r'^([^\[\]*?]+)(?=/)', globby_s3_key).group(0)
+    prefix = re.search(r'(^.*?)[\[\]*?]+', globby_file.key).group(1)
 
-    bucket = boto3.resource("s3").Bucket(bucket_name)
+    bucket = boto3.resource("s3").Bucket(globby_file.bucket)
     object_summaries = bucket.objects.filter(Prefix=prefix)
     object_keys = [o.key for o in object_summaries]
 
-    target_keys = fnmatch.filter(object_keys, globby_s3_key)
-    target_paths = [f"s3://{bucket_name}/{k}" for k in target_keys]
+    target_keys = fnmatch.filter(object_keys, globby_file.key)
 
-    return target_paths
+    for key in target_keys:
+        yld = S3File(globby_file.bucket, key)
+        yield yld
 
 
-# cases:
-#   1. static list
-#   2. list in a job data field
-#   3. file contents
-#   4. file glob
-#   5. single filename
-def expand_scatter_data(scatter_spec: dict, repo: str, job_data: dict) -> Dict[Any, list]:
-    ret = dict()
+def expand_scatter_data(scatter_spec: dict, repo: Repo, job_data: dict) -> Generator[Tuple, None, None]:
     for key, vals in scatter_spec.items():
+        # case 1: static list
         if isinstance(vals, list):
-            ret[key] = vals
+            yield key, vals
 
         elif isinstance(vals, str):
-            is_job_data = re.match(r"^\${((?:job|parent|scatter)\..+?)}$", vals)
-            if is_job_data is not None:
-                result = jmespath.search(is_job_data.group(1), job_data)
+            # case 2: reference to a list in an extended job data file field
+            if (is_job_data_ref := re.match(r"^\${((?:job|parent|scatter)\..+?)}$", vals)) is not None:
+                field_name = is_job_data_ref.group(1)  # e.g. "job.list_of_stuff"
+
+                result = jmespath.search(field_name, job_data)
                 if not isinstance(result, list):
-                    raise RuntimeError(f"'{is_job_data.group(1)}' is not a JSON list")
-                ret[key] = result
+                    raise RuntimeError(f"'{field_name}' is not a JSON list")
+                yield key, result
 
+            # case 3: file contents
             elif vals.startswith("@"):
-                path = prepend_repo(vals[1:], repo)
-                ret[key] = select_file_contents(path)
+                path = repo.qualify(vals[1:])
+                yield key, select_file_contents(str(path))
 
+            # case 4: file glob
             elif re.search(r'[\[\]*?]', vals):
-                ret[key] = expand_glob(vals, repo)
+                yield key, list(expand_glob(repo.qualify(vals)))
 
+            # case 5: single filename
             else:
-                # assume vals contains a single filename
-                ret[key] = [prepend_repo(vals, repo)]
+                yield key, [repo.qualify(vals)]
         else:
             pass
-    return ret
 
 
 def scatterator(scatter_data: Dict[Any, list]) -> Generator[dict, None, None]:
     keys = scatter_data.keys()
     vals = scatter_data.values()
     for p in itertools.product(*vals):
-        yield dict(zip(keys, p))
+        combo = dict(zip(keys, p))
+        yield combo
+
+
+def write_job_data_template(parent_job_data: dict,
+                            repoized_inputs: dict,
+                            scatter_repo: Repo) -> S3File:
+    job_data_template = {
+        "job": parent_job_data["job"],
+        "scatter": {},
+        "parent": {**parent_job_data["parent"], **repoized_inputs},
+    }
+    template_file = scatter_repo.job_data_file
+    template_obj = boto3.resource("s3").Object(template_file.bucket, template_file.key)
+    template_obj.put(Body=json.dumps(job_data_template, cls=RepoEncoder).encode("utf-8"),
+                     ServerSideEncryption="AES256")
+    return template_file
 
 
 def lambda_handler(event: dict, context: object):
-    with custom_lambda_logs(**event["logging"]):
-        logger.info(json.dumps(event))
+    # event = {
+    #   repo: str
+    #   inputs: "{...}"
+    #   scatter: "{...}"
+    #   logging: {}
+    # }
 
-        parent_repo = event["repo"]
-        parent_job_data_path = f"{parent_repo}/_JOB_DATA_"
-        parent_job_data_bucket, parent_job_data_key = parent_job_data_path.split("/", 3)[2:]
+    with custom_lambda_logs(**event["logging"]):
+        logger.info(f"{event=}")
+
+        parent_repo = Repo.from_uri(event["repo"])
+        parent_job_data = get_job_data(parent_repo)
 
         parent_inputs = json.loads(event["inputs"])
         scatter_data = json.loads(event["scatter"])
         step_name = event["logging"]["step_name"]
 
-        s3 = boto3.client("s3")
-
-        response = s3.get_object(Bucket=parent_job_data_bucket, Key=parent_job_data_key)
-        with closing(response["Body"]) as fp:
-            parent_job_data = json.load(fp)
+        scatter_repo = parent_repo.sub_repo(step_name)
 
         jobby_inputs = substitute_job_data(parent_inputs, parent_job_data)
-        repoized_inputs = {k: prepend_repo(v, parent_repo) for k, v in jobby_inputs.items()}
+        repoized_inputs = {k: parent_repo.qualify(v) for k, v in jobby_inputs.items()}
+        _ = write_job_data_template(parent_job_data, repoized_inputs, scatter_repo)
 
-        expanded_scatter = expand_scatter_data(scatter_data, parent_repo, parent_job_data)
+        expanded_scatter_data = dict(expand_scatter_data(scatter_data, parent_repo, parent_job_data))
 
-        child_repo_home = f"{parent_repo}/{step_name}"
-        ret = []
+        with open("/tmp/items.csv", "w") as fp:
+            writer = csv.DictWriter(fp, fieldnames=expanded_scatter_data.keys(), dialect="unix")
+            writer.writeheader()
+            writer.writerows(scatterator(expanded_scatter_data))
 
-        for i, combo in enumerate(scatterator(expanded_scatter), start=0):
-            curr_repo = f"{child_repo_home}/{i:05}"
+        items_file = scatter_repo.qualify("items.csv")
+        items_obj = boto3.resource("s3").Object(items_file.bucket, items_file.key)
+        items_obj.upload_file("/tmp/items.csv")
 
-            curr_job_data = {
-                "job": parent_job_data["job"],
-                "scatter": combo,
-                "parent": {**parent_job_data["parent"], **repoized_inputs}
-            }
-
-            curr_job_data_s3_path = f"{curr_repo}/_JOB_DATA_"
-            curr_job_data_bucket, curr_job_data_key = curr_job_data_s3_path.split("/", 3)[2:]
-
-            s3.put_object(Bucket=curr_job_data_bucket, Key=curr_job_data_key,
-                          Body=json.dumps(curr_job_data).encode("utf-8"),
-                          ServerSideEncryption="AES256")
-
-            ret.append({
-                "repo": curr_repo,
-            })
-
+        ret = {
+            "items": {
+                "bucket": items_file.bucket,
+                "key": items_file.key
+            },
+            "repo": str(scatter_repo),
+        }
         return ret

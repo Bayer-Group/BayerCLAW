@@ -1,16 +1,16 @@
 from contextlib import closing
+import csv
 import json
-import logging
-import os
+import re
 
 import boto3
 import moto
 import pytest
 
-from ...src.scatter.scatter import prepend_repo, expand_glob, expand_scatter_data, scatterator, lambda_handler
-
-logging.basicConfig(level=logging.INFO)
-
+from ...src.scatter.scatter import (get_job_data, expand_glob, expand_scatter_data, scatterator,
+                                    write_job_data_template, lambda_handler)
+# https://stackoverflow.com/a/46709888
+from repo_utils import Repo, S3File
 
 TEST_BUCKET = "test-bucket"
 JOB_DATA = {"job": {"job": "data"}, "parent": {}, "scatter": {}}
@@ -19,15 +19,6 @@ FILE2_CONTENT = "file two"
 FILE3_CONTENT = "file three"
 OTHER_FILE_CONTENT = json.dumps({"x": {"a": 1, "b": 2},
                                  "y": {"a": 3, "b": 4}})
-
-
-@pytest.fixture(scope="module")
-def aws_credentials():
-    os.environ["AWS_ACCESS_KEY_ID"] = "test-access-key-id"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "test-secret-access-key"
-    os.environ["AWS_SECURITY_TOKEN"] = "test-security-token"
-    os.environ["AWS_SESSION_TOKEN"] = "test-session-token"
-    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 
 @pytest.fixture(scope="module")
@@ -44,15 +35,13 @@ def repo_bucket():
         yield yld
 
 
-@pytest.mark.parametrize("file, expect", [
-    ("bare_filename.txt", "s3://path/to/repo/bare_filename.txt"),
-    ("s3://path/to/repo/file_path.txt", "s3://path/to/repo/file_path.txt")
-])
-def test_prepend_repo(file, expect):
-    result = prepend_repo(file, "s3://path/to/repo")
-    assert result == expect
+def test_get_job_data(repo_bucket):
+    repo = Repo(repo_bucket.name, "repo/path")
+    result = get_job_data(repo)
+    assert result == JOB_DATA
 
 
+# todo: need more?
 @pytest.mark.parametrize("glob, expect", [
     ("file*", ["file1", "file2", "file3"]),
     ("file?", ["file1", "file2", "file3"]),
@@ -60,14 +49,17 @@ def test_prepend_repo(file, expect):
     ("*file*", ["file1", "file2", "file3", "other_file.json"]),
     ("nothing*", []),
 ])
-def test_expand_glob(repo_bucket, glob, expect, aws_credentials):
-    repo = f"s3://{repo_bucket.name}/repo/path"
-    result = sorted(expand_glob(glob, repo))
-    ext_expect = [f"{repo}/{x}" for x in expect]
+def test_expand_glob(repo_bucket, glob, expect):
+    s3_glob = S3File(repo_bucket.name, f"repo/path/{glob}")
+    expanded = list(expand_glob(s3_glob))
+    result = sorted(str(f) for f in expanded)
+    ext_expect = [f"s3://{repo_bucket.name}/repo/path/{x}" for x in expect]
     assert result == ext_expect
 
 
 def test_expand_scatter_data(repo_bucket):
+    repo = Repo(repo_bucket.name, "repo/path")
+
     scatter_spec = {
         "static_list": [1, 2, 3],
         "job_data_list": "${job.a_list}",
@@ -85,19 +77,20 @@ def test_expand_scatter_data(repo_bucket):
         "scatter": {},
     }
 
+    result = dict(expand_scatter_data(scatter_spec, repo, job_data))
+
     expect = {
         "static_list": [1, 2, 3],
         "job_data_list": [9, 8, 7],
-        "file_contents": ["2", "4"],  # why are these stringified?
+        "file_contents": ["2", "4"],  # todo: why are these stringified?
         "file_glob": [
-            f"s3://{repo_bucket.name}/repo/path/file1",
-            f"s3://{repo_bucket.name}/repo/path/file2",
-            f"s3://{repo_bucket.name}/repo/path/file3",
+            S3File(repo_bucket.name, "repo/path/file1"),
+            S3File(repo_bucket.name, "repo/path/file2"),
+            S3File(repo_bucket.name, "repo/path/file3"),
         ],
-        "single_file": [f"s3://{repo_bucket.name}/repo/path/single.txt"]
+        "single_file": [S3File(repo_bucket.name, "repo/path/single.txt")]
     }
 
-    result = expand_scatter_data(scatter_spec, f"s3://{repo_bucket.name}/repo/path", job_data)
     assert result == expect
 
 
@@ -106,7 +99,7 @@ def test_expand_scatter_data_not_list():
     job_data = {"job": {"unlist": 99}, "parent": {}, "scatter": {}}
 
     with pytest.raises(RuntimeError, match="'job.unlist' is not a JSON list"):
-        expand_scatter_data(scatter_spec=scatter_spec, repo="s3://bucket/whatever", job_data=job_data)
+        _ = list(expand_scatter_data(scatter_spec=scatter_spec, repo=Repo("what", "ever"), job_data=job_data))
 
 
 def test_scatterator():
@@ -128,10 +121,54 @@ def test_scatterator():
     assert result == expect
 
 
-def test_lambda_handler(repo_bucket, caplog):
-    parent_repo = f"s3://{repo_bucket.name}/repo/path"
+def test_write_job_data_template(repo_bucket):
+    scatter_repo = Repo(repo_bucket.name, "repo/path/Scatter")
+
+    parent_job_data = {
+        "job": {
+            "job": "data"
+        },
+        "scatter": {
+            "should": "be overwritten"
+        },
+        "parent": {
+            "original": f"s3://{repo_bucket.name}/repo/path/file1"
+        }
+    }
+
+    repoized_inputs = {
+        "additional": S3File(repo_bucket.name, "repo/path/file2")
+    }
+
+    result = write_job_data_template(parent_job_data,
+                                     repoized_inputs,
+                                     scatter_repo)
+    assert isinstance(result, S3File)
+    assert result.bucket == repo_bucket.name
+    assert result.key == "repo/path/Scatter/_JOB_DATA_"
+
+    template_obj = boto3.resource("s3").Object(result.bucket, result.key)
+    response = template_obj.get()
+    with closing(response["Body"]) as fp:
+        template = json.load(fp)
+
+    expected_template = {
+        "job": {
+            "job": "data",
+        },
+        "scatter": {},
+        "parent": {
+            "original": f"s3://{repo_bucket.name}/repo/path/file1",
+            "additional": f"s3://{repo_bucket.name}/repo/path/file2",
+        },
+    }
+
+    assert template == expected_template
+
+
+def test_lambda_handler(repo_bucket):
     event = {
-        "repo": parent_repo,
+        "repo": f"s3://{repo_bucket.name}/repo/path",
         "scatter": json.dumps({"scatter_files": "file*", "list": [1, 2]}),
         "inputs": json.dumps({"other_file": "other_file.json"}),
         "logging": {
@@ -139,41 +176,28 @@ def test_lambda_handler(repo_bucket, caplog):
         },
     }
 
-    expected_scatters = [
-        ("file1", 1),
-        ("file1", 2),
-        ("file2", 1),
-        ("file2", 2),
-        ("file3", 1),
-        ("file3", 2),
-    ]
-
     result = lambda_handler(event, {})
+    expect = {
+        "items": {
+            "bucket": repo_bucket.name,
+            "key": "repo/path/test_step/items.csv",
+        },
+        "repo": f"s3://{repo_bucket.name}/repo/path/test_step",
+    }
+    assert result == expect
 
-    assert isinstance(result, list)
-    assert len(result) == 6
+    items_obj = boto3.resource("s3").Object(result["items"]["bucket"], result["items"]["key"])
+    response = items_obj.get()
+    lines = response["Body"].read().decode("utf-8").splitlines(True)
+    records = csv.reader(lines)
 
-    for entry, expected_scatter in zip(result, expected_scatters):
-        assert isinstance(entry, dict)
-        assert list(entry.keys()) == ["repo"]
-        subrepo_path = entry["repo"].split("/", 3)[-1]
+    header = next(records)
+    assert header == ["scatter_files", "list"]
 
-        sub_job_data_s3 = repo_bucket.Object(f"{subrepo_path}/_JOB_DATA_")
-        response = sub_job_data_s3.get()
-        with closing(response["Body"]) as fp:
-            job_data = json.load(fp)
+    for record in records:
+        assert re.match("^s3://test-bucket/repo/path/file[123]$", record[0])
+        assert record[1] in {"1", "2"}
 
-        expect = {
-            "job": {
-                "job": "data",
-            },
-            "scatter": {
-                "scatter_files": f"{parent_repo}/{expected_scatter[0]}",
-                "list": expected_scatter[1],
-            },
-            "parent": {
-                "other_file": f"{parent_repo}/other_file.json",
-            },
-        }
-
-        assert job_data == expect
+    result_bucket, result_prefix = result["repo"].split("/", 3)[2:]
+    template_obj = boto3.resource("s3").Object(result_bucket, f"{result_prefix}/_JOB_DATA_")
+    template_obj.load()

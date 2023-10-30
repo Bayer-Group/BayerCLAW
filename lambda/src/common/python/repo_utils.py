@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import json
 
 
@@ -9,6 +9,9 @@ class S3File:
 
     def __repr__(self):
         return f"s3://{self.bucket}/{self.key}"
+
+    # def __eq__(self, other):
+    #     return self.bucket == other.bucket and self.key == other.key
 
 
 @dataclass
@@ -39,6 +42,9 @@ class Repo:
 
     def __repr__(self):
         return f"s3://{self.bucket}/{self.prefix}"
+
+    # def __eq__(self, other):
+    #     return self.bucket == other.bucket and self.prefix == other.prefix
 
 
 # https://stackoverflow.com/questions/51286748/make-the-python-json-encoder-support-pythons-new-dataclasses
