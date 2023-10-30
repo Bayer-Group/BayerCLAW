@@ -99,6 +99,22 @@ def handle_s3_launch(event: dict) -> dict:
 
     share_id = re.sub(r"[\W_]+", "", event["logging"]["workflow_name"])
 
+    # ret = {
+    #     "index": event["input_obj"]["index"],
+    #     "job_file": {
+    #         "bucket": src_bucket,
+    #         "key": src_key,
+    #         "version": src_version,
+    #     },
+    #     "repo": {
+    #         "bucket": repo_bucket,
+    #         "prefix": repo_prefix,
+    #         "uri": repo,
+    #     },
+    #     "prev_outputs": {},
+    #     "share_id": share_id,
+    # }
+
     ret = {
         "index": event["input_obj"]["index"],
         "job_file": {
@@ -106,26 +122,10 @@ def handle_s3_launch(event: dict) -> dict:
             "key": src_key,
             "version": src_version,
         },
-        "repo": {
-            "bucket": repo_bucket,
-            "prefix": repo_prefix,
-            "uri": repo,
-        },
         "prev_outputs": {},
+        "repo": repo,
         "share_id": share_id,
     }
-
-    # ret0 = {
-    #     "index": event["input_obj"]["index"],
-    #     "job_file": {
-    #         "bucket": src_bucket,
-    #         "key": src_key,
-    #         "version": src_version,
-    #     },
-    #     "prev_outputs": {},
-    #     "repo": repo,
-    #     "share_id": share_id,
-    # }
 
     return ret
 

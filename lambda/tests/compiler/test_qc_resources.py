@@ -20,7 +20,7 @@ def test_qc_checker_step(next_step_name, next_or_end, compiler_env):
         "Type": "Task",
         "Resource": "qc_checker_lambda_arn",
         "Parameters": {
-            "repo.$": "$.repo.uri",
+            "repo.$": "$.repo",
             "qc_result_file": "qc_file.json",
             "qc_expression": "test_expression",
             "execution_id.$": "$$.Execution.Id",

@@ -36,7 +36,7 @@ def test_file_submit_step(sample_subpipe_spec, compiler_env):
         "Type": "Task",
         "Resource": "subpipes_lambda_arn",
         "Parameters": {
-            "repo.$": "$.repo.uri",
+            "repo.$": "$.repo",
             "job_data": "test_job_data.json",
             "submit": json.dumps(SUBMIT_BLOCK["submit"]),
             "logging": {
@@ -93,7 +93,7 @@ def test_file_retrieve_step(next_step_name, next_or_end, sample_subpipe_spec, co
         "Type": "Task",
         "Resource": "subpipes_lambda_arn",
         "Parameters": {
-            "repo.$": "$.repo.uri",
+            "repo.$": "$.repo",
             "retrieve": json.dumps(sample_subpipe_spec["retrieve"]),
             "subpipe": {
                 "sub_repo.$": "$.subpipe.sub_repo",
