@@ -20,6 +20,7 @@ def compiler_env():
         "QC_CHECKER_LAMBDA_ARN": "qc_checker_lambda_arn",
         "RESOURCE_BUCKET_NAME": "resource_bucket_name",
         "RUNNER_REPO_URI": "runner_repo_uri",
+        "SCATTER_INIT_LAMBDA_ARN": "scatter_init_lambda_arn",
         "SCATTER_LAMBDA_ARN": "scatter_lambda_arn",
         "SOURCE_VERSION": "1234567",
         "SPOT_QUEUE_ARN": "spot_queue_arn",

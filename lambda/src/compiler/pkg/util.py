@@ -90,7 +90,11 @@ def time_string_to_seconds(time: str) -> int:
     return ret
 
 
-def lambda_retry() -> dict:
+def lambda_retry(
+        max_attempts: int = 5,
+        interval_seconds: int = 2,
+        backoff_rate: float = 2.0,
+        jitter_strategy: str = "FULL") -> dict:
     # https://docs.aws.amazon.com/step-functions/latest/dg/bp-lambda-serviceexception.html
     ret = {
         "Retry": [
@@ -102,10 +106,10 @@ def lambda_retry() -> dict:
                     "Lambda.SdkClientException",
                     "Lambda.TooManyRequestsException",
                 ],
-                "MaxAttempts": 5,
-                "IntervalSeconds": 2,
-                "BackoffRate": 2,
-                "JitterStrategy": "FULL",
+                "MaxAttempts": max_attempts,
+                "IntervalSeconds": interval_seconds,
+                "BackoffRate": backoff_rate,
+                "JitterStrategy": jitter_strategy,
             },
         ]
     }
