@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/python:3.9.9-slim-bullseye AS base
+FROM public.ecr.aws/docker/library/python:3.10-slim AS base
 
 LABEL maintainer="jack.tabaska@bayer.com"
 

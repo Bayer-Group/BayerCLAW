@@ -1,4 +1,4 @@
-FROM public.ecr.aws/lambda/python:3.9 AS base
+FROM public.ecr.aws/lambda/python:3.10 AS base
 
 LABEL maintainer="jack.tabaska@bayer.com"
 

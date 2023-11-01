@@ -41,7 +41,7 @@ def test_lambda(test_role):
                 "ZipFile": b""
             },
             Handler="fake.handler",
-            Runtime="python3.9",
+            Runtime="python3.10",
         )
         yield response
 
