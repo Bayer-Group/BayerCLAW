@@ -26,25 +26,6 @@ def scatter_step(step: Step, map_step_name: str) -> dict:
     return ret
 
 
-# def map_step0(sub_branch: dict, gather_step_name: str) -> dict:
-#     ret = {
-#         "Type": "Map",
-#         "ItemsPath": "$.items",
-#         "Parameters": {
-#             "index.$": "States.Format('{}', $$.Map.Item.Index)",  # stringify the index
-#             "job_file.$": "$.job_file",
-#             "prev_outputs": {},
-#             "repo.$": "$$.Map.Item.Value.repo",
-#             "share_id.$": "$.share_id",
-#         },
-#         "Iterator": sub_branch,
-#         "ResultPath": None,
-#         "Next": gather_step_name,
-#     }
-#
-#     return ret
-
-
 def error_tolerance(spec: dict) -> dict:
     # spec["error_tolerance"]["count"] = 0 by default (set by validator)
     if "percent" in spec["error_tolerance"]:
@@ -129,7 +110,6 @@ def gather_step(step: Step) -> dict:
         "Parameters": {
             "repo.$": "$.repo",
             "outputs": json.dumps(step.spec["outputs"]),
-            "items.$": "$.items",
             **lambda_logging_block(step.name),
         },
         **lambda_retry(),

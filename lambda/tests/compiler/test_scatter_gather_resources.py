@@ -157,7 +157,6 @@ def test_gather_step(next_step_name, next_or_end, compiler_env):
         "Parameters": {
             "repo.$": "$.repo",
             "outputs": json.dumps(spec["outputs"]),
-            "items.$": "$.items",
             "logging": {
                 "branch.$": "$.index",
                 "job_file_bucket.$": "$.job_file.bucket",
