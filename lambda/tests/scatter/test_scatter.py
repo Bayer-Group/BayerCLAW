@@ -13,7 +13,14 @@ from ...src.scatter.scatter import (get_job_data, expand_glob, expand_scatter_da
 from repo_utils import Repo, S3File
 
 TEST_BUCKET = "test-bucket"
-JOB_DATA = {"job": {"job": "data"}, "parent": {}, "scatter": {}}
+JOB_DATA = {
+    "job": {
+        "job": "data",
+        "glob": f"s3://{TEST_BUCKET}/repo/path/file*",
+    },
+    "parent": {},
+    "scatter": {}
+}
 FILE1_CONTENT = "file one"
 FILE2_CONTENT = "file two"
 FILE3_CONTENT = "file three"
@@ -201,3 +208,26 @@ def test_lambda_handler(repo_bucket):
     result_bucket, result_prefix = result["repo"].split("/", 3)[2:]
     template_obj = boto3.resource("s3").Object(result_bucket, f"{result_prefix}/_JOB_DATA_")
     template_obj.load()
+
+
+def test_lambda_handler_scatter_sub(repo_bucket):
+    event = {
+        "repo": f"s3://{repo_bucket.name}/repo/path",
+        "scatter": json.dumps({"scatter_glob": "${job.glob}"}),
+        "inputs": "{}",
+        "logging": {
+            "step_name": "test_step",
+        },
+    }
+    result = lambda_handler(event, {})
+
+    items_obj = boto3.resource("s3").Object(result["items"]["bucket"], result["items"]["key"])
+    response = items_obj.get()
+    lines = response["Body"].read().decode("utf-8").splitlines(True)
+    records = csv.reader(lines)
+
+    header = next(records)
+    assert header == ["scatter_glob"]
+
+    for record in records:
+        assert re.match("^s3://test-bucket/repo/path/file[123]$", record[0])
