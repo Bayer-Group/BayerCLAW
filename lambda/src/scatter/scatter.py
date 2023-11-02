@@ -125,7 +125,8 @@ def lambda_handler(event: dict, context: object):
         repoized_inputs = {k: parent_repo.qualify(v) for k, v in jobby_inputs.items()}
         _ = write_job_data_template(parent_job_data, repoized_inputs, scatter_repo)
 
-        expanded_scatter_data = dict(expand_scatter_data(scatter_data, parent_repo, parent_job_data))
+        jobby_scatter_data = substitute_job_data(scatter_data, parent_job_data)
+        expanded_scatter_data = dict(expand_scatter_data(jobby_scatter_data, parent_repo, parent_job_data))
 
         with open("/tmp/items.csv", "w") as fp:
             writer = csv.DictWriter(fp, fieldnames=expanded_scatter_data.keys(), dialect="unix")
