@@ -208,7 +208,7 @@ Resources:
         Type:
           !If [UseSpot, "SPOT", "EC2"]
         AllocationStrategy:
-          !If [UseSpot, "SPOT_CAPACITY_OPTIMIZED", "BEST_FIT_PROGRESSIVE"]
+          !If [UseSpot, "SPOT_PRICE_CAPACITY_OPTIMIZED", "BEST_FIT_PROGRESSIVE"]
         BidPercentage:
           !If [UseSpot, 100, !Ref AWS::NoValue]
         LaunchTemplate:
