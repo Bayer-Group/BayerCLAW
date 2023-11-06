@@ -169,7 +169,7 @@ The fields of the step specification objects are:
   * `shell`: Overrides the global `shell` option from the [Options](#the-options-block) block. Choices are
       `sh`, `bash`, and `sh-pipefail`, defaults to `sh`.
 * `filesystems`: A list of objects describing EFS filesystems that will be mounted for this job. Note that you may
-  have several entries in this list, but each `efs_id` must be unique. All filesystems are mounted read-only.
+  have several entries in this list, but each `efs_id` must be unique.
   * `efs_id`: An EFS filesystem ID. Should be something like `fs-1234abcd`.
   * `host_path`: A fully qualified path where the EFS filesystem will be mounted in your Docker container.
   * `root_dir` (optional): Directory within the EFS filesystem that will become the `host_path` in your Docker container.

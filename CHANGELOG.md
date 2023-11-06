@@ -1,5 +1,11 @@
 # Changelog for BayerCLAW
 
+## [v1.2.1] 2023-11-06 Feature release
+
+### Changed
+
+- EFS volumes are now writable.
+
 ## [v1.2.0] 2023-05-24 Feature release
 
 **IMPORTANT:** Because of changes to the workflow specification language, as well as new features
