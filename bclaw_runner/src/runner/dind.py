@@ -67,7 +67,7 @@ def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> G
                 yield Mount(volume_spec["Destination"], volume_spec["Source"], type="bind", read_only=False)
 
             else:
-                yield Mount(volume_spec["Destination"], volume_spec["Source"], type="bind", read_only=True)
+                yield Mount(volume_spec["Destination"], volume_spec["Source"], type="bind", read_only=False)
 
         elif "DockerName" in volume_spec:
             # this handles per-job EFS mounts
@@ -77,7 +77,7 @@ def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> G
             # volume_spec:
             #   {'DockerName': 'ecs-jax-efs-test-EfsTestJobDef--1-1-fs-b5a4dd01-volume-bcd3a18fd8e28a9fe901',
             #    'Destination': '/efs'}
-            yield Mount(volume_spec["Destination"], volume_spec["DockerName"], type="volume", read_only=True,
+            yield Mount(volume_spec["Destination"], volume_spec["DockerName"], type="volume", read_only=False,
                         driver_config=DriverConfig("amazon-ecs-volume-plugin"))
 
 
