@@ -83,6 +83,7 @@ def src_bucket():
 
 
 @pytest.mark.parametrize("query, expect", [
+    # ("s3://test-bucket/test-data/file.jsonl", ["14", "24", "34", "44"]),          # select all "d" elements
     ("s3://test-bucket/test-data/file.json:$[*].d", ["14", "24", "34", "44"]),          # select all "d" elements
     ("s3://test-bucket/test-data/file.jsonl:$[*].c", ["13", "23", "33", "43"]),         # select all "c" elements
     ("s3://test-bucket/test-data/file.yaml:$.data[*].a", ["11", "21", "31", "41"]),     # select all "a" elements
