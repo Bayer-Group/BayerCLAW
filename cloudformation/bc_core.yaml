@@ -369,7 +369,7 @@ Resources:
     Condition: MakeSubscriptionFilters
     Properties:
       DestinationArn: !Ref LoggingDestinationArn
-      FilterPattern: '$.function = "scatter_init.*"}'
+      FilterPattern: '{$.function = "scatter_init.*"}'
       LogGroupName: !Ref ScatterInitLambdaLogGroup
 
   GatherLambda:
