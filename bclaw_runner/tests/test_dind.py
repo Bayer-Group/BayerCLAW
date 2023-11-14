@@ -77,6 +77,7 @@ def test_get_environment_vars(monkeypatch):
     monkeypatch.setenv("BC_VARIABLE", "bc_value")
     monkeypatch.setenv("ECS_VARIABLE", "ecs_value")
     monkeypatch.setenv("OTHER_VARIABLE", "other_value")
+    monkeypatch.delenv("AWS_CA_BUNDLE", raising=False)
     result = get_environment_vars()
 
     expect = {
@@ -109,6 +110,7 @@ def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logg
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     monkeypatch.setenv("NVIDIA_VISIBLE_DEVICES", "all")
     monkeypatch.setenv("OTHER_VARIABLE", "other_value")
+    monkeypatch.delenv("AWS_CA_BUNDLE", raising=False)
 
     metadata = {
         "Volumes": [

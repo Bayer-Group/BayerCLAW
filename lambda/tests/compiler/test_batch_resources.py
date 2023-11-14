@@ -369,11 +369,19 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
         "Resource": "arn:aws:states:::batch:submitJob.sync",
         "Retry": [
             {
+                "ErrorEquals": ["Batch.AWSBatchException"],
+                "IntervalSeconds": 30,
+                "MaxAttempts": 20,
+                "MaxDelaySeconds": 300,
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL",
+            },
+            {
                 "ErrorEquals": ["States.ALL"],
                 "IntervalSeconds": 3,
                 "MaxAttempts": 3,
                 "BackoffRate": 1.5
-            }
+            },
         ],
         "Parameters": {
             "JobName.$": job_name,
