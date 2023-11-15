@@ -108,7 +108,7 @@ def gather_step(step: Step) -> dict:
         "Type": "Task",
         "Resource": os.environ["GATHER_LAMBDA_ARN"],
         "Parameters": {
-            "repo.$": "$.repo",
+            "repo.$": "$.repo.uri",
             "outputs": json.dumps(step.spec["outputs"]),
             **lambda_logging_block(step.name),
         },

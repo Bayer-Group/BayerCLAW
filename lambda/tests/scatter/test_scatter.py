@@ -43,7 +43,7 @@ def repo_bucket():
 
 
 def test_get_job_data(repo_bucket):
-    repo = Repo(repo_bucket.name, "repo/path")
+    repo = Repo(bucket=repo_bucket.name, prefix="repo/path")
     result = get_job_data(repo)
     assert result == JOB_DATA
 
@@ -65,7 +65,7 @@ def test_expand_glob(repo_bucket, glob, expect):
 
 
 def test_expand_scatter_data(repo_bucket):
-    repo = Repo(repo_bucket.name, "repo/path")
+    repo = Repo(bucket=repo_bucket.name, prefix="repo/path")
 
     scatter_spec = {
         "static_list": [1, 2, 3],
@@ -104,9 +104,10 @@ def test_expand_scatter_data(repo_bucket):
 def test_expand_scatter_data_not_list():
     scatter_spec = {"unlist": "${job.unlist}"}
     job_data = {"job": {"unlist": 99}, "parent": {}, "scatter": {}}
+    repo = Repo(bucket="what", prefix="ever")
 
     with pytest.raises(RuntimeError, match="'job.unlist' is not a JSON list"):
-        _ = list(expand_scatter_data(scatter_spec=scatter_spec, repo=Repo("what", "ever"), job_data=job_data))
+        _ = list(expand_scatter_data(scatter_spec=scatter_spec, repo=repo, job_data=job_data))
 
 
 def test_scatterator():
@@ -129,7 +130,7 @@ def test_scatterator():
 
 
 def test_write_job_data_template(repo_bucket):
-    scatter_repo = Repo(repo_bucket.name, "repo/path/Scatter")
+    scatter_repo = Repo(bucket=repo_bucket.name, prefix="repo/path/Scatter")
 
     parent_job_data = {
         "job": {
@@ -175,7 +176,12 @@ def test_write_job_data_template(repo_bucket):
 
 def test_lambda_handler(repo_bucket):
     event = {
-        "repo": f"s3://{repo_bucket.name}/repo/path",
+        # "repo": f"s3://{repo_bucket.name}/repo/path",
+        "repo": {
+            "bucket": repo_bucket.name,
+            "prefix": "repo/path",
+            "uri": "s3://this/is/not/used"
+        },
         "scatter": json.dumps({"scatter_files": "file*", "list": [1, 2]}),
         "inputs": json.dumps({"other_file": "other_file.json"}),
         "logging": {
@@ -189,7 +195,11 @@ def test_lambda_handler(repo_bucket):
             "bucket": repo_bucket.name,
             "key": "repo/path/test_step/items.csv",
         },
-        "repo": f"s3://{repo_bucket.name}/repo/path/test_step",
+        "repo": {
+            "bucket": repo_bucket.name,
+            "prefix": "repo/path/test_step",
+            "uri": f"s3://{repo_bucket.name}/repo/path/test_step",
+        },
     }
     assert result == expect
 
@@ -205,14 +215,18 @@ def test_lambda_handler(repo_bucket):
         assert re.match("^s3://test-bucket/repo/path/file[123]$", record[0])
         assert record[1] in {"1", "2"}
 
-    result_bucket, result_prefix = result["repo"].split("/", 3)[2:]
-    template_obj = boto3.resource("s3").Object(result_bucket, f"{result_prefix}/_JOB_DATA_")
+    template_obj = boto3.resource("s3").Object(result["repo"]["bucket"], f"{result['repo']['prefix']}/_JOB_DATA_")
     template_obj.load()
 
 
 def test_lambda_handler_scatter_sub(repo_bucket):
     event = {
-        "repo": f"s3://{repo_bucket.name}/repo/path",
+        # "repo": f"s3://{repo_bucket.name}/repo/path",
+        "repo": {
+            "bucket": repo_bucket.name,
+            "prefix": "repo/path",
+            "uri": "s3://this/is/not/used"
+        },
         "scatter": json.dumps({"scatter_glob": "${job.glob}"}),
         "inputs": "{}",
         "logging": {

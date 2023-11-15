@@ -155,7 +155,7 @@ def test_gather_step(next_step_name, next_or_end, compiler_env):
         "Type": "Task",
         "Resource": "gather_lambda_arn",
         "Parameters": {
-            "repo.$": "$.repo",
+            "repo.$": "$.repo.uri",
             "outputs": json.dumps(spec["outputs"]),
             "logging": {
                 "branch.$": "$.index",

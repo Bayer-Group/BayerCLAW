@@ -30,7 +30,7 @@ def handle_parallel_step(step: Step,
                         "Type": "Task",
                         "Resource": os.environ["CHOOSER_LAMBDA_ARN"],
                         "Parameters": {
-                            "repo.$": "$.repo",
+                            "repo.$": "$.repo.uri",
                             **step.input_field,
                             "expression": expression,
                             **lambda_logging_block(step.name)

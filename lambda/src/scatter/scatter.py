@@ -12,7 +12,7 @@ import jmespath
 
 from file_select import select_file_contents
 from lambda_logs import JSONFormatter, custom_lambda_logs
-from repo_utils import Repo, S3File, RepoEncoder
+from repo_utils import Repo, S3File
 from substitutions import substitute_job_data
 
 logger = logging.getLogger()
@@ -21,7 +21,7 @@ logger.handlers[0].setFormatter(JSONFormatter())
 
 
 def get_job_data(repo: Repo) -> dict:
-    job_data = repo.job_data_file
+    job_data = repo.qualify("_JOB_DATA_")
     obj = boto3.resource("s3").Object(job_data.bucket, job_data.key)
     response = obj.get()
     with closing(response["Body"]) as fp:
@@ -94,16 +94,19 @@ def write_job_data_template(parent_job_data: dict,
         "scatter": {},
         "parent": {**parent_job_data["parent"], **repoized_inputs},
     }
-    template_file = scatter_repo.job_data_file
+    template_file = scatter_repo.qualify("_JOB_DATA_")
     template_obj = boto3.resource("s3").Object(template_file.bucket, template_file.key)
-    template_obj.put(Body=json.dumps(job_data_template, cls=RepoEncoder).encode("utf-8"),
+    template_obj.put(Body=json.dumps(job_data_template).encode("utf-8"),
                      ServerSideEncryption="AES256")
     return template_file
 
 
 def lambda_handler(event: dict, context: object):
     # event = {
-    #   repo: str
+    #   repo: {
+    #       bucket: str
+    #       prefix: str
+    #   }
     #   inputs: "{...}"
     #   scatter: "{...}"
     #   logging: {}
@@ -112,7 +115,7 @@ def lambda_handler(event: dict, context: object):
     with custom_lambda_logs(**event["logging"]):
         logger.info(f"{event=}")
 
-        parent_repo = Repo.from_uri(event["repo"])
+        parent_repo = Repo(event["repo"])
         parent_job_data = get_job_data(parent_repo)
 
         parent_inputs = json.loads(event["inputs"])
@@ -142,6 +145,6 @@ def lambda_handler(event: dict, context: object):
                 "bucket": items_file.bucket,
                 "key": items_file.key
             },
-            "repo": str(scatter_repo),
+            "repo": dict(scatter_repo),
         }
         return ret

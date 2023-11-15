@@ -26,7 +26,11 @@ def repo_bucket():
 def test_lambda_handler(repo_bucket):
     event = {
         "index": "99",
-        "repo": f"s3://{repo_bucket.name}/repo/path/Scatter",
+        "repo": {
+            "bucket": repo_bucket.name,
+            "prefix": "repo/path/Scatter",
+            "uri": "s3://this/is/not/used",
+        },
         "scatter": {
             "number": "88",
             "file": "s3://bucket/yada/yada/file.txt",
@@ -35,12 +39,15 @@ def test_lambda_handler(repo_bucket):
     }
 
     result = lambda_handler(event, {})
-    expect = f"s3://{repo_bucket.name}/repo/path/Scatter/00099"
+    expect = {
+        "bucket": repo_bucket.name,
+        "prefix": "repo/path/Scatter/00099",
+        "uri": f"s3://{repo_bucket.name}/repo/path/Scatter/00099"
+    }
 
     assert result == expect
 
-    result_bucket, result_prefix = result.split("/", 3)[2:]
-    job_data_obj = boto3.resource("s3").Object(result_bucket, f"{result_prefix}/_JOB_DATA_")
+    job_data_obj = boto3.resource("s3").Object(result["bucket"], f"{result['prefix']}/_JOB_DATA_")
     response = job_data_obj.get()
     with closing(response["Body"]) as fp:
         job_data = json.load(fp)
