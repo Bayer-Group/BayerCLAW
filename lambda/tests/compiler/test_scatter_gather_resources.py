@@ -104,6 +104,13 @@ def test_map_step():
                 {"fake": "branch"},
             ],
         },
+        "ResultWriter": {
+            "Resource": "arn:aws:states:::s3:putObject",
+            "Parameters": {
+                "Bucket.$": "$.repo.bucket",
+                "Prefix.$": "$.repo.prefix",
+            },
+        },
         "ResultPath": None,
         "Next": "gather_step_name",
     }
