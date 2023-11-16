@@ -46,38 +46,6 @@ def expand_glob(globby_file: S3File) -> Generator[S3File, None, None]:
         yield yld
 
 
-# def expand_scatter_data0(scatter_spec: dict, repo: Repo, job_data: dict) -> Generator[Tuple, None, None]:
-#     for key, vals in scatter_spec.items():
-#         # case 1: static list
-#         if isinstance(vals, list):
-#             yield key, vals
-#
-#         elif isinstance(vals, str):
-#             # case 2: reference to a list in an extended job data file field
-#             if (is_job_data_ref := re.match(r"^\${((?:job|parent|scatter)\..+?)}$", vals)) is not None:
-#                 field_name = is_job_data_ref.group(1)  # e.g. "job.list_of_stuff"
-#
-#                 result = jmespath.search(field_name, job_data)
-#                 if not isinstance(result, list):
-#                     raise RuntimeError(f"'{field_name}' is not a JSON list")
-#                 yield key, result
-#
-#             # case 3: file contents
-#             elif vals.startswith("@"):
-#                 path = repo.qualify(vals[1:])
-#                 yield key, select_file_contents(str(path))
-#
-#             # case 4: file glob
-#             elif re.search(r'[\[\]*?]', vals):
-#                 yield key, list(expand_glob(repo.qualify(vals)))
-#
-#             # case 5: single filename
-#             else:
-#                 yield key, [repo.qualify(vals)]
-#         else:
-#             pass
-
-
 def expand_scatter_data(scatter_spec: dict, repo: Repo, job_data: dict) -> Generator[Tuple, None, None]:
     for key, vals in scatter_spec.items():
         yield from _expand_scatter_data_impl(key, vals, repo, job_data)
@@ -109,11 +77,14 @@ def _expand_scatter_data_impl(key: str, vals: Any, repo: Repo, job_data: dict) -
             #   - if the jmespath search yielded a string, you want to substitute that string into vals
             #     and expand from that
             # anything else will raise an error
+            if isinstance(result, list):
+                pass
+
             elif isinstance(result, str):
                 # don't search the vals string twice
                 result = vals[:is_job_data_ref.start(0)] + result + vals[is_job_data_ref.end(0):]
 
-            elif not isinstance(result, list):
+            else:
                 raise RuntimeError(f"{key=}: {field_name} is not a list or string")
 
         # case 3: file contents
@@ -185,13 +156,6 @@ def lambda_handler(event: dict, context: object):
         repoized_inputs = {k: parent_repo.qualify(v) for k, v in jobby_inputs.items()}
         _ = write_job_data_template(parent_job_data, repoized_inputs, scatter_repo)
 
-        # HEY!
-        # supplying a glob in the job data should be supported so that wf can scatter over
-        # all the files in an s3 folder when the folder isn't known until runtime
-        # (i.e. some process drops a batch of files to be processed)
-        # but this solution breaks scattering on lists in the job data file
-        # jobby_scatter_data = substitute_job_data(scatter_data, parent_job_data)
-        # expanded_scatter_data = dict(expand_scatter_data(jobby_scatter_data, parent_repo, parent_job_data))
         expanded_scatter_data = dict(expand_scatter_data(scatter_data, parent_repo, parent_job_data))
 
         with open("/tmp/items.csv", "w") as fp:
