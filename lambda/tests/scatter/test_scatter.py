@@ -72,12 +72,21 @@ def test_expand_scatter_data(repo_bucket):
         "job_data_list": "${job.a_list}",
         "file_contents": "@other_file.json:$[*.b]",
         "file_glob": "file*",
-        "single_file": "single.txt"
+        "single_file": "single.txt",
+        "file_ref": "${job.file_ref}",
+        "contents_ref1": "${job.contents_ref1}",
+        "contents_ref2": "@${job.contents_ref2}",
+        "glob_ref": "${job.glob_ref}",
     }
 
     job_data = {
         "job": {
             "a_list": [9, 8, 7],
+            "file_ref": "referenced_file.txt",
+            "glob_ref": "file[1,3]",
+            "contents_ref1": "@other_file.json:$[*.a]",
+            "contents_ref2": "other_file.json:$[*.b]",
+            "err": {"a": 1},
             "more": "stuff",
         },
         "parent": {},
@@ -91,11 +100,18 @@ def test_expand_scatter_data(repo_bucket):
         "job_data_list": [9, 8, 7],
         "file_contents": ["2", "4"],  # todo: why are these stringified?
         "file_glob": [
-            S3File(repo_bucket.name, "repo/path/file1"),
-            S3File(repo_bucket.name, "repo/path/file2"),
-            S3File(repo_bucket.name, "repo/path/file3"),
+            f"s3://{repo_bucket.name}/repo/path/file1",
+            f"s3://{repo_bucket.name}/repo/path/file2",
+            f"s3://{repo_bucket.name}/repo/path/file3",
         ],
-        "single_file": [S3File(repo_bucket.name, "repo/path/single.txt")]
+        "single_file": [S3File(repo_bucket.name, "repo/path/single.txt")],
+        "file_ref": [S3File(repo_bucket.name, "repo/path/referenced_file.txt")],
+        "contents_ref1": ["1", "3"],
+        "contents_ref2": ["2", "4"],
+        "glob_ref": [
+            f"s3://{repo_bucket.name}/repo/path/file1",
+            f"s3://{repo_bucket.name}/repo/path/file3",
+        ]
     }
 
     assert result == expect
@@ -106,7 +122,16 @@ def test_expand_scatter_data_not_list():
     job_data = {"job": {"unlist": 99}, "parent": {}, "scatter": {}}
     repo = Repo(bucket="what", prefix="ever")
 
-    with pytest.raises(RuntimeError, match="'job.unlist' is not a JSON list"):
+    with pytest.raises(RuntimeError, match="key='unlist': job.unlist is not a list or string"):
+        _ = list(expand_scatter_data(scatter_spec=scatter_spec, repo=repo, job_data=job_data))
+
+
+def test_expand_scatter_data_not_found():
+    scatter_spec = {"not_found": "${job.not_there}"}
+    job_data = {"job": {"some": "stuff"}, "parent": {}, "scatter": {}}
+    repo = Repo(bucket="what", prefix="ever")
+
+    with pytest.raises(RuntimeError, match="key='not_found': job.not_there not found"):
         _ = list(expand_scatter_data(scatter_spec=scatter_spec, repo=repo, job_data=job_data))
 
 
@@ -176,7 +201,6 @@ def test_write_job_data_template(repo_bucket):
 
 def test_lambda_handler(repo_bucket):
     event = {
-        # "repo": f"s3://{repo_bucket.name}/repo/path",
         "repo": {
             "bucket": repo_bucket.name,
             "prefix": "repo/path",
@@ -221,7 +245,6 @@ def test_lambda_handler(repo_bucket):
 
 def test_lambda_handler_scatter_sub(repo_bucket):
     event = {
-        # "repo": f"s3://{repo_bucket.name}/repo/path",
         "repo": {
             "bucket": repo_bucket.name,
             "prefix": "repo/path",
