@@ -626,6 +626,7 @@ Resources:
               - "states:StartExecution"
               - "states:DescribeExecution"
               - "states:StopExecution"
+              - "states:RedriveExecution"
             Resource: "*"
           - Effect: Allow
             Action:
