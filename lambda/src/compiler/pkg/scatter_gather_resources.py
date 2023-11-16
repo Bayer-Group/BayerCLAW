@@ -72,8 +72,8 @@ def map_step(step: Step, sub_branch: dict, gather_step_name: str) -> dict:
         "ResultWriter": {
             "Resource": "arn:aws:states:::s3:putObject",
             "Parameters": {
-                "Bucket.$": "$.repo.bucket",
-                "Prefix.$": "$.repo.prefix",
+                "Bucket.$": "$.scatter.repo.bucket",
+                "Prefix.$": "$.scatter.repo.prefix",
             },
         },
         "ResultPath": None,
