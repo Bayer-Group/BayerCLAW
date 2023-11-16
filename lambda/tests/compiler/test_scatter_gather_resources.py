@@ -107,8 +107,8 @@ def test_map_step():
         "ResultWriter": {
             "Resource": "arn:aws:states:::s3:putObject",
             "Parameters": {
-                "Bucket.$": "$.repo.bucket",
-                "Prefix.$": "$.repo.prefix",
+                "Bucket.$": "$.scatter.repo.bucket",
+                "Prefix.$": "$.scatter.repo.prefix",
             },
         },
         "ResultPath": None,
