@@ -167,7 +167,7 @@ et_msg = "specify error_tolerance count or percent, not both"
 
 scatter_step_schema = Schema(All(
     {
-        Required("scatter"): {str: str},
+        Required("scatter"): {str: Any(str, list)},
         Optional("inputs", default=None):
             Maybe({str: str}),
         Required("steps", "steps list is required"):
