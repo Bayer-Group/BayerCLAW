@@ -124,7 +124,7 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
         child_image = pull_image(docker_client, image_tag)
 
         logger.info("---------- starting user command block ----------")
-        container = docker_client.containers.run(child_image.tags[0], command,
+        container = docker_client.containers.run(child_image, command,
                                                  cpu_shares=cpu_shares,
                                                  detach=True,
                                                  device_requests=device_requests,
