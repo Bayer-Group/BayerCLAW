@@ -626,8 +626,11 @@ Resources:
               - "states:StartExecution"
               - "states:DescribeExecution"
               - "states:StopExecution"
-              - "states:RedriveExecution"
             Resource: "*"
+          - Effect: Allow
+            Action:
+              - "states:RedriveExecution"
+            Resource: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:execution:*:*
           - Effect: Allow
             Action:
               - "s3:ListBucket"
