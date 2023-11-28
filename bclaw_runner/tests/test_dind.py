@@ -102,7 +102,6 @@ def test_pull_images(tag, expected_source, expected_auth, monkeypatch, mock_dock
         assert result.auth == expected_auth
 
 
-@pytest.mark.skip(reason="possible race condition")
 @pytest.mark.parametrize("exit_code", [0, 88])
 @pytest.mark.parametrize("logging_crash", [False, True])
 def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logging_crash, mock_container_factory, mock_docker_client_factory):
@@ -145,7 +144,8 @@ def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logg
 
     result = run_child_container("local/image", "ls -l", f"{bc_scratch_path}/parent/workspace", job_data_file)
 
-    assert test_container.args == ("local/image", "ls -l")
+    assert test_container.args[0].tags == ["local/image"]
+    assert test_container.args[1] == "ls -l"
     assert test_container.kwargs == {
         "cpu_shares": 1024,
         "detach": True,
