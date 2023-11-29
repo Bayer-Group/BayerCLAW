@@ -46,20 +46,22 @@ def test_scatter_step(compiler_env):
     assert result == expect
 
 @pytest.mark.parametrize("spec, expect", [
-    ({"error_tolerance": {"percent": 99}}, {"ToleratedFailurePercentage": 99}),
-    ({"error_tolerance": {"count": 88}}, {"ToleratedFailureCount": 88}),
+    ("99%", {"ToleratedFailurePercentage": 99}),
+    (88, {"ToleratedFailureCount": 88}),
 ])
 def test_error_tolerance(spec, expect):
     result = error_tolerance(spec)
     assert result == expect
 
 
-def test_map_step():
+@pytest.mark.parametrize("err_tol, expect_err_tol", [
+    (88, {"ToleratedFailureCount": 88}),
+    ("77%", {"ToleratedFailurePercentage": 77})
+])
+def test_map_step(err_tol, expect_err_tol):
     spec = {
         "max_concurrency": 99,
-        "error_tolerance": {
-            "count": 88,
-        },
+        "error_tolerance": err_tol,
     }
     step = Step("test-step", spec, "unused")
     sub_branch = {
@@ -73,7 +75,8 @@ def test_map_step():
     expect = {
         "Type": "Map",
         "MaxConcurrency": 99,
-        "ToleratedFailureCount": 88,
+        **expect_err_tol,
+        # "ToleratedFailureCount": 88,
         "Label": "teststep",
         "ItemReader": {
             "Resource": "arn:aws:states:::s3:getObject",
@@ -212,8 +215,7 @@ def sample_scatter_step():
         output1: outfile1.txt
         output2: outfile2.txt
       max_concurrency: 99
-      error_tolerance:
-        count: 88
+      error_tolerance: 88
     """))
     yield ret
 

@@ -26,12 +26,11 @@ def scatter_step(step: Step, map_step_name: str) -> dict:
     return ret
 
 
-def error_tolerance(spec: dict) -> dict:
-    # spec["error_tolerance"]["count"] = 0 by default (set by validator)
-    if "percent" in spec["error_tolerance"]:
-        ret = {"ToleratedFailurePercentage": spec["error_tolerance"]["percent"]}
+def error_tolerance(spec) -> dict:
+    if isinstance(spec, str):
+        ret = {"ToleratedFailurePercentage": int(spec[:-1])}
     else:
-        ret = {"ToleratedFailureCount": spec["error_tolerance"]["count"]}
+        ret = {"ToleratedFailureCount": spec}
     return ret
 
 
@@ -41,7 +40,7 @@ def map_step(step: Step, sub_branch: dict, gather_step_name: str) -> dict:
     ret = {
         "Type": "Map",
         "MaxConcurrency": step.spec["max_concurrency"],
-        **error_tolerance(step.spec),
+        **error_tolerance(step.spec["error_tolerance"]),
         "Label": label[:40],
         "ItemReader": {
             "Resource": "arn:aws:states:::s3:getObject",
