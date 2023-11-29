@@ -56,7 +56,8 @@ def test_error_tolerance(spec, expect):
 
 @pytest.mark.parametrize("err_tol, expect_err_tol", [
     (88, {"ToleratedFailureCount": 88}),
-    ("77%", {"ToleratedFailurePercentage": 77})
+    ("77%", {"ToleratedFailurePercentage": 77}),
+    ("0000066%", {"ToleratedFailurePercentage": 66}),  # ridiculous leading zeroes
 ])
 def test_map_step(err_tol, expect_err_tol):
     spec = {

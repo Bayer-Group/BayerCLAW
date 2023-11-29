@@ -27,9 +27,12 @@ def scatter_step(step: Step, map_step_name: str) -> dict:
 
 
 def error_tolerance(spec) -> dict:
+    # spec will have passed validation, so...
     if isinstance(spec, str):
+        # if it's a string, it's a percentage between 0 and 100 and the last character is %
         ret = {"ToleratedFailurePercentage": int(spec[:-1])}
     else:
+        # otherwise it's an int >= 0
         ret = {"ToleratedFailureCount": spec}
     return ret
 

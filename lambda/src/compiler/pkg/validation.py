@@ -173,10 +173,10 @@ scatter_step_schema = Schema(All(
         Optional("outputs", default={}):
             {str: str},
         Optional("max_concurrency", default=0):
-            All(Coerce(int), Range(min=0, msg="max_concurrency must be nonnegative")),
-        Optional("error_tolerance", default=0): Or(All(int, Range(min=0)),         # integer >= 0
-                                                   Match(r"^(?:\d{1,2}|100)%$"),   # percentage, 0 - 100%
-                                                   msg="invalid error tolerance spec"),
+            All(Coerce(int), Range(min=0, msg="max_concurrency must be zero or greater")),
+        Optional("error_tolerance", default=0): Or(All(int, Range(min=0)),          # integer >= 0
+                                                   Match(r"^0*(?:\d{1,2}|100)%$"),  # percentage, 0 - 100%
+                                                   msg="invalid error tolerance request"),
         **next_or_end,
     },
     # It's technically OK if scatter shares keys with these, because it's namespaced as ${scatter.foo}
