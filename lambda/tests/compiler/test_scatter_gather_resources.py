@@ -18,6 +18,10 @@ def test_scatter_step(compiler_env):
             "input1": "infile1.txt",
             "input2": "infile2.txt",
         },
+        "outputs": {
+            "output1": "outfile1.txt",
+            "output2": "outfile2.txt",
+        }
     }
 
     test_step = Step("test_step", spec, "unused")
@@ -29,6 +33,7 @@ def test_scatter_step(compiler_env):
             "repo.$": "$.repo",
             "scatter": json.dumps(spec["scatter"]),
             "inputs": json.dumps(spec["inputs"]),
+            "outputs": json.dumps(spec["outputs"]),
             "logging": {
                 "branch.$": "$.index",
                 "job_file_bucket.$": "$.job_file.bucket",

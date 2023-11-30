@@ -173,8 +173,13 @@ def test_write_job_data_template(repo_bucket):
         "additional": S3File(repo_bucket.name, "repo/path/file2")
     }
 
+    jobby_outputs = {
+        "output": "file.out"
+    }
+
     result = write_job_data_template(parent_job_data,
                                      repoized_inputs,
+                                     jobby_outputs,
                                      scatter_repo)
     assert isinstance(result, S3File)
     assert result.bucket == repo_bucket.name
@@ -193,6 +198,7 @@ def test_write_job_data_template(repo_bucket):
         "parent": {
             "original": f"s3://{repo_bucket.name}/repo/path/file1",
             "additional": f"s3://{repo_bucket.name}/repo/path/file2",
+            "output": "file.out"
         },
     }
 
@@ -208,6 +214,7 @@ def test_lambda_handler(repo_bucket):
         },
         "scatter": json.dumps({"scatter_files": "file*", "list": [1, 2]}),
         "inputs": json.dumps({"other_file": "other_file.json"}),
+        "outputs": json.dumps({"output_file": "output.txt"}),
         "logging": {
             "step_name": "test_step",
         },
@@ -252,6 +259,7 @@ def test_lambda_handler_scatter_sub(repo_bucket):
         },
         "scatter": json.dumps({"scatter_glob": "${job.glob}"}),
         "inputs": "{}",
+        "outputs": "{}",
         "logging": {
             "step_name": "test_step",
         },
