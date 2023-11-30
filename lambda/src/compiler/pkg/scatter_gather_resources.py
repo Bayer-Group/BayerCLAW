@@ -16,6 +16,7 @@ def scatter_step(step: Step, map_step_name: str) -> dict:
             "repo.$": "$.repo",
             "scatter": json.dumps(step.spec["scatter"]),
             **step.input_field,
+            "outputs": json.dumps(step.spec["outputs"]),
             **lambda_logging_block(step.name),
         },
         **lambda_retry(),

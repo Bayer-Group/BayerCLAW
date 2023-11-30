@@ -116,11 +116,12 @@ def scatterator(scatter_data: Dict[Any, list]) -> Generator[dict, None, None]:
 
 def write_job_data_template(parent_job_data: dict,
                             repoized_inputs: dict,
+                            jobby_outputs: dict,
                             scatter_repo: Repo) -> S3File:
     job_data_template = {
         "job": parent_job_data["job"],
         "scatter": {},
-        "parent": {**parent_job_data["parent"], **repoized_inputs},
+        "parent": {**parent_job_data["parent"], **repoized_inputs, **jobby_outputs},
     }
     template_file = scatter_repo.qualify("_JOB_DATA_")
     template_obj = boto3.resource("s3").Object(template_file.bucket, template_file.key)
@@ -136,6 +137,7 @@ def lambda_handler(event: dict, context: object):
     #       prefix: str
     #   }
     #   inputs: "{...}"
+    #   outputs: "{...}"
     #   scatter: "{...}"
     #   logging: {}
     # }
@@ -147,14 +149,16 @@ def lambda_handler(event: dict, context: object):
         parent_job_data = get_job_data(parent_repo)
 
         parent_inputs = json.loads(event["inputs"])
+        parent_outputs = json.loads(event["outputs"])
         scatter_data = json.loads(event["scatter"])
         step_name = event["logging"]["step_name"]
 
         scatter_repo = parent_repo.sub_repo(step_name)
 
         jobby_inputs = substitute_job_data(parent_inputs, parent_job_data)
+        jobby_outputs = substitute_job_data(parent_outputs, parent_job_data)
         repoized_inputs = {k: parent_repo.qualify(v) for k, v in jobby_inputs.items()}
-        _ = write_job_data_template(parent_job_data, repoized_inputs, scatter_repo)
+        _ = write_job_data_template(parent_job_data, repoized_inputs, jobby_outputs, scatter_repo)
 
         expanded_scatter_data = dict(expand_scatter_data(scatter_data, parent_repo, parent_job_data))
 
