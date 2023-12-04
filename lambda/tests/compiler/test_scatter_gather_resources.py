@@ -82,7 +82,6 @@ def test_map_step(err_tol, expect_err_tol):
         "Type": "Map",
         "MaxConcurrency": 99,
         **expect_err_tol,
-        # "ToleratedFailureCount": 88,
         "Label": "teststep",
         "ItemReader": {
             "Resource": "arn:aws:states:::s3:getObject",
