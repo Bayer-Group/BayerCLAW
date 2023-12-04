@@ -146,12 +146,13 @@ Resources:
         - python3.7
         - python3.8
         - python3.9
+        - python3.10
 
   ChooserLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: multichooser.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.10
       CodeUri: lambda/src/chooser
       AutoPublishAlias: current
       Environment:
@@ -192,7 +193,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.10
       CodeUri: lambda/src/compiler
       AutoPublishAlias: current
       Environment:
@@ -212,6 +213,7 @@ Resources:
           QC_CHECKER_LAMBDA_ARN: !Ref QCCheckerLambda.Version
           RESOURCE_BUCKET_NAME: !Ref ResourceBucketName
           RUNNER_REPO_URI: !GetAtt RunnerRepo.RepositoryUri
+          SCATTER_INIT_LAMBDA_ARN: !Ref ScatterInitLambda.Version
           SCATTER_LAMBDA_ARN: !Ref ScatterLambda.Version
           SPOT_QUEUE_ARN: !GetAtt SpotQueueStack.Outputs.BatchQueueArn
           STATES_EXECUTION_ROLE_ARN: !GetAtt StatesExecutionRole.Arn
@@ -248,7 +250,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: initializer.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.10
       CodeUri: lambda/src/initializer
       AutoPublishAlias: current
       Environment:
@@ -290,7 +292,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: scatter.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.10
       CodeUri: lambda/src/scatter
       AutoPublishAlias: current
       Environment:
@@ -328,17 +330,59 @@ Resources:
       FilterPattern: '{$.function = "scatter.*"}'
       LogGroupName: !Ref ScatterLambdaLogGroup
 
-  GatherLambda:
+  ScatterInitLambda:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: gather.lambda_handler
-      Runtime: python3.9
-      CodeUri: lambda/src/gather
+      Handler: scatter_init.lambda_handler
+      Runtime: python3.10
+      CodeUri: lambda/src/scatter_init
       AutoPublishAlias: current
       Environment:
         Variables:
           BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
+      Timeout: 300
+      Layers:
+        - !Ref CommonLayer
+      Policies:
+        -
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: Allow
+              Action:
+                - "s3:PutObject"
+                - "s3:GetObject"
+                - "s3:ListBucket"
+              Resource: "*"
+      DeploymentPreference:
+        Enabled: false
+
+  ScatterInitLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ScatterInitLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  ScatterInitLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "scatter_init.*"}'
+      LogGroupName: !Ref ScatterInitLambdaLogGroup
+
+  GatherLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: gather.lambda_handler
+      Runtime: python3.10
+      CodeUri: lambda/src/gather
+      AutoPublishAlias: current
+      Environment:
+        Variables:
+          BCLAW_VERSION: !Ref SourceVersion
+      MemorySize: 1024
       Timeout: 900
       Layers:
         - !Ref CommonLayer
@@ -374,7 +418,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: qc_checker.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.10
       CodeUri: lambda/src/qc_checker
       AutoPublishAlias: current
       Environment:
@@ -420,7 +464,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: subpipes.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.10
       CodeUri: lambda/src/subpipes
       AutoPublishAlias: current
       Environment:
@@ -462,7 +506,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: notifications.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.10
       CodeUri: lambda/src/notifications
 #      AutoPublishAlias: current
 #      Environment:
@@ -503,7 +547,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: versionator.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.10
       CodeUri: lambda/src/versionator
       MemorySize: 128
       Timeout: 60
@@ -582,6 +626,18 @@ Resources:
               - "states:StartExecution"
               - "states:DescribeExecution"
               - "states:StopExecution"
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - "states:RedriveExecution"
+            Resource: !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:execution:*:*
+          - Effect: Allow
+            Action:
+              - "s3:ListBucket"
+              - "s3:GetObject"
+              - "s3:PutObject"
+              - "s3:ListMultipartUploadParts"
+              - "s3:AbortMultipartUpload"
             Resource: "*"
       Roles:
         - !Ref StatesExecutionRole

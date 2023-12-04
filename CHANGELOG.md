@@ -1,5 +1,18 @@
 # Changelog for BayerCLAW
 
+## [v1.2.2] 2023-12-?? Feature release
+
+### Added/Changed
+- Scatter steps are now backed by Step Functions Distributed Map states, enabling handling of much 
+larger scatters (tens to hundreds of thousands of branches). This switch brings with it the ability to
+tolerate specified numbers of errors in scatter steps and the ability to set a max concurrency level
+for the scatter step.
+- Enabled use of Step Functions redrive for error resolution.
+
+### Fixed
+- Some scatter modes that weren't working have been fixed.
+- Fixed handling of Docker images specified by their SHA256 tag.
+
 ## [v1.2.1] 2023-11-06 Feature release
 
 ### Changed

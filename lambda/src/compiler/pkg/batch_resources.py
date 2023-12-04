@@ -293,11 +293,21 @@ def batch_step(step: Step,
         "Resource": "arn:aws:states:::batch:submitJob.sync",
         "Retry": [
             {
+                # this is intended to handle failures caused by Batch API throttling
+                #   ... "normal" job failures throw States.TaskFailed
+                "ErrorEquals": ["Batch.AWSBatchException"],
+                "IntervalSeconds": 30,
+                "MaxAttempts": 20,
+                "MaxDelaySeconds": 300,
+                "BackoffRate": 2.0,
+                "JitterStrategy": "FULL",
+            },
+            {
                 "ErrorEquals": ["States.ALL"],
                 "IntervalSeconds": time_string_to_seconds(interval),
                 "MaxAttempts": attempts,
                 "BackoffRate": backoff_rate
-            }
+            },
         ],
         "Parameters": {
             "JobName.$": job_name,
@@ -305,7 +315,7 @@ def batch_step(step: Step,
             "JobQueue": get_job_queue(step.spec["compute"]),
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
-                "repo.$": "$.repo",
+                "repo.$": "$.repo.uri",
                 **step.input_field,
                 "references": json.dumps(step.spec["references"]),
                 "outputs": json.dumps(step.spec["outputs"]),

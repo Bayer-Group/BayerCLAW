@@ -165,11 +165,18 @@ chooser_step_schema = Schema(
 
 scatter_step_schema = Schema(All(
     {
-        Required("scatter"): {str: str},
-        Optional("inputs", default=None): Any(None, {str: str}),
+        Required("scatter"): {str: Any(str, list)},
+        Optional("inputs", default=None):
+            Maybe({str: str}),
         Required("steps", "steps list is required"):
             All(Length(min=1, msg="at least one step is required"), [{str: dict}]),
-        Optional("outputs", default={}): Any(None, {str: str}),
+        Optional("outputs", default={}):
+            {str: str},
+        Optional("max_concurrency", default=0):
+            All(Coerce(int), Range(min=0, msg="max_concurrency must be zero or greater")),
+        Optional("error_tolerance", default=0): Or(All(int, Range(min=0)),          # integer >= 0
+                                                   Match(r"^0*(?:\d{1,2}|100)%$"),  # percentage, 0 - 100%
+                                                   msg="invalid error tolerance request"),
         **next_or_end,
     },
     # It's technically OK if scatter shares keys with these, because it's namespaced as ${scatter.foo}

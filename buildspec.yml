@@ -10,7 +10,7 @@ env:
 phases:
   install:
     runtime-versions:
-      python: 3.9
+      python: 3.10
     commands:
       - pip install -r lambda/tests/requirements.txt
 

@@ -77,6 +77,7 @@ def test_get_environment_vars(monkeypatch):
     monkeypatch.setenv("BC_VARIABLE", "bc_value")
     monkeypatch.setenv("ECS_VARIABLE", "ecs_value")
     monkeypatch.setenv("OTHER_VARIABLE", "other_value")
+    monkeypatch.delenv("AWS_CA_BUNDLE", raising=False)
     result = get_environment_vars()
 
     expect = {
@@ -104,11 +105,13 @@ def test_pull_images(tag, expected_source, expected_auth, monkeypatch, mock_dock
 @pytest.mark.parametrize("exit_code", [0, 88])
 @pytest.mark.parametrize("logging_crash", [False, True])
 def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logging_crash, mock_container_factory, mock_docker_client_factory):
+    # todo: is there a race condition in this test?
     bc_scratch_path = "/_bclaw_scratch"
     monkeypatch.setenv("BC_SCRATCH_PATH", bc_scratch_path)
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     monkeypatch.setenv("NVIDIA_VISIBLE_DEVICES", "all")
     monkeypatch.setenv("OTHER_VARIABLE", "other_value")
+    monkeypatch.delenv("AWS_CA_BUNDLE", raising=False)
 
     metadata = {
         "Volumes": [
@@ -141,7 +144,8 @@ def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logg
 
     result = run_child_container("local/image", "ls -l", f"{bc_scratch_path}/parent/workspace", job_data_file)
 
-    assert test_container.args == ("local/image", "ls -l")
+    assert test_container.args[0].tags == ["local/image"]
+    assert test_container.args[1] == "ls -l"
     assert test_container.kwargs == {
         "cpu_shares": 1024,
         "detach": True,

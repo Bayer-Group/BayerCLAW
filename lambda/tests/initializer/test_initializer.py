@@ -184,7 +184,11 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
             "version": version,
         },
         "prev_outputs": {},
-        "repo": "s3://repo-bucket/path/to/repo/testJob",
+        "repo": {
+            "bucket": "repo-bucket",
+            "prefix": "path/to/repo/testJob",
+            "uri": "s3://repo-bucket/path/to/repo/testJob",
+        },
         "share_id": "testworkflow",
     }
 
