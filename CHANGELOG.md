@@ -1,6 +1,6 @@
 # Changelog for BayerCLAW
 
-## [v1.2.2] 2023-12-?? Feature release
+## [v1.2.2] 2023-12-05 Feature release
 
 **NOTE:** Due to Python version upgrades in the CodeBuild project and elsewhere, you will need to
 update the [BayerCLAW installer stack](doc/installation.md#updating-bayerclaw) before upgrading to v1.2.2. 
