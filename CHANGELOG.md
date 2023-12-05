@@ -2,12 +2,17 @@
 
 ## [v1.2.2] 2023-12-?? Feature release
 
+**NOTE:** Due to Python version upgrades in the CodeBuild project and elsewhere, you will need to
+update the [BayerCLAW installer stack](doc/installation.md#updating-bayerclaw) before upgrading to v1.2.2. 
+
 ### Added/Changed
 - Scatter steps are now backed by Step Functions Distributed Map states, enabling handling of much 
 larger scatters (tens to hundreds of thousands of branches). This switch brings with it the ability to
 tolerate specified numbers of errors in scatter steps and the ability to set a max concurrency level
 for the scatter step.
 - Enabled use of Step Functions redrive for error resolution.
+- Python versions of things generally upgraded to 3.10.
+- S3 file up/download sizes are logged.
 
 ### Fixed
 - Some scatter modes that weren't working have been fixed.
@@ -94,7 +99,7 @@ the image to be updated between runs.
 ## [v1.1.1] 2022-03-29 Security update
 
 **NOTE**: Upgrading to v1.1.1 requires a full refresh of the installer and core
-stacks. Instructions can be found [here](doc/deployment.md#updating-bayerclaw).
+stacks. Instructions can be found [here](doc/installation.md#updating-bayerclaw).
 
 ### Added
 - Enabled server-side encryption on SNS topics and SQS queues. Note that workflows will need to be recompiled
@@ -103,7 +108,7 @@ to enable encryption.
 ## [v1.1.0] 2022-02-02 Feature release
 
 **IMPORTANT:** If you are upgrading from a previous version of BayerCLAW, you will need to update the installer
-stack before running CodePipeline (instructions [here](doc/deployment.md#updating-bayerclaw)). 
+stack before running CodePipeline (instructions [here](doc/installation.md#updating-bayerclaw)). 
 You will also need to recompile any workflows created by the previous installation, and rebuild any custom Batch
 queues you've built.
 
