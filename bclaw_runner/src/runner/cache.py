@@ -27,10 +27,12 @@ def _blocking_download(s3_object, dest_path: str, name_for_logging: str) -> None
         with open(lock_path, "w") as lfp:
             fcntl.flock(lfp, fcntl.LOCK_EX | fcntl.LOCK_NB)
             logger.debug(f"lock acquired for {name_for_logging}")
-            logger.info(f"downloading {name_for_logging} to cache")
+            s3_size = s3_object.content_length
+            logger.info(f"downloading {name_for_logging} ({s3_size} bytes) to cache")
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             s3_object.download_file(dest_path)
-            logger.info(f"{name_for_logging} downloaded to cache")
+            local_size = os.path.getsize(dest_path)
+            logger.info(f"{name_for_logging} ({s3_size} bytes) downloaded to cache ({local_size} bytes)")
             logger.debug(f"releasing lock on {name_for_logging}")
             fcntl.flock(lfp, fcntl.LOCK_UN)
         os.remove(lock_path)

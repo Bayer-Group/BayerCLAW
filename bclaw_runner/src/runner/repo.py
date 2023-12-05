@@ -114,23 +114,6 @@ class Repository(object):
             yield from s3_objects
 
     @staticmethod
-    # def _download_this0(s3_uri: str) -> str:
-    #     bucket, key = s3_uri.split("/", 3)[2:]
-    #     dest = os.path.basename(key)
-    #     logger.info(f"starting download: {s3_uri} -> {dest}")
-    #     try:
-    #         session = boto3.Session()
-    #         s3 = session.resource("s3")
-    #         s3.Object(bucket, key).download_file(dest)
-    #         logger.info(f"finished download: {s3_uri} -> {dest}")
-    #         return dest
-    #     except botocore.exceptions.ClientError as ce:
-    #         if "Not Found" in str(ce):
-    #             raise FileNotFoundError(s3_uri)
-    #         else:
-    #             raise
-
-    @staticmethod
     def _download_this(s3_uri: str) -> str:
         bucket, key = s3_uri.split("/", 3)[2:]
         dest = os.path.basename(key)
@@ -166,18 +149,6 @@ class Repository(object):
             if not expanded:
                 logger.warning(f"no file matching '{file}' found in workspace")
             yield from expanded
-
-    # def _upload_that0(self, local_file: str) -> str:
-    #     key = self.qualify(os.path.basename(local_file))
-    #     dest = self.to_uri(os.path.basename(local_file))
-    #     logger.info(f"starting upload: {local_file} -> {dest}")
-    #     session = boto3.Session()
-    #     s3 = session.resource("s3")
-    #     s3.Object(self.bucket, key).upload_file(local_file,
-    #                                        ExtraArgs={"ServerSideEncryption": "AES256",
-    #                                                   "Metadata": _file_metadata()})
-    #     logger.info(f"finished upload: {local_file} -> {dest}")
-    #     return dest
 
     def _upload_that(self, local_file: str) -> str:
         local_size = os.path.getsize(local_file)
