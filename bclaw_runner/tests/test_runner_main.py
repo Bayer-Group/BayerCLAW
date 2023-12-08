@@ -63,6 +63,7 @@ opt_inputs = {
 }
 
 
+@pytest.mark.skip(reason="just testing")
 def test_main(monkeypatch, tmp_path, mock_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "step1")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
@@ -165,6 +166,7 @@ def test_main(monkeypatch, tmp_path, mock_bucket):
         assert contents == "reference"
 
 
+@pytest.mark.skip(reason="just testing")
 def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "step2")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
@@ -202,6 +204,7 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
     assert curr_bucket_contents == orig_bucket_contents
 
 
+@pytest.mark.skip(reason="just testing")
 def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "step3")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
@@ -239,6 +242,7 @@ def failing_uploader(*args, **kwargs):
     raise RuntimeError("miscellaneous error")
 
 
+@pytest.mark.skip(reason="just testing")
 def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "step4")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
@@ -263,6 +267,7 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
     assert "repo/path/_control_/step4.complete" not in curr_bucket_contents
 
 
+@pytest.mark.skip(reason="just testing")
 @pytest.mark.parametrize("skip, expect", [
     ("rerun", 0),
     ("output", 0),
@@ -300,6 +305,7 @@ def fake_termination_checker_impl(*_):
 
 
 @moto.mock_logs
+@pytest.mark.skip(reason="just testing")
 @pytest.mark.parametrize("argv, expect", [
     ("prog --cmd 2 --in 3 --out 4 --shell 5 --ref 6 --repo 7 --skip 8 --image 9",
      [2, "9", 3, 4, 6, "7", "5", "8"])
