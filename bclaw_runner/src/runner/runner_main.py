@@ -13,16 +13,18 @@ Options:
     --repo S3_PATH       repository path
     --shell SHELL        unix shell to run commands in (bash | sh | sh-pipefail) [default: sh]
     --skip STRING        step skip condition: output, rerun, none [default: none]
+    --token TOKEN        task token
     --help -h            show help
     --version            show version
 """
-
 from functools import partial, partialmethod
 import json
 import logging.config
 import os
+import time
 from typing import Dict, List
 
+import boto3
 from docopt import docopt
 
 from .cache import get_reference_inputs
@@ -46,7 +48,8 @@ def main(commands: List[str],
          references: Dict[str, str],
          repo_path: str,
          shell: str,
-         skip: str) -> int:
+         skip: str,
+         token: str) -> int:
 
     repo = Repository(repo_path)
 
@@ -88,10 +91,17 @@ def main(commands: List[str],
 
             # run commands
             status = run_commands(jobby_image, subbed_commands, wrk, local_job_data, shell)
+
+            sfn = boto3.client("stepfunctions")
             if status == 0:
                 logger.info("command block succeeded")
+                sfn.send_task_success(taskToken=token, output="something")
             else:
                 logger.error(f"command block failed with exit code {status}")
+                sfn.send_task_failure(taskToken=token, error="error", cause="cause")
+
+            logger.info("sent task token")
+            time.sleep(300)
 
             # upload outputs
             repo.upload_outputs(jobby_outputs)
@@ -132,6 +142,7 @@ def cli() -> int:
         repo     = args["--repo"]
         shell    = args["--shell"]
         skip     = args["--skip"]
+        token    = args["--token"]
 
-        ret = main(commands, image, inputs, outputs, refs, repo, shell, skip)
+        ret = main(commands, image, inputs, outputs, refs, repo, shell, skip, token)
         return ret

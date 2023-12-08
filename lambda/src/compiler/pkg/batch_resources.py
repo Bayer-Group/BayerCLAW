@@ -205,20 +205,6 @@ def job_definition_rc(step: Step,
         "UpdateReplacePolicy": "Retain",
         "Properties": {
             **job_definition_name(logical_name, versioned),
-            # "JobDefinitionName": {
-            #     "Fn::Sub": [
-            #         "${WFName}-${Step}--${Version}",
-            #         {
-            #             "WFName": {
-            #                 "Ref": "AWS::StackName",
-            #             },
-            #             "Step": logical_name,
-            #             "Version": {
-            #                 "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
-            #             },
-            #         },
-            #     ],
-            # },
             "Type": "container",
             "Parameters": {
                 "workflow_name": {
@@ -232,6 +218,7 @@ def job_definition_rc(step: Step,
                 "outputs": "ooo",
                 "shell": shell_opt,
                 "skip": "sss",
+                "token": "ttt",
             },
             "ContainerProperties": {
                 "Command": [
@@ -244,6 +231,7 @@ def job_definition_rc(step: Step,
                     "--out", "Ref::outputs",
                     "--shell", "Ref::shell",
                     "--skip", "Ref::skip",
+                    "--token", "Ref::token"
                 ],
                 "Image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
                 "JobRoleArn": task_role,
@@ -320,6 +308,7 @@ def batch_step(step: Step,
                 "references": json.dumps(step.spec["references"]),
                 "outputs": json.dumps(step.spec["outputs"]),
                 "skip": skip_behavior,
+                "token.$": "$$.Task.Token"
             },
             "ContainerOverrides": {
                 "Environment": [
