@@ -95,7 +95,16 @@ def main(commands: List[str],
             sfn = boto3.client("stepfunctions")
             if status == 0:
                 logger.info("command block succeeded")
-                sfn.send_task_success(taskToken=token, output="something")
+                try:
+                    sfn.send_task_success(taskToken=token, output=json.dumps({"some": "thing"}).encode("utf-8"))
+                except:
+                    logger.error("not bytes")
+                    try:
+                        sfn.send_task_success(taskToken=token, output=json.dumps({"some": "thing"}))
+                    except:
+                        logger.error("not string")
+                        sfn.send_task_success(taskToken=token, output={"some": "thing"})
+
             else:
                 logger.error(f"command block failed with exit code {status}")
                 sfn.send_task_failure(taskToken=token, error="error", cause="cause")

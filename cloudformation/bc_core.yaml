@@ -708,6 +708,15 @@ Resources:
                   - "ec2:CreateTags"
                   - "ec2:DeleteTags"
                 Resource: "*"
+#        -
+#          PolicyName: "SFNAccess"
+#          PolicyDocument:
+#            Version: "2012-10-17"
+#            Statement:
+#              - Effect: "Allow"
+#                Action:
+#                  - ..
+#                Resource: "*"
 
   SpotQueueStack:
     Type: AWS::Serverless::Application
