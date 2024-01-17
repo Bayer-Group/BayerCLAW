@@ -35,11 +35,15 @@ def compile_template(fragment: dict, param_values: dict, state_machine_out=None)
     state_machine = curr_resource
     sm.add_definition_substitutions(state_machine, resources)
 
+    state_machine_version = sm.state_machine_version_rc(state_machine)
+    state_machine_alias = sm.state_machine_alias_rc(state_machine_version)
+
     # create substacks
     launcher_substack = launcher_substack_rc(options)
     deploy_substack = deploy_substack_rc(state_machine.name)
 
-    resources.update([launcher_substack, deploy_substack])
+    resources.update([state_machine_alias, state_machine_version,
+                      launcher_substack, deploy_substack])
 
     # create cloudformation template fragment to return
     ret = {

@@ -102,10 +102,13 @@ def test_pull_images(tag, expected_source, expected_auth, monkeypatch, mock_dock
         assert result.auth == expected_auth
 
 
+# @pytest.mark.parametrize("exit_code", [88])
+# @pytest.mark.parametrize("logging_crash", [False])
 @pytest.mark.parametrize("exit_code", [0, 88])
 @pytest.mark.parametrize("logging_crash", [False, True])
 def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logging_crash, mock_container_factory, mock_docker_client_factory):
     # todo: is there a race condition in this test?
+    # symptom: tests/test_dind.py::test_run_child_container[False-88] - assert 99 == 88
     bc_scratch_path = "/_bclaw_scratch"
     monkeypatch.setenv("BC_SCRATCH_PATH", bc_scratch_path)
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")

@@ -18,6 +18,9 @@ from .util import Step, Resource, State, make_logical_name, lambda_logging_block
 from .validation import validate_batch_step, validate_native_step, validate_parallel_step, validate_scatter_step, \
     validate_subpipe_step, validate_chooser_step
 
+STATE_MACHINE_VERSION_NAME = "mainStateMachineVersion"
+STATE_MACHINE_ALIAS_NAME = "mainStateMachineAlias"
+
 
 def make_initializer_step(repository: str) -> dict:
     initialize_step_name = "Initialize"
@@ -224,6 +227,35 @@ def handle_state_machine(raw_steps: List[Dict],
 
     yield Resource(state_machine_logical_name, ret)
     return state_machine_logical_name
+
+
+def state_machine_version_rc(state_machine: Resource) -> Resource:
+    ret = {
+        "Type": "AWS::StepFunctions::StateMachineVersion",
+        "Properties": {
+            "Description": "sfn version description",
+            "StateMachineArn": {"Ref": state_machine.name},
+            "StateMachineRevisionId": {"Fn::GetAtt": [state_machine.name, "StateMachineRevisionId"]},
+        },
+    }
+
+    return Resource(STATE_MACHINE_VERSION_NAME, ret)
+
+
+def state_machine_alias_rc(state_machine_version: Resource) -> Resource:
+    ret = {
+        "Type": "AWS::StepFunctions::StateMachineAlias",
+        "Properties": {
+            "Name": "current",
+            "Description": "sfn alias description",
+            "DeploymentPreference": {
+                "StateMachineVersionArn": {"Ref": state_machine_version.name},
+                "Type": "ALL_AT_ONCE",
+            },
+        },
+    }
+
+    return Resource(STATE_MACHINE_ALIAS_NAME, ret)
 
 
 def add_definition_substitutions(sfn_resource: Resource, other_resources: dict) -> None:
