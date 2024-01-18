@@ -173,9 +173,8 @@ Resources:
                 - "states:StartExecution"
               Resource: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*"
               Condition:
-                -
-                  StringEquals:
-                    "aws:ResourceTag/bclaw:core-stack-name": !Ref AWS::StackName
+                StringEquals:
+                  "aws:ResourceTag/bclaw:core-stack-name": !Ref AWS::StackName
       Events:
         LauncherBucketTrigger:
           Type: EventBridgeRule
