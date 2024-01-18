@@ -76,7 +76,7 @@ Resources:
         detail:
           stateMachineArn:
             - !Ref StateMachineArn
-      State: ENABLED
+      State: DISABLED
       Targets:
         -
           Arn: !Ref NotificationsLambdaArn
