@@ -176,35 +176,34 @@ Resources:
                 StringEquals:
                   "aws:ResourceTag/bclaw:core-stack-name": !Ref AWS::StackName
       Events:
-        -
-          LauncherBucketTrigger:
-            Type: EventBridgeRule
-            Properties:
-              RuleName: !Sub "${AWS::StackName}-launcher"
-              EventBusName: default
-              Pattern:
-                source:
-                  - "aws.s3"
-                detail-type:
-                  - "Object Created"
-                detail:
-                  bucket:
-                    name:
-                      - !Ref LauncherBucket
-              InputTransformer:
-                InputPathsMap:
-                  bucket: "$.detail.bucket.name"
-                  key: "$.detail.object.key"
-                  version: "$.detail.object.version-id"
-                InputTemplate: >-
-                  {
-                    "branch": "main",
-                    "job_file_bucket": <bucket>,
-                    "job_file_key": <key>,
-                    "job_file_version": <version>
-                  }
-              State: ENABLED
-              # RetryPolicy?
+        LauncherBucketTrigger:
+          Type: EventBridgeRule
+          Properties:
+            RuleName: !Sub "${AWS::StackName}-launcher"
+            EventBusName: default
+            Pattern:
+              source:
+                - "aws.s3"
+              detail-type:
+                - "Object Created"
+              detail:
+                bucket:
+                  name:
+                    - !Ref LauncherBucket
+            InputTransformer:
+              InputPathsMap:
+                bucket: "$.detail.bucket.name"
+                key: "$.detail.object.key"
+                version: "$.detail.object.version-id"
+              InputTemplate: >-
+                {
+                  "branch": "main",
+                  "job_file_bucket": <bucket>,
+                  "job_file_key": <key>,
+                  "job_file_version": <version>
+                }
+            State: ENABLED
+            # RetryPolicy?
 
   RouterLambdaLogGroup:
     Type: AWS::Logs::LogGroup
