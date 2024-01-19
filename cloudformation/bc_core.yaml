@@ -136,6 +136,13 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
+  # notifications
+  NotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: "alias/aws/sns"
+
   # lambdas
   CommonLayer:
     Type: AWS::Serverless::LayerVersion
@@ -163,6 +170,8 @@ Resources:
       Timeout: 60
       Layers:
         - !Ref CommonLayer
+      DeploymentPreference:
+        Enabled: false
       Policies:
         -
           Version: "2012-10-17"
@@ -580,33 +589,62 @@ Resources:
       Runtime: python3.10
       CodeUri: lambda/src/notifications
 #      AutoPublishAlias: current
-#      Environment:
-#        Variables:
+      Environment:
+        Variables:
+          TOPIC_ARN: !Ref NotificationsTopic
 #          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
 #      Layers:
 #        - !Ref CommonLayer
-      Policies:
-        -
-          Version: "2012-10-17"
-          Statement:
-            -
-              Effect: Allow
-              Action:
-                - "sns:Publish"
-              Resource: "*"
       DeploymentPreference:
-        Enabled: False
+        Enabled: false
+#      Policies:
+#        -
+#          Version: "2012-10-17"
+#          Statement:
+#            -
+#              Effect: Allow
+#              Action:
+#                - "sns:Publish"
+#              Resource: "*"
+      Events:
+        SFNStateChange:
+          Type: EventBridgeRule
+          Properties:
+            RuleName: !Sub "${AWS::StackName}-notifications"
+            EventBusName: default
+            Pattern:
+              source:
+                - "aws.states"
+              detail-type:
+                - "Step Functions Execution Status Change"
+#            InputTransformer:
+#              InputPathsMap:
+#                detail: "$.detail"
+#              InputTemplate:
+#                !Sub |-
+#                  {
+#                    "event": <aws.events.event>,
+#                    "detail": <detail>
+#                  }
+            State: ENABLED
+    Connectors:
+      NotifsSNS:
+        Properties:
+          Destination:
+            Id: NotificationsTopic
+          Permissions:
+            - Write
 
-  PermissionToInvokeNotificationsLambda:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt NotificationsLambda.Arn
-#      FunctionName: !Ref NotificationsLambda.Version
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
+#  PermissionToInvokeNotificationsLambda:
+#    Type: AWS::Lambda::Permission
+#    Properties:
+#      FunctionName: !GetAtt NotificationsLambda.Arn
+##      FunctionName: !Ref NotificationsLambda.Version
+#      Action: lambda:InvokeFunction
+#      Principal: events.amazonaws.com
+#      SourceAccount: !Ref AWS::AccountId
 
   NotificationsLambdaLogGroup:
     Type: AWS::Logs::LogGroup

@@ -1,4 +1,5 @@
 import json
+import os
 
 import boto3
 import yaml
@@ -110,8 +111,14 @@ def make_sns_payload(message: str, event: dict) -> dict:
 def lambda_handler(event: dict, context: object) -> dict:
     print(f"{event=}")
 
-    message = make_state_change_message(event)
-    payload = make_sns_payload(message, event)
+    # message = make_state_change_message(event)
+    # payload = make_sns_payload(message, event)
+
+    payload = {
+        "TopicArn": os.environ["TOPIC_ARN"],
+        "Message": json.dumps(event),
+        "Subject": "wut"
+    }
 
     client = boto3.client("sns")
     response = client.publish(**payload)

@@ -87,3 +87,6 @@ def lambda_handler(event: dict, context: object) -> None:
         except sfn.exceptions.ExecutionAlreadyExists:
             # duplicated s3 events are way more likely than bona fide name collisions
             logger.info(f"duplicate event: {exec_name}")
+
+        # throws AccessDeniedException if state machine is not a bclaw workflow from this installation
+        # throws StateMachineDoesNotExist if alias "current" does not exist on state machine

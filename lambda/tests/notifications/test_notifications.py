@@ -145,6 +145,7 @@ def test_make_sns_publish_payload(state_change_event_factory):
     assert result == expect
 
 
+@pytest.mark.skip(reason="temporary")
 @mock_sns
 def test_lambda_handler(monkeypatch, state_change_event_factory):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")

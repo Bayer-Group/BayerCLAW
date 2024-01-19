@@ -210,7 +210,7 @@ Resources:
             key:
               -
                 prefix: !Sub "${WorkflowName}/"
-      State: ENABLED
+      State: DISABLED
       RoleArn: !GetAtt wfTriggerRole.Arn
       Targets:
         -
