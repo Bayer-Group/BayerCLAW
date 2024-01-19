@@ -116,7 +116,7 @@ def lambda_handler(event: dict, context: object) -> dict:
 
     payload = {
         "TopicArn": os.environ["TOPIC_ARN"],
-        "Message": json.dumps(event),
+        "Message": json.dumps(event, indent=4),
         "Subject": "wut"
     }
 
