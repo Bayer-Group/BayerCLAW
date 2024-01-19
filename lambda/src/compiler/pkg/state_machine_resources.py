@@ -10,7 +10,7 @@ import boto3
 from . import batch_resources as b
 from . import chooser_resources as c
 from . import enhanced_parallel_resources as ep
-from . import misc_resources as m
+# from . import misc_resources as m
 from . import native_step_resources as ns
 from . import scatter_gather_resources as sg
 from . import subpipe_resources as sp
@@ -172,21 +172,22 @@ def write_state_machine_to_s3(sfn_def: dict) -> dict:
 
 
 def make_physical_name(versioned: str) -> dict:
-    if versioned == "true":
-        body = {
-            "Fn::Sub": [
-                "${Root}--${Version}",
-                {
-                    "Root": {"Ref": "AWS::StackName"},
-                    "Version": {
-                        "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
-                    },
-                },
-            ],
-        }
-    else:
-        body = {"Ref": "AWS::StackName"}
+    # if versioned == "true":
+    #     body = {
+    #         "Fn::Sub": [
+    #             "${Root}--${Version}",
+    #             {
+    #                 "Root": {"Ref": "AWS::StackName"},
+    #                 "Version": {
+    #                     "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+    #                 },
+    #             },
+    #         ],
+    #     }
+    # else:
+    #     body = {"Ref": "AWS::StackName"}
 
+    body = {"Ref": "AWS::StackName"}
     ret = {"StateMachineName": body}
     return ret
 

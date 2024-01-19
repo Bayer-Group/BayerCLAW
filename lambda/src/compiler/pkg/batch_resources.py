@@ -7,7 +7,7 @@ from typing import Generator, List, Union
 
 import humanfriendly
 
-from .misc_resources import LAUNCHER_STACK_NAME
+# from .misc_resources import LAUNCHER_STACK_NAME
 from .qc_resources import handle_qc_check
 from .util import Step, Resource, State, make_logical_name, time_string_to_seconds
 
@@ -171,26 +171,27 @@ def get_timeout(step: Step) -> dict:
 
 
 def job_definition_name(logical_name: str, versioned: str) -> dict:
-    if versioned == "true":
-        ret = {
-            "JobDefinitionName": {
-                "Fn::Sub": [
-                    "${WFName}-${Step}--${Version}",
-                    {
-                        "WFName": {
-                            "Ref": "AWS::StackName",
-                        },
-                        "Step": logical_name,
-                        "Version": {
-                            "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
-                        },
-                    },
-                ],
-            },
-        }
-    else:
-        ret = {}
+    # if versioned == "true":
+    #     ret = {
+    #         "JobDefinitionName": {
+    #             "Fn::Sub": [
+    #                 "${WFName}-${Step}--${Version}",
+    #                 {
+    #                     "WFName": {
+    #                         "Ref": "AWS::StackName",
+    #                     },
+    #                     "Step": logical_name,
+    #                     "Version": {
+    #                         "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
+    #                     },
+    #                 },
+    #             ],
+    #         },
+    #     }
+    # else:
+    #     ret = {}
 
+    ret = {}
     return ret
 
 

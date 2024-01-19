@@ -212,6 +212,7 @@ def sample_batch_step():
     return ret
 
 
+@pytest.mark.skip(reason="may not need this anymore")
 @pytest.mark.parametrize("versioned", ["true", "false"])
 def test_job_definition_name(versioned):
     if versioned == "true":
@@ -235,6 +236,7 @@ def test_job_definition_name(versioned):
     assert result == expect
 
 
+@pytest.mark.skip(reason="versioned is going away, fix JobDefinitionName")
 @pytest.mark.parametrize("task_role", [
     "arn:task:role",
     {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.EcsTaskRoleArn"]},

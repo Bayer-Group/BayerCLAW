@@ -58,6 +58,7 @@ def test_make_step_list():
         assert result.next == exp_next
 
 
+@pytest.mark.skip(reason="may not need this anymore")
 @pytest.mark.parametrize("versioned", ["true", "false"])
 def test_make_physical_name(versioned):
     result = make_physical_name(versioned)

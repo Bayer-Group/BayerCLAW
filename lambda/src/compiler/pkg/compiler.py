@@ -2,7 +2,7 @@ import logging
 import os
 
 from . import state_machine_resources as sm
-from .misc_resources import launcher_substack_rc, deploy_substack_rc
+# from .misc_resources import launcher_substack_rc, deploy_substack_rc
 from .util import Resource, substitute_params
 from .validation import workflow_schema
 
@@ -39,11 +39,12 @@ def compile_template(fragment: dict, param_values: dict, state_machine_out=None)
     state_machine_alias = sm.state_machine_alias_rc(state_machine_version)
 
     # create substacks
-    launcher_substack = launcher_substack_rc(options)
-    deploy_substack = deploy_substack_rc(state_machine.name)
+    # launcher_substack = launcher_substack_rc(options)
+    # deploy_substack = deploy_substack_rc(state_machine.name)
 
-    resources.update([state_machine_alias, state_machine_version,
-                      launcher_substack, deploy_substack])
+    # resources.update([state_machine_alias, state_machine_version,
+    #                   launcher_substack, deploy_substack])
+    resources.update([state_machine_alias, state_machine_version])
 
     # create cloudformation template fragment to return
     ret = {
