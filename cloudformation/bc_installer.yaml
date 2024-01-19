@@ -392,6 +392,7 @@ Resources:
                 - "lambda:*"
                 - "ecr:*"
                 - "events:*"
+                - "sns:*"
                 Resource: "*"
         - PolicyName: UseCodestarConnection
           PolicyDocument:
