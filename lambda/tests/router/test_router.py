@@ -5,8 +5,9 @@ import boto3
 import moto
 import pytest
 
-from router.router import (get_state_machine_name, shorten_filename, normalize, make_execution_name,
-                           get_state_machine_arn, lambda_handler)
+from ...src.router.job_router import __name__ as router_name
+from ...src.router.job_router import (get_state_machine_name, shorten_filename, normalize, make_execution_name,
+                                      get_state_machine_arn, lambda_handler)
 
 
 @pytest.mark.parametrize("key, expect", [
@@ -109,7 +110,8 @@ def test_lambda_handler(mock_state_machine, monkeypatch, mocker):
     # as of 1/22/2024, moto's mock step functions service does not implement versions or aliases.
     # Therefore, I have to mock out get_state_machine_arn to give lambda_handler an unaliased arn.
     mock_state_machine_arn = mock_state_machine
-    mocker.patch("router.router.get_state_machine_arn", return_value=mock_state_machine_arn)
+    # mocker.patch("router.job_router.get_state_machine_arn", return_value=mock_state_machine_arn)
+    mocker.patch(f"{router_name}.get_state_machine_arn", return_value=mock_state_machine_arn)
 
     event = {
         "branch": "main",
@@ -148,7 +150,7 @@ def test_main_duplicate_event(mock_state_machine, monkeypatch, mocker):
     monkeypatch.setenv("BC_VERSION", "v1.2.3")
 
     mock_state_machine_arn = mock_state_machine
-    mocker.patch("router.router.get_state_machine_arn", return_value=mock_state_machine_arn)
+    mocker.patch(f"{router_name}.get_state_machine_arn", return_value=mock_state_machine_arn)
 
     event1 = {
         "branch": "main",
