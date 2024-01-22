@@ -32,9 +32,8 @@ def signal_trapper(container: Container):
     original_handlers = {}
     try:
         logger.debug("setting new signal handlers")
-        for sig in signal.valid_signals():
-            # this looks somewhat goofy but some python installations don't support every defined signal
-            if (int(sig) not in SKIP) and (signal.getsignal(sig) is not signal.SIG_IGN):
+        for sig in signal.valid_signals() - SKIP:
+            if signal.getsignal(sig) is not signal.SIG_IGN:
                 original_handlers[sig] = signal.signal(sig, _handler)
         yield
     finally:
