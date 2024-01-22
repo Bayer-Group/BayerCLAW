@@ -6,8 +6,7 @@ import yaml
 
 from ...src.compiler.pkg.batch_resources import expand_image_uri, get_job_queue, get_memory_in_mibs, \
     get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout, batch_step, \
-    job_definition_name, job_definition_rc, handle_batch, SCRATCH_PATH
-from ...src.compiler.pkg.misc_resources import LAUNCHER_STACK_NAME
+    job_definition_rc, handle_batch, SCRATCH_PATH
 from ...src.compiler.pkg.util import Step, Resource, State
 
 
@@ -212,36 +211,32 @@ def sample_batch_step():
     return ret
 
 
-@pytest.mark.skip(reason="may not need this anymore")
-@pytest.mark.parametrize("versioned", ["true", "false"])
-def test_job_definition_name(versioned):
-    if versioned == "true":
-        expect = {
-            "JobDefinitionName": {
-                "Fn::Sub": [
-                    "${WFName}-${Step}--${Version}",
-                    {
-                        "WFName": {"Ref": "AWS::StackName"},
-                        "Step": "test_name",
-                        "Version": {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]},
-                    }
-                ]
-            }
-        }
+# todo: remove
+# @pytest.mark.skip(reason="may not need this anymore")
+# @pytest.mark.parametrize("versioned", ["true", "false"])
+# def test_job_definition_name(versioned):
+#     if versioned == "true":
+#         expect = {
+#             "JobDefinitionName": {
+#                 "Fn::Sub": [
+#                     "${WFName}-${Step}--${Version}",
+#                     {
+#                         "WFName": {"Ref": "AWS::StackName"},
+#                         "Step": "test_name",
+#                         "Version": {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]},
+#                     }
+#                 ]
+#             }
+#         }
+#
+#     else:
+#         expect = {}
+#
+#     result = job_definition_name("test_name", versioned)
+#     assert result == expect
 
-    else:
-        expect = {}
 
-    result = job_definition_name("test_name", versioned)
-    assert result == expect
-
-
-@pytest.mark.skip(reason="versioned is going away, fix JobDefinitionName")
-@pytest.mark.parametrize("task_role", [
-    "arn:task:role",
-    {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.EcsTaskRoleArn"]},
-])
-def test_job_definition_rc(task_role, sample_batch_step, compiler_env):
+def test_job_definition_rc(sample_batch_step, compiler_env):
     step_name = "skim3-fastp"
     expected_job_def_name = f"Skim3FastpJobDef"
 
@@ -251,20 +246,6 @@ def test_job_definition_rc(task_role, sample_batch_step, compiler_env):
         "Type": "AWS::Batch::JobDefinition",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
-            "JobDefinitionName": {
-                "Fn::Sub": [
-                    "${WFName}-${Step}--${Version}",
-                    {
-                        "WFName": {
-                            "Ref": "AWS::StackName"
-                        },
-                        "Step": expected_job_def_name,
-                        "Version": {
-                            "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
-                        }
-                    },
-                ],
-            },
             "Type": "container",
             "Parameters": {
                 "workflow_name": {"Ref": "AWS::StackName"},
@@ -304,7 +285,7 @@ def test_job_definition_rc(task_role, sample_batch_step, compiler_env):
                     {"Type": "MEMORY", "Value": "4096"},
                     {"Type": "GPU",    "Value": "2"},
                 ],
-                "JobRoleArn": task_role,
+                "JobRoleArn": "arn:task:role",
                 "MountPoints": [
                     {"ContainerPath": "/var/run/docker.sock", "SourceVolume": "docker_socket",   "ReadOnly": False},
                     {"ContainerPath": "/_bclaw_scratch",      "SourceVolume": "scratch",         "ReadOnly": False},
@@ -334,7 +315,7 @@ def test_job_definition_rc(task_role, sample_batch_step, compiler_env):
     }
 
     def helper():
-        job_def_name1 = yield from job_definition_rc(step, task_role, "bash", "true")
+        job_def_name1 = yield from job_definition_rc(step, "arn:task:role", "bash")
         assert job_def_name1 == expected_job_def_name
 
     for job_def_rc in helper():

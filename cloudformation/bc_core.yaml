@@ -285,7 +285,6 @@ Resources:
           NOTIFICATIONS_LAMBDA_ARN: !GetAtt NotificationsLambda.Arn
           GATHER_LAMBDA_ARN: !Ref GatherLambda.Version
           INITIALIZER_LAMBDA_ARN: !Ref InitializerLambda.Version
-          JOB_LAUNCHER_REPO_URI: !GetAtt JobLauncherRepo.RepositoryUri
           LAUNCHER_BUCKET_NAME: !Ref LauncherBucket
           LOG_RETENTION_DAYS: !Ref LogRetentionDays
           LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
@@ -298,7 +297,6 @@ Resources:
           SPOT_QUEUE_ARN: !GetAtt SpotQueueStack.Outputs.BatchQueueArn
           STATES_EXECUTION_ROLE_ARN: !GetAtt StatesExecutionRole.Arn
           SUBPIPES_LAMBDA_ARN: !Ref SubpipesLambda.Version
-          VERSIONATOR_LAMBDA_ARN: !GetAtt VersionatorLambda.Arn
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -592,11 +590,9 @@ Resources:
       Environment:
         Variables:
           TOPIC_ARN: !Ref NotificationsTopic
-#          BCLAW_VERSION: !Ref SourceVersion
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
-#      Layers:
-#        - !Ref CommonLayer
       DeploymentPreference:
         Enabled: false
       Policies:
@@ -637,45 +633,10 @@ Resources:
           Permissions:
             - Write
 
-#  PermissionToInvokeNotificationsLambda:
-#    Type: AWS::Lambda::Permission
-#    Properties:
-#      FunctionName: !GetAtt NotificationsLambda.Arn
-##      FunctionName: !Ref NotificationsLambda.Version
-#      Action: lambda:InvokeFunction
-#      Principal: events.amazonaws.com
-#      SourceAccount: !Ref AWS::AccountId
-
   NotificationsLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${NotificationsLambda}"
-      RetentionInDays: !Ref LogRetentionDays
-
-  VersionatorLambda:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: versionator.lambda_handler
-      Runtime: python3.10
-      CodeUri: lambda/src/versionator
-      MemorySize: 128
-      Timeout: 60
-      Policies:
-        -
-          Version: "2012-10-17"
-          Statement:
-            -
-              Effect: Allow
-              Action:
-                - "lambda:PublishVersion"
-              Resource: "*"
-      DeploymentPreference:
-        Enabled: False
-
-  VersionatorLambdaLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/lambda/${VersionatorLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
   CompilerMacro:
@@ -861,28 +822,16 @@ Resources:
       FilterPattern: '{$.workflow_name = "*"}'
       LogGroupName: /aws/batch/job
 
-  # ecr repositories
+  # ecr repository
   RunnerRepo:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: !Sub "${AWS::StackName}/runner"
       ImageTagMutability: IMMUTABLE
 
-  JobLauncherRepo:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: !Sub "${AWS::StackName}/launcher"
-      ImageTagMutability: IMMUTABLE
-
 Outputs:
   ECSTaskRoleArn:
     Value: !GetAtt EcsTaskRole.Arn
-
-  JobLauncherImageUri:
-    Value: !Sub
-      - "${repo}:${tag}"
-      - repo: !GetAtt JobLauncherRepo.RepositoryUri
-        tag: !Ref SourceVersion
 
   LauncherBucketName:
     Value: !Ref LauncherBucket

@@ -12,11 +12,17 @@ logger.setLevel(logging.INFO)
 logger.handlers[0].setFormatter(JSONFormatter())
 
 
+def get_state_machine_name(s3_key: str) -> (str, str):
+    # (?<!/) is a negative lookbehind to make sure the s3 key doesn't end with a /
+    m = re.fullmatch(r"([A-Za-z0-9-]+)/+(.+)(?<!/)", s3_key)
+    # throws AttributeError if regex wasn't matched
+    state_machine_name, remainder = m.groups()
+    return state_machine_name, remainder
+
+
 def shorten_filename(key: str) -> str:
     # assume the filename extension is something uninformative like ".json"
     ret = os.path.splitext(key)[0]
-    # top level dir is constant for a workflow so discard it
-    # ret = re.split(r"/+", root, maxsplit=1)[-1]
     return ret
 
 
@@ -31,6 +37,13 @@ def make_execution_name(s3_path: str, version: str) -> str:
     norm_key = normalize(shorten_filename(s3_path))
     norm_version = normalize(version) or "NULL"
     ret = f"{norm_key:.71}_{norm_version:.8}"
+    return ret
+
+
+def get_state_machine_arn(state_machine_name: str) -> str:
+    region = os.environ["REGION"]
+    acct_num = os.environ["ACCT_NUM"]
+    ret = f"arn:aws:states:{region}:{acct_num}:stateMachine:{state_machine_name}:current"
     return ret
 
 
@@ -50,12 +63,11 @@ def lambda_handler(event: dict, context: object) -> None:
         sfn = boto3.client("stepfunctions")
 
         try:
-            # todo: split this out for testing
             # (?<!/) is a negative lookbehind to make sure the s3 key doesn't end with a /
-            m = re.fullmatch(r"([A-Za-z0-9-]+)/(.+)(?<!/)", event["job_file_key"])
+            # m = re.fullmatch(r"([A-Za-z0-9-]+)/+(.+)(?<!/)", event["job_file_key"])
 
             # throws AttributeError if regex wasn't matched
-            state_machine_name, remainder = m.groups()
+            state_machine_name, remainder = get_state_machine_name(event["job_file_key"])
 
             exec_name = make_execution_name(remainder, event["job_file_version"])
             logger.info(f"{exec_name=}")
@@ -69,9 +81,7 @@ def lambda_handler(event: dict, context: object) -> None:
                 "index": event["branch"],
             }
 
-            region = os.environ["REGION"]
-            acct_num = os.environ["ACCT_NUM"]
-            state_machine_arn = f"arn:aws:states:{region}:{acct_num}:stateMachine:{state_machine_name}:current"
+            state_machine_arn = get_state_machine_arn(state_machine_name)
 
             if "dry_run" not in event:
                 response = sfn.start_execution(

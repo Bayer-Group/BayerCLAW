@@ -7,7 +7,6 @@ from typing import Generator, List, Union
 
 import humanfriendly
 
-# from .misc_resources import LAUNCHER_STACK_NAME
 from .qc_resources import handle_qc_check
 from .util import Step, Resource, State, make_logical_name, time_string_to_seconds
 
@@ -170,7 +169,8 @@ def get_timeout(step: Step) -> dict:
     return ret
 
 
-def job_definition_name(logical_name: str, versioned: str) -> dict:
+# todo: remove
+# def job_definition_name(logical_name: str, versioned: str) -> dict:
     # if versioned == "true":
     #     ret = {
     #         "JobDefinitionName": {
@@ -191,21 +191,20 @@ def job_definition_name(logical_name: str, versioned: str) -> dict:
     # else:
     #     ret = {}
 
-    ret = {}
-    return ret
+    # ret = {}
+    # return ret
 
 
 def job_definition_rc(step: Step,
                       task_role: str,
-                      shell_opt: str,
-                      versioned: str) -> Generator[Resource, None, str]:
+                      shell_opt: str) -> Generator[Resource, None, str]:
     logical_name = make_logical_name(f"{step.name}.job.def")
 
     job_def = {
         "Type": "AWS::Batch::JobDefinition",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
-            **job_definition_name(logical_name, versioned),
+            # **job_definition_name(logical_name, versioned),
             # "JobDefinitionName": {
             #     "Fn::Sub": [
             #         "${WFName}-${Step}--${Version}",
@@ -370,9 +369,8 @@ def handle_batch(step: Step,
 
     task_role = step.spec.get("task_role") or options.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
     shell_opt = step.spec["compute"]["shell"] or options.get("shell")
-    versioned = options["versioned"]
 
-    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt, versioned)
+    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt)
 
     if step.spec["qc_check"] is not None:
         qc_state = handle_qc_check(step)

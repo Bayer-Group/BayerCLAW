@@ -10,7 +10,6 @@ import boto3
 from . import batch_resources as b
 from . import chooser_resources as c
 from . import enhanced_parallel_resources as ep
-# from . import misc_resources as m
 from . import native_step_resources as ns
 from . import scatter_gather_resources as sg
 from . import subpipe_resources as sp
@@ -171,7 +170,8 @@ def write_state_machine_to_s3(sfn_def: dict) -> dict:
     return ret
 
 
-def make_physical_name(versioned: str) -> dict:
+# todo: remove
+# def make_physical_name(versioned: str) -> dict:
     # if versioned == "true":
     #     body = {
     #         "Fn::Sub": [
@@ -187,9 +187,9 @@ def make_physical_name(versioned: str) -> dict:
     # else:
     #     body = {"Ref": "AWS::StackName"}
 
-    body = {"Ref": "AWS::StackName"}
-    ret = {"StateMachineName": body}
-    return ret
+    # body = {"Ref": "AWS::StackName"}
+    # ret = {"StateMachineName": body}
+    # return ret
 
 
 def handle_state_machine(raw_steps: List[Dict],
@@ -207,7 +207,7 @@ def handle_state_machine(raw_steps: List[Dict],
         "Type": "AWS::StepFunctions::StateMachine",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
-            **make_physical_name(options["versioned"]),
+            "StateMachineName": {"Ref": "AWS::StackName"},
             "RoleArn": os.environ["STATES_EXECUTION_ROLE_ARN"],
             "DefinitionS3Location": state_machine_location,
             "DefinitionSubstitutions": None,

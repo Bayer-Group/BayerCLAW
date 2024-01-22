@@ -1,7 +1,6 @@
 import pytest
 
-from ...src.compiler.pkg.state_machine_resources import make_initializer_step, make_step_list, \
-    make_physical_name
+from ...src.compiler.pkg.state_machine_resources import make_initializer_step, make_step_list
 from ...src.compiler.pkg.util import Step, lambda_logging_block, lambda_retry
 
 
@@ -58,26 +57,33 @@ def test_make_step_list():
         assert result.next == exp_next
 
 
-@pytest.mark.skip(reason="may not need this anymore")
-@pytest.mark.parametrize("versioned", ["true", "false"])
-def test_make_physical_name(versioned):
-    result = make_physical_name(versioned)
-    if versioned == "true":
-        expect = {
-            "StateMachineName": {
-                "Fn::Sub": [
-                    "${Root}--${Version}",
-                    {
-                        "Root": {"Ref": "AWS::StackName"},
-                        "Version": {
-                            "Fn::GetAtt": ["launcherStack", "Outputs.LauncherLambdaVersion"],
-                        },
-                    },
-                ],
-            },
-        }
-    else:
-        expect = {
-            "StateMachineName": {"Ref": "AWS::StackName"}
-        }
-    assert result == expect
+# todo: remove
+# @pytest.mark.skip(reason="may not need this anymore")
+# @pytest.mark.parametrize("versioned", ["true", "false"])
+# def test_make_physical_name(versioned):
+#     result = make_physical_name(versioned)
+#     if versioned == "true":
+#         expect = {
+#             "StateMachineName": {
+#                 "Fn::Sub": [
+#                     "${Root}--${Version}",
+#                     {
+#                         "Root": {"Ref": "AWS::StackName"},
+#                         "Version": {
+#                             "Fn::GetAtt": ["launcherStack", "Outputs.LauncherLambdaVersion"],
+#                         },
+#                     },
+#                 ],
+#             },
+#         }
+#     else:
+#         expect = {
+#             "StateMachineName": {"Ref": "AWS::StackName"}
+#         }
+#     assert result == expect
+
+def test_state_machine_version_rc():
+    pass  # todo
+
+def test_state_machine_alias_rc():
+    pass  # todo
