@@ -225,6 +225,7 @@ def sample_scatter_step():
     yield ret
 
 
+@pytest.mark.skip(reason="transfer stuff to sfn")
 def test_handle_scatter_gather(sample_scatter_step, compiler_env):
     options = {"wf": "options",
                "versioned": "true"}

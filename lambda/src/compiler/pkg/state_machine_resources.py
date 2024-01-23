@@ -233,6 +233,7 @@ def handle_state_machine(raw_steps: List[Dict],
 def state_machine_version_rc(state_machine: Resource) -> Resource:
     ret = {
         "Type": "AWS::StepFunctions::StateMachineVersion",
+        "UpdateReplacePolicy": "Retain",
         "Properties": {
             "Description": "sfn version description",
             "StateMachineArn": {"Ref": state_machine.name},

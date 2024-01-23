@@ -204,33 +204,21 @@ def job_definition_rc(step: Step,
         "Type": "AWS::Batch::JobDefinition",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
-            # **job_definition_name(logical_name, versioned),
-            # "JobDefinitionName": {
-            #     "Fn::Sub": [
-            #         "${WFName}-${Step}--${Version}",
-            #         {
-            #             "WFName": {
-            #                 "Ref": "AWS::StackName",
-            #             },
-            #             "Step": logical_name,
-            #             "Version": {
-            #                 "Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
-            #             },
-            #         },
-            #     ],
-            # },
             "Type": "container",
             "Parameters": {
                 "workflow_name": {
                     "Ref": "AWS::StackName",
                 },
                 "repo": "rrr",
-                "image": expand_image_uri(step.spec["image"]),
+                # "image": expand_image_uri(step.spec["image"]),
+                "image": "mmm",
                 "inputs": "iii",
                 "references": "fff",
-                "command": json.dumps(step.spec["commands"]),
+                # "command": json.dumps(step.spec["commands"]),
+                "command": "ccc",
                 "outputs": "ooo",
-                "shell": shell_opt,
+                # "shell": shell_opt,
+                "shell": "hhh",
                 "skip": "sss",
             },
             "ContainerProperties": {
@@ -246,7 +234,7 @@ def job_definition_rc(step: Step,
                     "--skip", "Ref::skip",
                 ],
                 "Image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
-                "JobRoleArn": task_role,
+                # "JobRoleArn": task_role,
                 **get_environment(step),
                 **get_resource_requirements(step),
                 **get_volume_info(step),
@@ -277,6 +265,8 @@ def get_skip_behavior(spec: dict) -> str:
 def batch_step(step: Step,
                job_definition_logical_name: str,
                scattered: bool,
+               shell_opt: str,
+               task_role: str,
                next_step_override: str = None,
                attempts: int = 3,
                interval: str = "3s",
@@ -316,9 +306,12 @@ def batch_step(step: Step,
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
                 "repo.$": "$.repo.uri",
+                "image": expand_image_uri(step.spec["image"]),
                 **step.input_field,
                 "references": json.dumps(step.spec["references"]),
+                "command": json.dumps(step.spec["commands"]),
                 "outputs": json.dumps(step.spec["outputs"]),
+                "shell": shell_opt,
                 "skip": skip_behavior,
             },
             "ContainerOverrides": {
@@ -344,7 +337,12 @@ def batch_step(step: Step,
                         "Value.$": "$.job_file.version",
                     },
                 ],
+                # resource requirements
             },
+            # Timeout
+        },
+        "Credentials": {
+            "RoleArn": task_role,
         },
         "ResultSelector": {
             **step.spec["outputs"],
@@ -379,7 +377,11 @@ def handle_batch(step: Step,
         ret = [State(step.name, ret0), qc_state]
 
     else:
-        ret = [State(step.name, batch_step(step, job_def_logical_name, **step.spec["retry"],
-                                           scattered=scattered))]
+        ret = [State(step.name, batch_step(step,
+                                           job_def_logical_name,
+                                           **step.spec["retry"],
+                                           scattered=scattered,
+                                           shell_opt=shell_opt,
+                                           task_role=task_role))]
 
     return ret

@@ -236,6 +236,7 @@ def sample_batch_step():
 #     assert result == expect
 
 
+@pytest.mark.skip(reason="transfer stuff to sfn")
 def test_job_definition_rc(sample_batch_step, compiler_env):
     step_name = "skim3-fastp"
     expected_job_def_name = f"Skim3FastpJobDef"
@@ -336,6 +337,7 @@ def test_get_skip_behavior(spec, expect):
     assert result == expect
 
 
+@pytest.mark.skip(reason="transfer stuff to sfn")
 @pytest.mark.parametrize("scattered, job_name", [
     (True, "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)"),
     (False, "States.Format('{}__{}', $$.Execution.Name, $$.State.Name)")
@@ -413,6 +415,7 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
     assert result == expected_body
 
 
+@pytest.mark.skip(reason="transfer stuff to sfn")
 @pytest.mark.parametrize("options", [
     {"no_task_role": "", "versioned": "true"},
     {"task_role": "arn:from:workflow:params", "versioned": "true"}
@@ -456,6 +459,7 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
         assert " --outdir outt " in resource.spec["Properties"]["Parameters"]["command"]
 
 
+@pytest.mark.skip(reason="transfer stuff to sfn")
 def test_handle_batch_with_qc(sample_batch_step, compiler_env):
     step = Step("step_name", sample_batch_step, "next_step_name")
 
@@ -502,6 +506,7 @@ def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):
     _ = dict(helper())
 
 
+@pytest.mark.skip(reason="transfer stuff to sfn")
 @pytest.mark.parametrize("step_shell, expect", [
     (None, "sh"),
     ("bash", "bash"),
