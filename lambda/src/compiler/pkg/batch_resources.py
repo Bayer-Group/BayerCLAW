@@ -234,7 +234,7 @@ def job_definition_rc(step: Step,
                     "--skip", "Ref::skip",
                 ],
                 "Image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
-                # "JobRoleArn": task_role,
+                "JobRoleArn": task_role,
                 **get_environment(step),
                 **get_resource_requirements(step),
                 **get_volume_info(step),
@@ -266,7 +266,6 @@ def batch_step(step: Step,
                job_definition_logical_name: str,
                scattered: bool,
                shell_opt: str,
-               task_role: str,
                next_step_override: str = None,
                attempts: int = 3,
                interval: str = "3s",
@@ -341,9 +340,6 @@ def batch_step(step: Step,
             },
             # Timeout
         },
-        "Credentials": {
-            "RoleArn": task_role,
-        },
         "ResultSelector": {
             **step.spec["outputs"],
         },
@@ -372,7 +368,11 @@ def handle_batch(step: Step,
 
     if step.spec["qc_check"] is not None:
         qc_state = handle_qc_check(step)
-        ret0 = batch_step(step, job_def_logical_name, scattered, **step.spec["retry"],
+        ret0 = batch_step(step,
+                          job_def_logical_name,
+                          **step.spec["retry"],
+                          scattered=scattered,
+                          shell_opt=shell_opt,
                           next_step_override=qc_state.name)
         ret = [State(step.name, ret0), qc_state]
 
@@ -381,7 +381,6 @@ def handle_batch(step: Step,
                                            job_def_logical_name,
                                            **step.spec["retry"],
                                            scattered=scattered,
-                                           shell_opt=shell_opt,
-                                           task_role=task_role))]
+                                           shell_opt=shell_opt))]
 
     return ret
