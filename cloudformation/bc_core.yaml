@@ -158,7 +158,7 @@ Resources:
   RouterLambda:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: router.lambda_handler
+      Handler: job_router.lambda_handler
       Runtime: python3.10
       CodeUri: lambda/src/router
       # need AutoPublishAlias?
