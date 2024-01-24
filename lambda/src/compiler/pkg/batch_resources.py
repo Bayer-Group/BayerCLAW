@@ -79,19 +79,25 @@ def get_environment(step: Step) -> dict:
 def get_resource_requirements(step: Step) -> dict:
     rc = [
         {
-            "Type": "VCPU",
-            "Value": str(step.spec["compute"]["cpus"]),
+            # "Type": "VCPU",
+            # "Value": str(step.spec["compute"]["cpus"]),
+            "type": "VCPU",
+            "value": str(step.spec["compute"]["cpus"]),
         },
         {
-            "Type": "MEMORY",
-            "Value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
+            # "Type": "MEMORY",
+            # "Value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
+            "type": "MEMORY",
+            "value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
         },
     ]
 
     if (gpu_str := str(step.spec["compute"]["gpu"])) != "0":
         rc.append({
-            "Type": "GPU",
-            "Value": gpu_str,
+            # "Type": "GPU",
+            # "Value": gpu_str,
+            "type": "GPU",
+            "value": gpu_str,
         })
 
     ret = {"ResourceRequirements": rc}
@@ -165,7 +171,8 @@ def get_timeout(step: Step) -> dict:
     if step.spec.get("timeout") is None:
         ret = {}
     else:
-        ret = {"Timeout": {"AttemptDurationSeconds": max(time_string_to_seconds(step.spec["timeout"]), 60)}}
+        # ret = {"Timeout": {"AttemptDurationSeconds": max(time_string_to_seconds(step.spec["timeout"]), 60)}}
+        ret = {"Timeout": {"attemptDurationSeconds": max(time_string_to_seconds(step.spec["timeout"]), 60)}}
     return ret
 
 
@@ -236,11 +243,11 @@ def job_definition_rc(step: Step,
                 "Image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
                 "JobRoleArn": task_role,
                 **get_environment(step),
-                **get_resource_requirements(step),
+                # **get_resource_requirements(step),
                 **get_volume_info(step),
             },
             "SchedulingPriority": 1,
-            **get_timeout(step),
+            # **get_timeout(step),
             "Tags": {
                 "bclaw:version": os.environ["SOURCE_VERSION"],
             },
@@ -336,9 +343,9 @@ def batch_step(step: Step,
                         "Value.$": "$.job_file.version",
                     },
                 ],
-                # resource requirements
+                **get_resource_requirements(step),
             },
-            # Timeout
+            **get_timeout(step),
         },
         "ResultSelector": {
             **step.spec["outputs"],
