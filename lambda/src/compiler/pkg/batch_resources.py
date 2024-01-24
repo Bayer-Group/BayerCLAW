@@ -79,25 +79,25 @@ def get_environment(step: Step) -> dict:
 def get_resource_requirements(step: Step) -> dict:
     rc = [
         {
-            # "Type": "VCPU",
-            # "Value": str(step.spec["compute"]["cpus"]),
-            "type": "VCPU",
-            "value": str(step.spec["compute"]["cpus"]),
+            "Type": "VCPU",
+            "Value": str(step.spec["compute"]["cpus"]),
+            # "type": "VCPU",
+            # "value": str(step.spec["compute"]["cpus"]),
         },
         {
-            # "Type": "MEMORY",
-            # "Value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
-            "type": "MEMORY",
-            "value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
+            "Type": "MEMORY",
+            "Value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
+            # "type": "MEMORY",
+            # "value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
         },
     ]
 
     if (gpu_str := str(step.spec["compute"]["gpu"])) != "0":
         rc.append({
-            # "Type": "GPU",
-            # "Value": gpu_str,
-            "type": "GPU",
-            "value": gpu_str,
+            "Type": "GPU",
+            "Value": gpu_str,
+            # "type": "GPU",
+            # "value": gpu_str,
         })
 
     ret = {"ResourceRequirements": rc}
