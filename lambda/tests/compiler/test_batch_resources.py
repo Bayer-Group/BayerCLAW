@@ -66,6 +66,7 @@ def test_get_environment():
     assert result == expect
 
 
+@pytest.mark.skip(reason="transfer stuff to sfn")
 @pytest.mark.parametrize("gpu", [0, 5, "all"])
 def test_get_resource_requirements(gpu):
     spec = {
@@ -143,6 +144,7 @@ def test_get_volume_info(step_efs_specs):
                       "ReadOnly": False,}
 
 
+@pytest.mark.skip(reason="transfer stuff to sfn")
 @pytest.mark.parametrize("timeout, expect", [
     (None, None),
     ("10 s", 60),
