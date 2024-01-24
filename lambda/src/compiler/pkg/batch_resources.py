@@ -244,6 +244,16 @@ def job_definition_rc(step: Step,
                 "JobRoleArn": task_role,
                 **get_environment(step),
                 # **get_resource_requirements(step),
+                "ResourceRequirements": [
+                    {
+                        "Type": "VCPU",
+                        "Value": "1",
+                    },
+                    {
+                        "Type": "MEMORY",
+                        "Value": "1024",
+                    },
+                ],
                 **get_volume_info(step),
             },
             "SchedulingPriority": 1,
