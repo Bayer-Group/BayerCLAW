@@ -24,7 +24,7 @@ NO_FOLDER_FILE2_CONTENT = "no folder file 2"
 
 @pytest.fixture(scope="module")
 def mock_buckets():
-    with moto.mock_s3():
+    with moto.mock_aws():
         s3 = boto3.resource("s3", region_name="us-east-1")
 
         tb = s3.Bucket(TEST_BUCKET)

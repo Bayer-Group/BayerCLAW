@@ -102,7 +102,7 @@ def mock_docker_client_factory():
 
 @pytest.fixture(scope="module")
 def mock_ec2_instance():
-    with moto.mock_ec2():
+    with moto.mock_aws():
         ec2 = boto3.resource("ec2", region_name="us-east-1")
         instances = ec2.create_instances(ImageId="ami-12345", MinCount=1, MaxCount=1)
         yield instances[0]

@@ -1,0 +1,21 @@
+{
+    "name": "BayerCLAW Dev",
+    "customizations": {
+        "vscode": {
+            "settings": { 
+                "terminal.integrated.shell.linux": "bash"
+            },
+            "extensions": [
+                "ms-toolsai.jupyter",
+                "ms-python.python",
+                "hbenl.vscode-test-explorer",
+                "littlefoxteam.vscode-python-test-adapter"
+            ]
+        }
+    },
+    "build": {
+        "context": "..",
+        "dockerfile": "Dockerfile"
+    },
+    "onCreateCommand": "pip install -r requirements.txt"
+}

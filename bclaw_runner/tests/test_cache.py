@@ -18,7 +18,7 @@ FILE3_CONTENT = "file three"
 
 @pytest.fixture(scope="module")
 def s3_bucket():
-    with moto.mock_s3():
+    with moto.mock_aws():
         boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=TEST_BUCKET)
         yld = boto3.resource("s3", region_name="us-east-1").Bucket(TEST_BUCKET)
         yld.put_object(Key="some/path/file1", Body=FILE1_CONTENT.encode("utf-8"))
