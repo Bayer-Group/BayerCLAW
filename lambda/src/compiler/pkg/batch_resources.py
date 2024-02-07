@@ -50,118 +50,112 @@ def get_memory_in_mibs(request: Union[str, float, int]) -> int:
 
 def get_environment(step: Step) -> dict:
     vars = [
+        # {
+        #     "Name": "BC_WORKFLOW_NAME",
+        #     "Value": {"Ref": "AWS::StackName"},
+        # },
         {
-            "Name": "BC_WORKFLOW_NAME",
-            "Value": {"Ref": "AWS::StackName"},
+            "name": "BC_SCRATCH_PATH",
+            "value": SCRATCH_PATH,
         },
-        {
-            "Name": "BC_SCRATCH_PATH",
-            "Value": SCRATCH_PATH,
-        },
-        {
-            "Name": "BC_STEP_NAME",
-            "Value": step.name,
-        },
-        {
-            "Name": "AWS_DEFAULT_REGION",
-            "Value": {"Ref": "AWS::Region"},
-        },
-        {
-            "Name": "AWS_ACCOUNT_ID",
-            "Value": {"Ref": "AWS::AccountId"}
-        }
+        # {
+        #     "Name": "BC_STEP_NAME",
+        #     "Value": step.name,
+        # },
+        # {
+        #     "Name": "AWS_DEFAULT_REGION",
+        #     "Value": {"Ref": "AWS::Region"},
+        # },
+        # {
+        #     "Name": "AWS_ACCOUNT_ID",
+        #     "Value": {"Ref": "AWS::AccountId"}
+        # }
     ]
 
-    ret = {"Environment": vars}
+    ret = {"environment": vars}
     return ret
 
 
 def get_resource_requirements(step: Step) -> dict:
     rc = [
         {
-            "Type": "VCPU",
-            "Value": str(step.spec["compute"]["cpus"]),
-            # "type": "VCPU",
-            # "value": str(step.spec["compute"]["cpus"]),
+            "type": "VCPU",
+            "value": str(step.spec["compute"]["cpus"]),
         },
         {
-            "Type": "MEMORY",
-            "Value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
-            # "type": "MEMORY",
-            # "value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
+            "type": "MEMORY",
+            "value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
         },
     ]
 
     if (gpu_str := str(step.spec["compute"]["gpu"])) != "0":
         rc.append({
-            "Type": "GPU",
-            "Value": gpu_str,
-            # "type": "GPU",
-            # "value": gpu_str,
+            "type": "GPU",
+            "value": gpu_str,
         })
 
-    ret = {"ResourceRequirements": rc}
+    ret = {"resourceRequirements": rc}
     return ret
 
 
 def get_volume_info(step: Step) -> dict:
     volumes = [
         {
-            "Name": "docker_socket",
-            "Host": {
-                "SourcePath": "/var/run/docker.sock",
+            "name": "docker_socket",
+            "host": {
+                "sourcePath": "/var/run/docker.sock",
             },
         },
         {
-            "Name": "scratch",
-            "Host": {
-                "SourcePath": "/scratch",
+            "name": "scratch",
+            "host": {
+                "sourcePath": "/scratch",
             },
         },
         {
-            "Name": "docker_scratch",
-            "Host": {
-                "SourcePath": "/docker_scratch"
+            "name": "docker_scratch",
+            "host": {
+                "sourcePath": "/docker_scratch"
             },
         }
     ]
     mount_points = [
         {
-            "SourceVolume": "docker_socket",
-            "ContainerPath": "/var/run/docker.sock",
-            "ReadOnly": False,
+            "sourceVolume": "docker_socket",
+            "containerPath": "/var/run/docker.sock",
+            "readOnly": False,
         },
         {
-            "SourceVolume": "scratch",
-            "ContainerPath": SCRATCH_PATH,
-            "ReadOnly": False,
+            "sourceVolume": "scratch",
+            "containerPath": SCRATCH_PATH,
+            "readOnly": False,
         },
         {
-            "SourceVolume": "docker_scratch",
-            "ContainerPath": "/.scratch",
-            "ReadOnly": False,
+            "sourceVolume": "docker_scratch",
+            "containerPath": "/.scratch",
+            "readOnly": False,
         }
     ]
 
     for filesystem in step.spec["filesystems"]:
         volume_name = f"{filesystem['efs_id']}-volume"
         volumes.append({
-            "Name": volume_name,
-            "EfsVolumeConfiguration": {
-                "FileSystemId": filesystem["efs_id"],
-                "RootDirectory": filesystem["root_dir"],
-                "TransitEncryption": "ENABLED",
+            "name": volume_name,
+            "efsVolumeConfiguration": {
+                "fileSystemId": filesystem["efs_id"],
+                "rootDirectory": filesystem["root_dir"],
+                "transitEncryption": "ENABLED",
             },
         })
         mount_points.append({
-            "SourceVolume": volume_name,
-            "ContainerPath": filesystem["host_path"],
-            "ReadOnly": False,
+            "sourceVolume": volume_name,
+            "containerPath": filesystem["host_path"],
+            "readOnly": False,
         })
 
     ret = {
-        "Volumes": volumes,
-        "MountPoints": mount_points,
+        "volumes": volumes,
+        "mountPoints": mount_points,
     }
 
     return ret
@@ -172,7 +166,7 @@ def get_timeout(step: Step) -> dict:
         ret = {}
     else:
         # ret = {"Timeout": {"AttemptDurationSeconds": max(time_string_to_seconds(step.spec["timeout"]), 60)}}
-        ret = {"Timeout": {"attemptDurationSeconds": max(time_string_to_seconds(step.spec["timeout"]), 60)}}
+        ret = {"timeout": {"attemptDurationSeconds": max(time_string_to_seconds(step.spec["timeout"]), 60)}}
     return ret
 
 
@@ -202,6 +196,66 @@ def get_timeout(step: Step) -> dict:
     # return ret
 
 
+def job_definition_rc1(step: Step,
+                       task_role: str,
+                       shell_opt: str) -> Generator[Resource, None, str]:
+    logical_name = make_logical_name(f"{step.name}.job.def")
+
+    job_def_spec = {
+        "type": "container",
+        "parameters": {
+            "repo": "rrr",
+            "image": expand_image_uri(step.spec["image"]),
+            "inputs": "iii",
+            "references": "fff",
+            "command": json.dumps(step.spec["commands"]),
+            "outputs": "ooo",
+            "shell": shell_opt,
+            "skip": "sss",
+        },
+        "containerProperties": {
+            "image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
+            "command": [
+                "python", "/bclaw_runner/src/runner_cli.py",
+                "--repo", "Ref::repo",
+                "--image", "Ref::image",
+                "--in", "Ref::inputs",
+                "--ref", "Ref::references",
+                "--cmd", "Ref::command",
+                "--out", "Ref::outputs",
+                "--shell", "Ref::shell",
+                "--skip", "Ref::skip",
+            ],
+            "jobRoleArn": task_role,
+            **get_environment(step),
+            **get_resource_requirements(step),
+            **get_volume_info(step),
+        },
+        "schedulingPriority": 1,
+        **get_timeout(step),
+        "tags": {
+            "bclaw:version": os.environ["SOURCE_VERSION"],
+        },
+    }
+
+    resource_spec = {
+        "Type": "Custom::BatchJobDefinition",
+        "UpdateReplacePolicy": "Retain",
+        "Properties": {
+            "ServiceToken": os.environ["JOB_DEF_LAMBDA_ARN"],
+            "workflowName": {
+                "Ref": "AWS::StackName",
+            },
+            "stepName": step.name,
+            "spec": json.dumps(job_def_spec, sort_keys=True),
+        },
+    }
+
+    yield Resource(logical_name, resource_spec)
+    return logical_name
+
+
+#todo: remove
 def job_definition_rc(step: Step,
                       task_role: str,
                       shell_opt: str) -> Generator[Resource, None, str]:
@@ -282,7 +336,7 @@ def get_skip_behavior(spec: dict) -> str:
 def batch_step(step: Step,
                job_definition_logical_name: str,
                scattered: bool,
-               shell_opt: str,
+               # shell_opt: str,
                next_step_override: str = None,
                attempts: int = 3,
                interval: str = "3s",
@@ -322,12 +376,12 @@ def batch_step(step: Step,
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
                 "repo.$": "$.repo.uri",
-                "image": expand_image_uri(step.spec["image"]),
+                # "image": expand_image_uri(step.spec["image"]),
                 **step.input_field,
                 "references": json.dumps(step.spec["references"]),
-                "command": json.dumps(step.spec["commands"]),
+                # "command": json.dumps(step.spec["commands"]),
                 "outputs": json.dumps(step.spec["outputs"]),
-                "shell": shell_opt,
+                # "shell": shell_opt,
                 "skip": skip_behavior,
             },
             "ContainerOverrides": {
@@ -353,9 +407,8 @@ def batch_step(step: Step,
                         "Value.$": "$.job_file.version",
                     },
                 ],
-                **get_resource_requirements(step),
             },
-            **get_timeout(step),
+            # **get_timeout(step),
         },
         "ResultSelector": {
             **step.spec["outputs"],
@@ -381,7 +434,8 @@ def handle_batch(step: Step,
     task_role = step.spec.get("task_role") or options.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
     shell_opt = step.spec["compute"]["shell"] or options.get("shell")
 
-    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt)
+    job_def_logical_name = yield from job_definition_rc1(step, task_role, shell_opt)
+    # job_def_logical_name = yield from job_definition_rc1(step, task_role)
 
     if step.spec["qc_check"] is not None:
         qc_state = handle_qc_check(step)
@@ -389,7 +443,7 @@ def handle_batch(step: Step,
                           job_def_logical_name,
                           **step.spec["retry"],
                           scattered=scattered,
-                          shell_opt=shell_opt,
+                          # shell_opt=shell_opt,
                           next_step_override=qc_state.name)
         ret = [State(step.name, ret0), qc_state]
 
@@ -397,7 +451,8 @@ def handle_batch(step: Step,
         ret = [State(step.name, batch_step(step,
                                            job_def_logical_name,
                                            **step.spec["retry"],
-                                           scattered=scattered,
-                                           shell_opt=shell_opt))]
+                                           scattered=scattered
+                                           # shell_opt=shell_opt
+                                           ))]
 
     return ret

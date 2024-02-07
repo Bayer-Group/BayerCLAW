@@ -161,7 +161,7 @@ Resources:
       Handler: job_router.lambda_handler
       Runtime: python3.10
       CodeUri: lambda/src/router
-      # need AutoPublishAlias?
+      # todo: need AutoPublishAlias?
       Environment:
         Variables:
           REGION: !Ref AWS::Region
@@ -212,7 +212,7 @@ Resources:
                   "job_file_version": <version>
                 }
             State: ENABLED
-            # RetryPolicy?
+            # todo: RetryPolicy?
 
   RouterLambdaLogGroup:
     Type: AWS::Logs::LogGroup
@@ -285,6 +285,7 @@ Resources:
           NOTIFICATIONS_LAMBDA_ARN: !GetAtt NotificationsLambda.Arn
           GATHER_LAMBDA_ARN: !Ref GatherLambda.Version
           INITIALIZER_LAMBDA_ARN: !Ref InitializerLambda.Version
+          JOB_DEF_LAMBDA_ARN: !Ref JobDefLambda.Version
           LAUNCHER_BUCKET_NAME: !Ref LauncherBucket
           LOG_RETENTION_DAYS: !Ref LogRetentionDays
           LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
@@ -365,6 +366,47 @@ Resources:
       DestinationArn: !Ref LoggingDestinationArn
       FilterPattern: '{$.function = "initializer.*"}'
       LogGroupName: !Ref InitializerLambdaLogGroup
+
+  JobDefLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: register.lambda_handler
+      Runtime: python3.10
+      CodeUri: lambda/src/job_def
+      AutoPublishAlias: current
+      Environment:
+        Variables:
+          ACCT_NUM: !Ref AWS::AccountId
+          BCLAW_VERSION: !Ref SourceVersion
+          REGION: !Ref AWS::Region
+      MemorySize: 128
+      Timeout: 60
+      Policies:
+        -
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: Allow
+              Action:
+                - "batch:DescribeJobDefinitions"
+                - "batch:RegisterJobDefinition"
+                - "batch:DeregisterJobDefinition"
+                - "batch:TagResource"
+                - "batch:UntagResource"
+              Resource: "*"
+            -
+              Effect: Allow
+              Action:
+                - "iam:PassRole"
+              Resource: "*"
+      DeploymentPreference:
+        Enabled: false
+
+  JobDefLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${JobDefLambda}"
+      RetentionInDays: !Ref LogRetentionDays
 
   ScatterLambda:
     Type: AWS::Serverless::Function

@@ -225,7 +225,6 @@ def sample_scatter_step():
     yield ret
 
 
-@pytest.mark.skip(reason="transfer stuff to sfn")
 def test_handle_scatter_gather(sample_scatter_step, compiler_env):
     options = {"wf": "options",
                "versioned": "true"}
@@ -273,10 +272,11 @@ def test_handle_scatter_gather(sample_scatter_step, compiler_env):
     resources = list(resource_gen)
     assert len(resources) == 1
     assert resources[0].name == "Step1JobDef"
-    assert resources[0].spec["Type"] == "AWS::Batch::JobDefinition"
+    assert resources[0].spec["Type"] == "Custom::BatchJobDefinition"
 
-    commands = json.loads(resources[0].spec["Properties"]["Parameters"]["command"])
-    assert commands[0] == "ls -l ${scatter.stuff} > ${output3}"
+    spec = json.loads(resources[0].spec["Properties"]["spec"])
+    cmd = json.loads(spec["parameters"]["command"])
+    assert cmd[0] == "ls -l ${scatter.stuff} > ${output3}"
 
 
 def test_handle_scatter_gather_too_deep():

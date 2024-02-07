@@ -13,6 +13,7 @@ def compiler_env():
         "GATHER_LAMBDA_ARN": "gather_lambda_arn",
         "ON_DEMAND_QUEUE_ARN": "on_demand_queue_arn",
         "INITIALIZER_LAMBDA_ARN": "initializer_lambda_arn",
+        "JOB_DEF_LAMBDA_ARN": "job_def_lambda_arn",
         "LAUNCHER_BUCKET_NAME": "launcher_bucket_name",
         "LOG_RETENTION_DAYS": "99",
         "LOGGING_DESTINATION_ARN": "logging_destination_arn",
