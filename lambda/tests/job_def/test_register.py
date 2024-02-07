@@ -44,7 +44,7 @@ def event_factory(job_def_spec):
             "ResponseURL": "https://fake.response.url",
             "ResourceType": "Custom::FakeCustomResourceType",
             "LogicalResourceId": "fake_resource_name",
-            "StackId": "arn:aws:cloudformation:us-east-2:namespace:stack/stack-name/uuid",
+            "StackId": "arn:aws:cloudformation:us-west-1:namespace:stack/stack-name/uuid",
             "PhysicalResourceId": physical_resource_id,
             "ResourceProperties": {
                 "workflowName": "test-wf",
@@ -62,7 +62,8 @@ class FakeContext:
 
 
 @pytest.fixture(scope="function")
-def batch_job_def_arn(job_def_spec):
+def batch_job_def_arn(job_def_spec, monkeypatch):
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-1")
     with moto.mock_batch():
         batch = boto3.client("batch")
         yld = batch.register_job_definition(jobDefinitionName="test-wf_test-step", **job_def_spec)
@@ -70,13 +71,13 @@ def batch_job_def_arn(job_def_spec):
 
 
 def test_edit_spec(job_def_spec, monkeypatch):
-    monkeypatch.setenv("REGION", "us-east-2")
+    monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
 
     expect = deepcopy(job_def_spec) | {"jobDefinitionName": "test-wf_test-step"}
     expect["containerProperties"]["environment"] += [{"name": "BC_WORKFLOW_NAME", "value": "test-wf"},
                                                      {"name": "BC_STEP_NAME", "value": "test-step"},
-                                                     {"name": "AWS_DEFAULT_REGION", "value": "us-east-2"},
+                                                     {"name": "AWS_DEFAULT_REGION", "value": "us-west-1"},
                                                      {"name": "AWS_ACCOUNT_ID", "value": "123456789012"},]
     result = edit_spec(job_def_spec, "test-wf", "test-step")
     assert result == expect
@@ -84,8 +85,9 @@ def test_edit_spec(job_def_spec, monkeypatch):
 
 @moto.mock_batch()
 def test_lambda_handler_create(event_factory, mocker, monkeypatch):
-    monkeypatch.setenv("REGION", "us-east-2")
+    monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-1")
 
     mock_respond_fn = mocker.patch("lambda.src.job_def.register.respond")
     event = event_factory("Create", "yadaYada")
@@ -93,7 +95,7 @@ def test_lambda_handler_create(event_factory, mocker, monkeypatch):
     _ = lambda_handler(event, FakeContext())
 
     expected_job_def_name = "test-wf_test-step"
-    expected_job_def_arn = f"arn:aws:batch:us-east-1:123456789012:job-definition/{expected_job_def_name}:1"
+    expected_job_def_arn = f"arn:aws:batch:us-west-1:123456789012:job-definition/{expected_job_def_name}:1"
     expected_respond_call = {
         "PhysicalResourceId": expected_job_def_arn,
         "StackId": event["StackId"],
@@ -117,13 +119,14 @@ def test_lambda_handler_create(event_factory, mocker, monkeypatch):
     assert job_defs[0]["status"] == "ACTIVE"
     assert job_defs[0]["containerProperties"]["environment"] == [{"name": "BC_WORKFLOW_NAME", "value": "test-wf"},
                                                                  {"name": "BC_STEP_NAME", "value": "test-step"},
-                                                                 {"name": "AWS_DEFAULT_REGION", "value": "us-east-2"},
+                                                                 {"name": "AWS_DEFAULT_REGION", "value": "us-west-1"},
                                                                  {"name": "AWS_ACCOUNT_ID", "value": "123456789012"},]
 
 
 def test_lambda_handler_update(event_factory, batch_job_def_arn, mocker, monkeypatch):
-    monkeypatch.setenv("REGION", "us-east-2")
+    monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-1")
 
     mock_respond_fn = mocker.patch("lambda.src.job_def.register.respond")
     event = event_factory("Update", batch_job_def_arn)
@@ -131,7 +134,7 @@ def test_lambda_handler_update(event_factory, batch_job_def_arn, mocker, monkeyp
     _ = lambda_handler(event, FakeContext())
 
     expected_job_def_name = "test-wf_test-step"
-    expected_job_def_arn = f"arn:aws:batch:us-east-1:123456789012:job-definition/{expected_job_def_name}:2"
+    expected_job_def_arn = f"arn:aws:batch:us-west-1:123456789012:job-definition/{expected_job_def_name}:2"
     expected_respond_call = {
         "PhysicalResourceId": expected_job_def_arn,
         "StackId": event["StackId"],
