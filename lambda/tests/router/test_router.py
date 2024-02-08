@@ -11,9 +11,27 @@ from ...src.router.job_router import (get_state_machine_name, shorten_filename, 
 
 
 @pytest.mark.parametrize("key, expect", [
-    ("NAME///two//three/four99+five____zireau88*six&^%$#.seven.eight", ("NAME", "two//three/four99+five____zireau88*six&^%$#.seven.eight"))
+    ("WF-NAME:99/path/to/file.txt", ("WF-NAME", "99", "path/to/file.txt")),
+    ("WF-NAME:ALIAS/path/to/file.txt", ("WF-NAME", "ALIAS", "path/to/file.txt")),
+    ("WF-NAME/path/to/file.txt", ("WF-NAME", "current", "path/to/file.txt")),
 ])
 def test_get_state_machine_name(key, expect):
+    result = get_state_machine_name(key)
+    assert result == expect
+
+@pytest.mark.parametrize("key", [
+    "WF-NAME_ONLY",
+    "WF-NAME/path/ends/in/slash/"
+])
+def test_get_state_machine_name_fail(key):
+    with pytest.raises(AttributeError):
+        _ = get_state_machine_name(key)
+
+
+@pytest.mark.parametrize("key, expect", [
+    ("WF-NAME///two//three/four99+five____zireau88*six&^%$#.seven.eight", ("WF-NAME", "current", "two//three/four99+five____zireau88*six&^%$#.seven.eight"))
+])
+def test_get_state_machine_name_silly(key, expect):
     result = get_state_machine_name(key)
     assert result == expect
 
@@ -74,7 +92,7 @@ def test_get_state_machine_arn(monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
 
-    result = get_state_machine_arn("test-state-machine")
+    result = get_state_machine_arn("test-state-machine", "current")
     expect = "arn:aws:states:us-west-1:123456789012:stateMachine:test-state-machine:current"
     assert result == expect
 

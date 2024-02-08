@@ -12,12 +12,16 @@ logger.setLevel(logging.INFO)
 logger.handlers[0].setFormatter(JSONFormatter())
 
 
-def get_state_machine_name(s3_key: str) -> (str, str):
+def get_state_machine_name(s3_key: str) -> (str, str, str):
     # (?<!/) is a negative lookbehind to make sure the s3 key doesn't end with a /
-    m = re.fullmatch(r"([A-Za-z0-9-]+)/+(.+)(?<!/)", s3_key)
+    m = re.fullmatch(r"([A-Za-z0-9-]+)(?::([A-Za-z0-9-_]+))?/+(.+)(?<!/)", s3_key)
+
     # throws AttributeError if regex wasn't matched
-    state_machine_name, remainder = m.groups()
-    return state_machine_name, remainder
+    state_machine_name, state_machine_version, remainder = m.groups()
+    if state_machine_version is None:
+        state_machine_version = "current"
+
+    return state_machine_name, state_machine_version, remainder
 
 
 def shorten_filename(key: str) -> str:
@@ -40,10 +44,10 @@ def make_execution_name(s3_path: str, version: str) -> str:
     return ret
 
 
-def get_state_machine_arn(state_machine_name: str) -> str:
+def get_state_machine_arn(state_machine_name: str, state_machine_version: str) -> str:
     region = os.environ["REGION"]
     acct_num = os.environ["ACCT_NUM"]
-    ret = f"arn:aws:states:{region}:{acct_num}:stateMachine:{state_machine_name}:current"
+    ret = f"arn:aws:states:{region}:{acct_num}:stateMachine:{state_machine_name}:{state_machine_version}"
     return ret
 
 
@@ -67,7 +71,7 @@ def lambda_handler(event: dict, context: object) -> None:
             # m = re.fullmatch(r"([A-Za-z0-9-]+)/+(.+)(?<!/)", event["job_file_key"])
 
             # throws AttributeError if regex wasn't matched
-            state_machine_name, remainder = get_state_machine_name(event["job_file_key"])
+            state_machine_name, state_machine_version, remainder = get_state_machine_name(event["job_file_key"])
 
             exec_name = make_execution_name(remainder, event["job_file_version"])
             logger.info(f"{exec_name=}")
@@ -81,7 +85,7 @@ def lambda_handler(event: dict, context: object) -> None:
                 "index": event["branch"],
             }
 
-            state_machine_arn = get_state_machine_arn(state_machine_name)
+            state_machine_arn = get_state_machine_arn(state_machine_name, state_machine_version)
 
             if "dry_run" not in event:
                 response = sfn.start_execution(
