@@ -1,38 +1,30 @@
 import json
+import logging
 import os
 
 import boto3
 import yaml
 
-AWS_SFN_CONSOLE_URL_BASE = "https://console.aws.amazon.com/states/home"
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
-def make_sfn_console_url(region: str, exec_arn: str) -> str:
-    ret = f"{AWS_SFN_CONSOLE_URL_BASE}?region={region}#/executions/details/{exec_arn}"
-    return ret
-
-
-def make_state_change_message(event: dict) -> str:
-    workflow_name = event["workflow_name"]
-    state_machine_name = event["detail"]["stateMachineArn"].rsplit(":", 1)[-1]
-    execution_id = event["detail"]["name"]
-    status = event["detail"]["status"]
-
-    input_obj = json.loads(event["detail"]["input"])
-
-    console_url = make_sfn_console_url(region=event["event"]["region"],
-                                       exec_arn=event["detail"]["executionArn"])
+def make_state_change_message(attributes: dict) -> str:
+    status = attributes["status"]["StringValue"]
+    workflow_name = attributes["workflow_name"]["StringValue"]
+    execution_id = attributes["execution_id"]["StringValue"]
+    job_file_bucket = attributes["job_file_bucket"]["StringValue"]
+    job_file_key = attributes["job_file_key"]["StringValue"]
+    job_file_version = attributes["job_file_version"]["StringValue"]
 
     details = {
         "details": {
             "workflow_name": workflow_name,
-            "state_machine_name": state_machine_name,
-            "sfn_execution_id": execution_id,
+            "execution_id": execution_id,
             "job_status": status,
-            "job_data": f"s3://{input_obj['job_file']['bucket']}/{input_obj['job_file']['key']}",
-            "job_data_version": input_obj["job_file"]["version"],
-            "sfn_console_link": console_url,
-        },
+            "job_data": f"s3://{job_file_bucket}/{job_file_key}",
+            "job_data_version": job_file_version,
+        }
     }
 
     if status == "RUNNING":
@@ -53,7 +45,7 @@ def make_state_change_message(event: dict) -> str:
     else:
         raise RuntimeError(f"status {status} not recognized")
 
-    job_file_name = input_obj["job_file"]["key"].rsplit("/", 1)[-1]
+    job_file_name = job_file_key.rsplit("/", 1)[-1]
 
     text = f"Job {execution_id} ('{job_file_name}') on workflow {workflow_name} {action}."
     message = yaml.safe_dump_all([text, details])
@@ -71,21 +63,17 @@ def make_message_attributes(event: dict) -> dict:
         },
         "workflow_name": {
             "DataType": "String",
-            "StringValue": event["workflow_name"],
-        },
-        "state_machine_name": {
-            "DataType": "String",
             "StringValue": event["detail"]["stateMachineArn"].rsplit(":", 1)[-1],
         },
         "execution_id": {
             "DataType": "String",
             "StringValue": event["detail"]["name"],
         },
-        "launcher_bucket": {
+        "job_file_bucket": {
             "DataType": "String",
             "StringValue": input_obj["job_file"]["bucket"],
         },
-        "job_file": {
+        "job_file_key": {
             "DataType": "String",
             "StringValue": input_obj["job_file"]["key"],
         },
@@ -98,12 +86,15 @@ def make_message_attributes(event: dict) -> dict:
     return ret
 
 
-def make_sns_payload(message: str, event: dict) -> dict:
+def make_sns_payload(message: str, attributes: dict) -> dict:
+    status = attributes["status"]["StringValue"]
+    workflow_name = attributes["workflow_name"]["StringValue"]
+
     ret = {
-        "TopicArn": event["sns_topic_arn"],
+        "TopicArn": os.environ["TOPIC_ARN"],
         "Message": message,
-        "Subject": f"{event['workflow_name']}: job {event['detail']['status'].lower()}",
-        "MessageAttributes": make_message_attributes(event),
+        "Subject": f"{workflow_name}: job {status.lower()}",
+        "MessageAttributes": attributes,
     }
     return ret
 
@@ -111,16 +102,15 @@ def make_sns_payload(message: str, event: dict) -> dict:
 def lambda_handler(event: dict, context: object) -> dict:
     print(f"{event=}")
 
-    # message = make_state_change_message(event)
-    # payload = make_sns_payload(message, event)
+    try:
+        attributes = make_message_attributes(event)
+        message = make_state_change_message(attributes)
+        payload = make_sns_payload(message, attributes)
 
-    payload = {
-        "TopicArn": os.environ["TOPIC_ARN"],
-        "Message": json.dumps(event, indent=4),
-        "Subject": "wut"
-    }
+        client = boto3.client("sns")
+        response = client.publish(**payload)
 
-    client = boto3.client("sns")
-    response = client.publish(**payload)
+        return response
 
-    return response
+    except KeyError:
+        logger.warning("unable to parse BayerCLAW information from event")
