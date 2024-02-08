@@ -170,28 +170,6 @@ def write_state_machine_to_s3(sfn_def: dict) -> dict:
     return ret
 
 
-# todo: remove
-# def make_physical_name(versioned: str) -> dict:
-    # if versioned == "true":
-    #     body = {
-    #         "Fn::Sub": [
-    #             "${Root}--${Version}",
-    #             {
-    #                 "Root": {"Ref": "AWS::StackName"},
-    #                 "Version": {
-    #                     "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
-    #                 },
-    #             },
-    #         ],
-    #     }
-    # else:
-    #     body = {"Ref": "AWS::StackName"}
-
-    # body = {"Ref": "AWS::StackName"}
-    # ret = {"StateMachineName": body}
-    # return ret
-
-
 def handle_state_machine(raw_steps: List[Dict],
                          options: dict,
                          repository: str,
@@ -235,7 +213,7 @@ def state_machine_version_rc(state_machine: Resource) -> Resource:
         "Type": "AWS::StepFunctions::StateMachineVersion",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
-            "Description": "sfn version description",
+            "Description": "No description",
             "StateMachineArn": {"Ref": state_machine.name},
             "StateMachineRevisionId": {"Fn::GetAtt": [state_machine.name, "StateMachineRevisionId"]},
         },
@@ -249,7 +227,7 @@ def state_machine_alias_rc(state_machine_version: Resource) -> Resource:
         "Type": "AWS::StepFunctions::StateMachineAlias",
         "Properties": {
             "Name": "current",
-            "Description": "sfn alias description",
+            "Description": "Current active version",
             "DeploymentPreference": {
                 "StateMachineVersionArn": {"Ref": state_machine_version.name},
                 "Type": "ALL_AT_ONCE",

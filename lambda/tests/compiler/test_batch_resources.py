@@ -6,7 +6,7 @@ import yaml
 
 from ...src.compiler.pkg.batch_resources import expand_image_uri, get_job_queue, get_memory_in_mibs, \
     get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout, batch_step, \
-    job_definition_rc, job_definition_rc1, handle_batch, SCRATCH_PATH
+    job_definition_rc, handle_batch, SCRATCH_PATH
 from ...src.compiler.pkg.util import Step, Resource, State
 
 
@@ -47,8 +47,7 @@ def test_get_job_queue(spec, expected, compiler_env):
 
 
 def test_get_environment():
-    step = Step("test_step", {}, "next_step")
-    result = get_environment(step)
+    result = get_environment()
     expect = {
         "environment": [
             {"name": "BC_SCRATCH_PATH",
@@ -203,31 +202,7 @@ def sample_batch_step():
     return ret
 
 
-# todo: remove
-# @pytest.mark.skip(reason="may not need this anymore")
-# @pytest.mark.parametrize("versioned", ["true", "false"])
-# def test_job_definition_name(versioned):
-#     if versioned == "true":
-#         expect = {
-#             "JobDefinitionName": {
-#                 "Fn::Sub": [
-#                     "${WFName}-${Step}--${Version}",
-#                     {
-#                         "WFName": {"Ref": "AWS::StackName"},
-#                         "Step": "test_name",
-#                         "Version": {"Fn::GetAtt": [LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"]},
-#                     }
-#                 ]
-#             }
-#         }
-#
-#     else:
-#         expect = {}
-#
-#     result = job_definition_name("test_name", versioned)
-#     assert result == expect
-
-def test_job_definition_rc1(sample_batch_step, compiler_env):
+def test_job_definition_rc(sample_batch_step, compiler_env):
     step_name = "skim3-fastp"
     expected_rc_name = "Skim3FastpJobDef"
     step = Step(step_name, sample_batch_step, "next_step")
@@ -310,101 +285,13 @@ def test_job_definition_rc1(sample_batch_step, compiler_env):
     }
 
     def helper():
-        rc_name1 =  yield from job_definition_rc1(step, "arn:task:role", "sh")
+        rc_name1 =  yield from job_definition_rc(step, "arn:task:role", "sh")
         assert rc_name1 == expected_rc_name
 
     for resource in helper():
         assert isinstance(resource, Resource)
         assert resource.name == expected_rc_name
         assert resource.spec == expected_rc_spec
-
-@pytest.mark.skip(reason="remove me")
-def test_job_definition_rc(sample_batch_step, compiler_env):
-    step_name = "skim3-fastp"
-    expected_job_def_name = f"Skim3FastpJobDef"
-
-    step = Step(step_name, sample_batch_step, "next_step")
-
-    expected_job_def = {
-        "Type": "AWS::Batch::JobDefinition",
-        "UpdateReplacePolicy": "Retain",
-        "Properties": {
-            "Type": "container",
-            "Parameters": {
-                "workflow_name": {"Ref": "AWS::StackName"},
-                "repo": "rrr",
-                "image": {
-                    "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp",
-                },
-                "inputs": "iii",
-                "references": "fff",
-                "command": json.dumps(step.spec["commands"]),
-                "outputs": "ooo",
-                "shell": "bash",
-                "skip": "sss",
-            },
-            "ContainerProperties": {
-                "Command": [
-                    "python", "/bclaw_runner/src/runner_cli.py",
-                    "--repo", "Ref::repo",
-                    "--image", "Ref::image",
-                    "--in", "Ref::inputs",
-                    "--ref", "Ref::references",
-                    "--cmd", "Ref::command",
-                    "--out", "Ref::outputs",
-                    "--shell", "Ref::shell",
-                    "--skip", "Ref::skip",
-                ],
-                "Image": "runner_repo_uri:1234567",
-                "Environment": [
-                    {"Name": "BC_WORKFLOW_NAME",   "Value": {"Ref": "AWS::StackName"}},
-                    {"Name": "BC_SCRATCH_PATH",    "Value": SCRATCH_PATH},
-                    {"Name": "BC_STEP_NAME",       "Value": step_name},
-                    {"Name": "AWS_DEFAULT_REGION", "Value": {"Ref": "AWS::Region"}},
-                    {"Name": "AWS_ACCOUNT_ID",     "Value": {"Ref": "AWS::AccountId"}},
-                ],
-                "ResourceRequirements": [
-                    {"Type": "VCPU",   "Value": "4"},
-                    {"Type": "MEMORY", "Value": "4096"},
-                    {"Type": "GPU",    "Value": "2"},
-                ],
-                "JobRoleArn": "arn:task:role",
-                "MountPoints": [
-                    {"ContainerPath": "/var/run/docker.sock", "SourceVolume": "docker_socket",   "ReadOnly": False},
-                    {"ContainerPath": "/_bclaw_scratch",      "SourceVolume": "scratch",         "ReadOnly": False},
-                    {"ContainerPath": "/.scratch",            "SourceVolume": "docker_scratch",  "ReadOnly": False},
-                    {"ContainerPath": "/step_efs",            "SourceVolume": "fs-12345-volume", "ReadOnly": False},
-                ],
-                "Volumes": [
-                    {"Name": "docker_socket",  "Host": {"SourcePath": "/var/run/docker.sock"}},
-                    {"Name": "scratch",        "Host": {"SourcePath": "/scratch"}},
-                    {"Name": "docker_scratch", "Host": {"SourcePath": "/docker_scratch"}},
-                    {"Name": "fs-12345-volume",
-                     "EfsVolumeConfiguration": {
-                        "FileSystemId":      "fs-12345",
-                        "RootDirectory":     "/path/to/my/data",
-                        "TransitEncryption": "ENABLED",
-                     }}
-                ],
-            },
-            "SchedulingPriority": 1,
-            "Timeout": {
-                "AttemptDurationSeconds": 3600,
-            },
-            "Tags": {
-                "bclaw:version": "1234567",
-            }
-        },
-    }
-
-    def helper():
-        job_def_name1 = yield from job_definition_rc(step, "arn:task:role", "bash")
-        assert job_def_name1 == expected_job_def_name
-
-    for job_def_rc in helper():
-        assert isinstance(job_def_rc, Resource)
-        assert job_def_rc.name == expected_job_def_name
-        assert job_def_rc.spec == expected_job_def
 
 
 @pytest.mark.parametrize("spec, expect", [
@@ -456,14 +343,9 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
                 "repo.$": "$.repo.uri",
-                # "image": {
-                #     "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp",
-                # },
                 "references": json.dumps(step.spec["references"]),
                 "inputs": json.dumps(step.spec["inputs"]),
-                # "command": json.dumps(step.spec["commands"]),
                 "outputs": json.dumps(step.spec["outputs"]),
-                # "shell": "sh",
                 "skip": "none",
             },
             "ContainerOverrides": {
@@ -490,9 +372,6 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
                     },
                 ],
             },
-            # "Timeout": {
-            #     "attemptDurationSeconds": 3600,
-            # },
         },
         "ResultSelector": step.spec["outputs"],
         "ResultPath": "$.prev_outputs",
@@ -605,9 +484,7 @@ def test_handle_batch_shell_opt(sample_batch_step, step_shell, expect, compiler_
 
     def helper():
         _ = yield from handle_batch(step, {"shell": "sh", "versioned": "true"}, False)
-        # assert states[0].spec["Parameters"]["Parameters"]["shell"] == expect
 
-    # _ = dict(helper())
     rc = dict(helper())
 
     spec = json.loads(rc["StepNameJobDef"]["Properties"]["spec"])

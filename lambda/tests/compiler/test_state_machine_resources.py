@@ -1,7 +1,11 @@
 import pytest
 
-from ...src.compiler.pkg.state_machine_resources import make_initializer_step, make_step_list
-from ...src.compiler.pkg.util import Step, lambda_logging_block, lambda_retry
+from ...src.compiler.pkg.state_machine_resources import (make_initializer_step, make_step_list,
+                                                         state_machine_version_rc,
+                                                         state_machine_alias_rc,
+                                                         STATE_MACHINE_VERSION_NAME,
+                                                         STATE_MACHINE_ALIAS_NAME)
+from ...src.compiler.pkg.util import Step, Resource, lambda_logging_block, lambda_retry
 
 
 def test_make_initializer_step(compiler_env):
@@ -57,33 +61,35 @@ def test_make_step_list():
         assert result.next == exp_next
 
 
-# todo: remove
-# @pytest.mark.skip(reason="may not need this anymore")
-# @pytest.mark.parametrize("versioned", ["true", "false"])
-# def test_make_physical_name(versioned):
-#     result = make_physical_name(versioned)
-#     if versioned == "true":
-#         expect = {
-#             "StateMachineName": {
-#                 "Fn::Sub": [
-#                     "${Root}--${Version}",
-#                     {
-#                         "Root": {"Ref": "AWS::StackName"},
-#                         "Version": {
-#                             "Fn::GetAtt": ["launcherStack", "Outputs.LauncherLambdaVersion"],
-#                         },
-#                     },
-#                 ],
-#             },
-#         }
-#     else:
-#         expect = {
-#             "StateMachineName": {"Ref": "AWS::StackName"}
-#         }
-#     assert result == expect
-
 def test_state_machine_version_rc():
-    pass  # todo
+    state_machine = Resource("stateMachineLogicalName", {})
+    result = state_machine_version_rc(state_machine)
+    expect = Resource(STATE_MACHINE_VERSION_NAME,
+                      {
+                          "Type": "AWS::StepFunctions::StateMachineVersion",
+                          "UpdateReplacePolicy": "Retain",
+                          "Properties": {
+                              "Description": "No description",
+                              "StateMachineArn": {"Ref": "stateMachineLogicalName"},
+                              "StateMachineRevisionId": {"Fn::GetAtt": ["stateMachineLogicalName", "StateMachineRevisionId"]},
+                          },
+                      })
+    assert result == expect
+
 
 def test_state_machine_alias_rc():
-    pass  # todo
+    state_machine_version = Resource(STATE_MACHINE_VERSION_NAME, {})
+    result = state_machine_alias_rc(state_machine_version)
+    expect = Resource(STATE_MACHINE_ALIAS_NAME,
+                      {
+                          "Type": "AWS::StepFunctions::StateMachineAlias",
+                          "Properties": {
+                              "Name": "current",
+                              "Description": "Current active version",
+                              "DeploymentPreference": {
+                                  "StateMachineVersionArn": {"Ref": STATE_MACHINE_VERSION_NAME},
+                                  "Type": "ALL_AT_ONCE",
+                              },
+                          },
+                      })
+    assert result == expect

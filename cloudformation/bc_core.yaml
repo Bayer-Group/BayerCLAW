@@ -161,7 +161,6 @@ Resources:
       Handler: job_router.lambda_handler
       Runtime: python3.10
       CodeUri: lambda/src/router
-      # todo: need AutoPublishAlias?
       Environment:
         Variables:
           REGION: !Ref AWS::Region
@@ -212,7 +211,6 @@ Resources:
                   "job_file_version": <version>
                 }
             State: ENABLED
-            # todo: RetryPolicy?
 
   RouterLambdaLogGroup:
     Type: AWS::Logs::LogGroup
