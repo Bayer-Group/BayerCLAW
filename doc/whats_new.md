@@ -104,9 +104,13 @@ processing new jobs. When construction of the Green version is finished, all inc
 routed to it, while any remaining jobs on the Blue version drain out. The Blue version then remains on standby in
 case the changes need to be rolled back.
 
-Blue/Green deployment is intended for use in production environments where downtime and failure risks need to be
+~~Blue/Green deployment is intended for use in production environments where downtime and failure risks need to be
 minimized. It can be cumbersome to use in development environments though. As such, Blue/Green deployment
-is an option that is activated using the `versioned` workflow template option.
+is an option that is activated using the `versioned` workflow template option.~~
+
+UPDATE 2/9/2024: BayerCLAW now uses the Step Functions service's native versioning capabilities, making the handling
+of versioned workflows much less cumbersome. As such, all workflows are now versioned, and the `versioned` option is
+deprecated.
 
 See the [versioned workflow documentation](versioned_wf.md) for more information.
 
