@@ -99,7 +99,7 @@ def test_get_state_machine_arn(monkeypatch):
 
 @pytest.fixture(scope="function")
 def mock_state_machine(monkeypatch):
-    with moto.mock_iam():
+    with moto.mock_aws():
         iam = boto3.resource("iam", region_name="us-west-1")
 
         role = iam.create_role(
@@ -107,15 +107,14 @@ def mock_state_machine(monkeypatch):
             AssumeRolePolicyDocument="{}"
         )
 
-        with moto.mock_stepfunctions():
-            sfn = boto3.client("stepfunctions", region_name="us-west-1")
-            state_machine = sfn.create_state_machine(
-                name="test_sfn",
-                definition="{}",
-                roleArn=role.arn
-            )
+        sfn = boto3.client("stepfunctions", region_name="us-west-1")
+        state_machine = sfn.create_state_machine(
+            name="test_sfn",
+            definition="{}",
+            roleArn=role.arn
+        )
 
-            yield state_machine["stateMachineArn"]
+        yield state_machine["stateMachineArn"]
 
 
 def test_lambda_handler(mock_state_machine, monkeypatch, mocker):
@@ -125,10 +124,9 @@ def test_lambda_handler(mock_state_machine, monkeypatch, mocker):
     monkeypatch.setenv("SFN_NAME_ROOT", "test_sfn")
     monkeypatch.setenv("BC_VERSION", "v1.2.3")
 
-    # as of 1/22/2024, moto's mock step functions service does not implement versions or aliases.
+    # as of version 5.0.1, moto's mock step functions service does not implement versions or aliases.
     # Therefore, I have to mock out get_state_machine_arn to give lambda_handler an unaliased arn.
     mock_state_machine_arn = mock_state_machine
-    # mocker.patch("router.job_router.get_state_machine_arn", return_value=mock_state_machine_arn)
     mocker.patch(f"{router_name}.get_state_machine_arn", return_value=mock_state_machine_arn)
 
     event = {

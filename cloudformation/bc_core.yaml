@@ -626,7 +626,6 @@ Resources:
       Handler: notifications.lambda_handler
       Runtime: python3.10
       CodeUri: lambda/src/notifications
-#      AutoPublishAlias: current
       Environment:
         Variables:
           TOPIC_ARN: !Ref NotificationsTopic
@@ -655,15 +654,6 @@ Resources:
                 - "aws.states"
               detail-type:
                 - "Step Functions Execution Status Change"
-#            InputTransformer:
-#              InputPathsMap:
-#                detail: "$.detail"
-#              InputTemplate:
-#                !Sub |-
-#                  {
-#                    "event": <aws.events.event>,
-#                    "detail": <detail>
-#                  }
             State: ENABLED
     Connectors:
       NotifsSNS:

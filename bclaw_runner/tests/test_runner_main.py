@@ -34,7 +34,7 @@ JOB_DATA = {
 
 @pytest.fixture(scope="module")
 def mock_bucket():
-    with moto.mock_s3():
+    with moto.mock_aws():
         yld = boto3.resource("s3", region_name="us-east-1").Bucket(TEST_BUCKET)
         yld.create()
         yld.put_object(Key="repo/path/_JOB_DATA_", Body=json.dumps(JOB_DATA).encode("utf-8"))
@@ -299,7 +299,7 @@ def fake_termination_checker_impl(*_):
     print("fake termination checker running")
 
 
-@moto.mock_logs
+@moto.mock_aws
 @pytest.mark.parametrize("argv, expect", [
     ("prog --cmd 2 --in 3 --out 4 --shell 5 --ref 6 --repo 7 --skip 8 --image 9",
      [2, "9", 3, 4, 6, "7", "5", "8"])

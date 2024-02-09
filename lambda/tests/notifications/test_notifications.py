@@ -1,7 +1,7 @@
 import json
 
 import boto3
-from moto import mock_sns
+import moto
 import pytest
 import yaml
 
@@ -161,7 +161,7 @@ def test_make_sns_payload(state_change_event_factory, monkeypatch):
     assert result == expect
 
 
-@mock_sns
+@moto.mock_aws
 def test_lambda_handler(monkeypatch, state_change_event_factory):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     sns = boto3.client("sns")

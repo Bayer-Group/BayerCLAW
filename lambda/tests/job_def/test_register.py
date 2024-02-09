@@ -64,7 +64,7 @@ class FakeContext:
 @pytest.fixture(scope="function")
 def batch_job_def_arn(job_def_spec, monkeypatch):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-1")
-    with moto.mock_batch():
+    with moto.mock_aws():
         batch = boto3.client("batch")
         yld = batch.register_job_definition(jobDefinitionName="test-wf_test-step", **job_def_spec)
         yield yld["jobDefinitionArn"]
@@ -83,7 +83,7 @@ def test_edit_spec(job_def_spec, monkeypatch):
     assert result == expect
 
 
-@moto.mock_batch()
+@moto.mock_aws()
 def test_lambda_handler_create(event_factory, mocker, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
@@ -188,7 +188,7 @@ def test_lambda_handler_delete(event_factory, batch_job_def_arn, mocker):
     assert job_defs[0]["status"] == "INACTIVE"
 
 
-@moto.mock_batch()
+@moto.mock_aws()
 def test_lambda_handler_fail(event_factory, mocker):
     mock_respond_fn = mocker.patch("lambda.src.job_def.register.respond")
     event = event_factory("Create", "wut")

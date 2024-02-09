@@ -94,7 +94,7 @@ def test_get_environment_vars(monkeypatch):
 ])
 def test_pull_images(tag, expected_source, expected_auth, monkeypatch, mock_docker_client_factory):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
-    with moto.mock_ecr():
+    with moto.mock_aws():
         client = mock_docker_client_factory()
         result = pull_image(client, tag)
         assert result.tags == [tag]

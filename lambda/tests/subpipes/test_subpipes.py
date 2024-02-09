@@ -29,7 +29,7 @@ ALT_JOB_DATA = {
 
 @pytest.fixture(scope="function")
 def repo_bucket():
-    with moto.mock_s3():
+    with moto.mock_aws():
         yld = boto3.resource("s3", region_name="us-east-1").Bucket(TEST_BUCKET)
         yld.create()
         yield yld

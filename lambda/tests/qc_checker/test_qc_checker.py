@@ -1,7 +1,7 @@
 import logging
 
 import boto3
-from moto import mock_s3, mock_stepfunctions, mock_iam
+import moto
 import pytest
 
 from ...src.qc_checker.qc_checker import lambda_handler, QCFailed
@@ -9,9 +9,9 @@ from ...src.qc_checker.qc_checker import lambda_handler, QCFailed
 logging.basicConfig(level=logging.INFO)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def mock_repo_bucket():
-    with mock_s3():
+    with moto.mock_aws():
         bucket_name = "repo-bucket"
         s3 = boto3.resource("s3", region_name="us-east-1")
         bucket = s3.create_bucket(Bucket=bucket_name)
@@ -20,7 +20,7 @@ def mock_repo_bucket():
 
 @pytest.fixture(scope="function")
 def mock_state_machine():
-    with mock_iam():
+    with moto.mock_aws():
         iam = boto3.resource("iam", region_name="us-east-1")
 
         role = iam.create_role(
@@ -28,16 +28,16 @@ def mock_state_machine():
             AssumeRolePolicyDocument="{}"
         )
 
-        with mock_stepfunctions():
-            sfn = boto3.client("stepfunctions", region_name="us-east-1")
+        # with moto.mock_aws():
+        sfn = boto3.client("stepfunctions", region_name="us-east-1")
 
-            state_machine = sfn.create_state_machine(
-                name="fakeStateMachine",
-                definition="{}",
-                roleArn=role.arn
-            )
+        state_machine = sfn.create_state_machine(
+            name="fakeStateMachine",
+            definition="{}",
+            roleArn=role.arn
+        )
 
-            yield state_machine["stateMachineArn"]
+        yield state_machine["stateMachineArn"]
 
 
 def test_lambda_handler(caplog, monkeypatch, mock_repo_bucket, mock_state_machine):

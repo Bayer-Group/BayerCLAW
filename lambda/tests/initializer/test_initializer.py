@@ -4,7 +4,7 @@ import logging
 import re
 
 import boto3
-from moto import mock_s3
+import moto
 import pytest
 
 from ...src.initializer.initializer import read_s3_object, lookup, substitute_job_data, check_recursive_launch, \
@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 
 @pytest.fixture(scope="function")
 def launcher_bucket():
-    with mock_s3():
+    with moto.mock_aws():
         bucket_name = "launcher"
         conn = boto3.resource("s3", region_name="us-east-1")
         conn.create_bucket(Bucket=bucket_name)
@@ -95,7 +95,7 @@ def test_substitute_job_data():
         substitute_job_data(bad_target, job_data)
 
 
-@mock_s3
+@moto.mock_aws
 def test_write_extended_job_data_object():
     bucket_name = "test-bucket"
     repo_path = "path/to/test/repo"
