@@ -97,8 +97,8 @@ you can omit the `job_data` field and BayerCLAW2 will send the original job data
 
 ## Blue/Green workflow updates
 
-BayerCLAW2 can optionally deploy workflow updates using a [Blue/Green](https://docs.aws.amazon.com/whitepapers/latest/overview-deployment-options/bluegreen-deployments.html)
-strategy. When you update a workflow using Blue/Green deployment, BayerCLAW2 builds a completely new version of it
+BayerCLAW2 deploys workflow updates using a [Blue/Green](https://docs.aws.amazon.com/whitepapers/latest/overview-deployment-options/bluegreen-deployments.html)
+strategy. This means that when you update a workflow, BayerCLAW2 builds a completely new version of it
 (the Green version) while leaving the existing (Blue) version in place. The Blue version remains capable of accepting and
 processing new jobs. When construction of the Green version is finished, all incoming jobs are automatically
 routed to it, while any remaining jobs on the Blue version drain out. The Blue version then remains on standby in
