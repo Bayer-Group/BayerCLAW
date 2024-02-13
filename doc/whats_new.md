@@ -112,7 +112,7 @@ UPDATE 2/9/2024: BayerCLAW now uses the Step Functions service's native versioni
 of versioned workflows much less cumbersome. As such, all workflows are now versioned, and the `versioned` option is
 deprecated.
 
-See the [versioned workflow documentation](versioned_wf.md) for more information.
+See the [versioned workflow documentation](workflow_versions.md) for more information.
 
 ## Upgrading to BayerCLAW2
 
