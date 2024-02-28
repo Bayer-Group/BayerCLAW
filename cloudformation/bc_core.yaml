@@ -371,6 +371,8 @@ Resources:
       Handler: register.lambda_handler
       Runtime: python3.10
       CodeUri: lambda/src/job_def
+      # do not enable AutoPublishAlias
+      # https://advancedweb.hu/custom-resources-in-cloudformation-templates-lessons-learned/#cant-change-the-servicetoken
       Environment:
         Variables:
           ACCT_NUM: !Ref AWS::AccountId
