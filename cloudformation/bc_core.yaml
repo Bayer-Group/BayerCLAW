@@ -371,7 +371,6 @@ Resources:
       Handler: register.lambda_handler
       Runtime: python3.10
       CodeUri: lambda/src/job_def
-      AutoPublishAlias: current
       Environment:
         Variables:
           ACCT_NUM: !Ref AWS::AccountId
