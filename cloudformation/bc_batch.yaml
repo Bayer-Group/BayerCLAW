@@ -203,7 +203,7 @@ Resources:
               mkdir -p /scratch
               mount /dev/sdh /scratch
               
-              echo ECS_NVIDIA_RUNTIME=nvidia >> /etc/ecs/ecs.config
+              echo 'ECS_NVIDIA_RUNTIME=nvidia' >> /etc/ecs/ecs.config
 
               --==BOUNDARY==--
 
