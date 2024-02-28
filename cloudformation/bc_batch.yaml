@@ -202,6 +202,8 @@ Resources:
               fi
               mkdir -p /scratch
               mount /dev/sdh /scratch
+              
+              echo ECS_NVIDIA_RUNTIME=nvidia >> /etc/ecs/ecs.config
 
               --==BOUNDARY==--
 
@@ -235,8 +237,7 @@ Resources:
         Subnets: !Ref Subnets
         UpdateToLatestImageVersion: true
       Tags:
-        "bclaw:version": "1.2.x"
-        updateAmi: "true"
+        updateAmi: !If [UseAmi, "true", "false"]
 
   BackupComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
@@ -267,7 +268,6 @@ Resources:
         Subnets: !Ref Subnets
         UpdateToLatestImageVersion: true
       Tags:
-        "bclaw:version": "1.2.x"
         updateAmi: "false"
 
   SchedulingPolicy:
