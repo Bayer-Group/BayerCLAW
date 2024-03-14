@@ -149,7 +149,6 @@ def get_timeout(step: Step) -> dict:
     if step.spec.get("timeout") is None:
         ret = {}
     else:
-        # ret = {"Timeout": {"AttemptDurationSeconds": max(time_string_to_seconds(step.spec["timeout"]), 60)}}
         ret = {"timeout": {"attemptDurationSeconds": max(time_string_to_seconds(step.spec["timeout"]), 60)}}
     return ret
 
@@ -328,7 +327,6 @@ def handle_batch(step: Step,
                           job_def_logical_name,
                           **step.spec["retry"],
                           scattered=scattered,
-                          # shell_opt=shell_opt,
                           next_step_override=qc_state.name)
         ret = [State(step.name, ret0), qc_state]
 

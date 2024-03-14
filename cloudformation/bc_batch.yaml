@@ -175,7 +175,6 @@ Resources:
               Encrypted: true
               VolumeSize: !Ref ScratchVolumeSize
               VolumeType: gp3
-#        ImageId: !If [UseAmi, !Ref AmiId, !Ref AWS::NoValue]
         InstanceInitiatedShutdownBehavior: terminate
         UserData:
           "Fn::Base64":
@@ -202,8 +201,6 @@ Resources:
               fi
               mkdir -p /scratch
               mount /dev/sdh /scratch
-              
-              echo 'ECS_NVIDIA_RUNTIME=nvidia' >> /etc/ecs/ecs.config
 
               --==BOUNDARY==--
 
@@ -239,36 +236,36 @@ Resources:
       Tags:
         updateAmi: !If [UseAmi, "true", "false"]
 
-  BackupComputeEnvironment:
-    Type: AWS::Batch::ComputeEnvironment
-    Properties:
-      ComputeEnvironmentName:
-        !If [Uniqify, !Sub "${QueueName}-bak-${Uniqifier}", !Sub "${QueueName}-bak"]
-      Type: MANAGED
-      State: ENABLED
-      ReplaceComputeEnvironment: false
-      ComputeResources:
-        Type:
-          !If [UseSpot, "SPOT", "EC2"]
-        AllocationStrategy:
-          !If [UseSpot, "SPOT_PRICE_CAPACITY_OPTIMIZED", "BEST_FIT_PROGRESSIVE"]
-        BidPercentage:
-          !If [UseSpot, 100, !Ref AWS::NoValue]
-        LaunchTemplate:
-          LaunchTemplateId: !Ref LaunchTemplate
-          Version: !GetAtt LaunchTemplate.LatestVersionNumber
-        Ec2Configuration:
-          -
-            ImageType: !If [UseGpu, "ECS_AL2_NVIDIA", "ECS_AL2"]
-        InstanceRole: !Ref EcsInstanceProfile
-        InstanceTypes: !Ref InstanceTypes
-        MinvCpus: !Ref MinvCpus
-        MaxvCpus: !Ref MaxvCpus
-        SecurityGroupIds: !Ref SecurityGroupIds
-        Subnets: !Ref Subnets
-        UpdateToLatestImageVersion: true
-      Tags:
-        updateAmi: "false"
+#  BackupComputeEnvironment:
+#    Type: AWS::Batch::ComputeEnvironment
+#    Properties:
+#      ComputeEnvironmentName:
+#        !If [Uniqify, !Sub "${QueueName}-bak-${Uniqifier}", !Sub "${QueueName}-bak"]
+#      Type: MANAGED
+#      State: ENABLED
+#      ReplaceComputeEnvironment: false
+#      ComputeResources:
+#        Type:
+#          !If [UseSpot, "SPOT", "EC2"]
+#        AllocationStrategy:
+#          !If [UseSpot, "SPOT_PRICE_CAPACITY_OPTIMIZED", "BEST_FIT_PROGRESSIVE"]
+#        BidPercentage:
+#          !If [UseSpot, 100, !Ref AWS::NoValue]
+#        LaunchTemplate:
+#          LaunchTemplateId: !Ref LaunchTemplate
+#          Version: !GetAtt LaunchTemplate.LatestVersionNumber
+#        Ec2Configuration:
+#          -
+#            ImageType: !If [UseGpu, "ECS_AL2_NVIDIA", "ECS_AL2"]
+#        InstanceRole: !Ref EcsInstanceProfile
+#        InstanceTypes: !Ref InstanceTypes
+#        MinvCpus: !Ref MinvCpus
+#        MaxvCpus: !Ref MaxvCpus
+#        SecurityGroupIds: !Ref SecurityGroupIds
+#        Subnets: !Ref Subnets
+#        UpdateToLatestImageVersion: true
+#      Tags:
+#        updateAmi: "false"
 
   SchedulingPolicy:
     Type: AWS::Batch::SchedulingPolicy
@@ -284,8 +281,8 @@ Resources:
       ComputeEnvironmentOrder:
         - Order: 1
           ComputeEnvironment: !Ref ComputeEnvironment
-        - Order: 2
-          ComputeEnvironment: !Ref BackupComputeEnvironment
+#        - Order: 2
+#          ComputeEnvironment: !Ref BackupComputeEnvironment
       SchedulingPolicyArn: !Ref SchedulingPolicy
 
 Outputs:
