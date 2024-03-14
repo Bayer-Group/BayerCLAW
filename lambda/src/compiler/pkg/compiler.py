@@ -2,7 +2,6 @@ import logging
 import os
 
 from . import state_machine_resources as sm
-from .misc_resources import launcher_substack_rc, deploy_substack_rc
 from .util import Resource, substitute_params
 from .validation import workflow_schema
 
@@ -35,11 +34,9 @@ def compile_template(fragment: dict, param_values: dict, state_machine_out=None)
     state_machine = curr_resource
     sm.add_definition_substitutions(state_machine, resources)
 
-    # create substacks
-    launcher_substack = launcher_substack_rc(options)
-    deploy_substack = deploy_substack_rc(state_machine.name)
-
-    resources.update([launcher_substack, deploy_substack])
+    state_machine_version = sm.state_machine_version_rc(state_machine)
+    state_machine_alias = sm.state_machine_alias_rc(state_machine_version)
+    resources.update([state_machine_alias, state_machine_version])
 
     # create cloudformation template fragment to return
     ret = {
@@ -54,9 +51,6 @@ def compile_template(fragment: dict, param_values: dict, state_machine_out=None)
             },
             "LauncherURI": {
                 "Value": {"Fn::Sub": f"s3://{os.environ['LAUNCHER_BUCKET_NAME']}/${{AWS::StackName}}/"},
-            },
-            "NotificationTopicArn": {
-                "Value": {"Fn::GetAtt": [deploy_substack.name, "Outputs.wfNotificationsTopicArn"]},
             },
             "StepFunctionsStateMachineArn": {
                 "Value": {"Ref": state_machine.name},

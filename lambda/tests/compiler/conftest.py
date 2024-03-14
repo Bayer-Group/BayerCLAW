@@ -13,7 +13,7 @@ def compiler_env():
         "GATHER_LAMBDA_ARN": "gather_lambda_arn",
         "ON_DEMAND_QUEUE_ARN": "on_demand_queue_arn",
         "INITIALIZER_LAMBDA_ARN": "initializer_lambda_arn",
-        "JOB_LAUNCHER_REPO_URI": "job_launcher_repo_uri",
+        "JOB_DEF_LAMBDA_ARN": "job_def_lambda_arn",
         "LAUNCHER_BUCKET_NAME": "launcher_bucket_name",
         "LOG_RETENTION_DAYS": "99",
         "LOGGING_DESTINATION_ARN": "logging_destination_arn",
@@ -26,5 +26,4 @@ def compiler_env():
         "SPOT_QUEUE_ARN": "spot_queue_arn",
         "STATES_EXECUTION_ROLE_ARN": "states_execution_role_arn",
         "SUBPIPES_LAMBDA_ARN": "subpipes_lambda_arn",
-        "VERSIONATOR_LAMBDA_ARN": "versionator_lambda_arn",
     })

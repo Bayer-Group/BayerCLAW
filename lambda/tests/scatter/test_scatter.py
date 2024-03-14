@@ -30,7 +30,7 @@ OTHER_FILE_CONTENT = json.dumps({"x": {"a": 1, "b": 2},
 
 @pytest.fixture(scope="module")
 def repo_bucket():
-    with moto.mock_s3():
+    with moto.mock_aws():
         yld = boto3.resource("s3", region_name="us-east-1").Bucket(TEST_BUCKET)
         yld.create()
         yld.put_object(Key="repo/path/_JOB_DATA_", Body=json.dumps(JOB_DATA).encode("utf-8"))
@@ -48,7 +48,6 @@ def test_get_job_data(repo_bucket):
     assert result == JOB_DATA
 
 
-# todo: need more?
 @pytest.mark.parametrize("glob, expect", [
     ("file*", ["file1", "file2", "file3"]),
     ("file?", ["file1", "file2", "file3"]),
@@ -98,7 +97,7 @@ def test_expand_scatter_data(repo_bucket):
     expect = {
         "static_list": [1, 2, 3],
         "job_data_list": [9, 8, 7],
-        "file_contents": ["2", "4"],  # todo: why are these stringified?
+        "file_contents": ["2", "4"],  # why are these stringified?
         "file_glob": [
             f"s3://{repo_bucket.name}/repo/path/file1",
             f"s3://{repo_bucket.name}/repo/path/file2",

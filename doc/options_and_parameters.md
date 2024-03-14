@@ -44,30 +44,9 @@ create a custom task role and provide its ARN to through the `task_role` option.
 
 The global `task_role` setting can itself be overridden using the per-step `task_role` option.
 
-### `versioned`
+### `versioned` ‼️ **DEPRECATED**
 
-The `versioned` option controls Blue/Green workflow deployments. When BayerCLAW compiles a workflow template with
-`versioned` set to `true`:
-
-- The previous version of the workflow (if present) remains active for the duration of the compilation. Active
-executions continue running, and incoming jobs continue to be directed to the previous version.
-- A new version of the workflow's job launcher Lambda is deployed.
-- New versions of the state machine, batch job definitions, and other components are created. The state machine will
-have a version number appended to its name (e.g. `MyWorkflow--1`). The state machine version number will be 
-the same as the launcher Lambda version (it's important to know this in case you need to roll back a Blue/Green
-deployment).
-- After all updated components have been built, all incoming jobs for the workflow are routed to the new
-version. Jobs running on the previous version will continue running on the old version.
-- Components from the previous version will **not** be automatically deleted.
-
-Blue/Green deployments are meant to be used in production environments where you can't afford a lot of downtime
-for updates. In a development environment, though, the constant duplication of components can become 
-cumbersome. It is therefore recommended that workflow development take place with `versioned` set to `false` (which
-is the default), and when the workflow goes to production a new deployment be made with `versioned` set to `true`.
-
-**Important!** While Step Functions state machines are versioned, the launcher bucket is not. So, if you
-have a workflow name `MyWorkflow`, with a versioned state machine named `MyWorkflow--99`, new jobs must still be
-submitted to the `MyWorkflow` folder in the launcher bucket.
+BayerCLAW workflows are now always versioned. 
 
 ## Parameters
 

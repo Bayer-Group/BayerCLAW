@@ -10,13 +10,15 @@ import boto3
 from . import batch_resources as b
 from . import chooser_resources as c
 from . import enhanced_parallel_resources as ep
-from . import misc_resources as m
 from . import native_step_resources as ns
 from . import scatter_gather_resources as sg
 from . import subpipe_resources as sp
 from .util import Step, Resource, State, make_logical_name, lambda_logging_block, lambda_retry
 from .validation import validate_batch_step, validate_native_step, validate_parallel_step, validate_scatter_step, \
     validate_subpipe_step, validate_chooser_step
+
+STATE_MACHINE_VERSION_NAME = "mainStateMachineVersion"
+STATE_MACHINE_ALIAS_NAME = "mainStateMachineAlias"
 
 
 def make_initializer_step(repository: str) -> dict:
@@ -168,26 +170,6 @@ def write_state_machine_to_s3(sfn_def: dict) -> dict:
     return ret
 
 
-def make_physical_name(versioned: str) -> dict:
-    if versioned == "true":
-        body = {
-            "Fn::Sub": [
-                "${Root}--${Version}",
-                {
-                    "Root": {"Ref": "AWS::StackName"},
-                    "Version": {
-                        "Fn::GetAtt": [m.LAUNCHER_STACK_NAME, "Outputs.LauncherLambdaVersion"],
-                    },
-                },
-            ],
-        }
-    else:
-        body = {"Ref": "AWS::StackName"}
-
-    ret = {"StateMachineName": body}
-    return ret
-
-
 def handle_state_machine(raw_steps: List[Dict],
                          options: dict,
                          repository: str,
@@ -203,7 +185,7 @@ def handle_state_machine(raw_steps: List[Dict],
         "Type": "AWS::StepFunctions::StateMachine",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
-            **make_physical_name(options["versioned"]),
+            "StateMachineName": {"Ref": "AWS::StackName"},
             "RoleArn": os.environ["STATES_EXECUTION_ROLE_ARN"],
             "DefinitionS3Location": state_machine_location,
             "DefinitionSubstitutions": None,
@@ -224,6 +206,36 @@ def handle_state_machine(raw_steps: List[Dict],
 
     yield Resource(state_machine_logical_name, ret)
     return state_machine_logical_name
+
+
+def state_machine_version_rc(state_machine: Resource) -> Resource:
+    ret = {
+        "Type": "AWS::StepFunctions::StateMachineVersion",
+        "UpdateReplacePolicy": "Retain",
+        "Properties": {
+            "Description": "No description",
+            "StateMachineArn": {"Ref": state_machine.name},
+            "StateMachineRevisionId": {"Fn::GetAtt": [state_machine.name, "StateMachineRevisionId"]},
+        },
+    }
+
+    return Resource(STATE_MACHINE_VERSION_NAME, ret)
+
+
+def state_machine_alias_rc(state_machine_version: Resource) -> Resource:
+    ret = {
+        "Type": "AWS::StepFunctions::StateMachineAlias",
+        "Properties": {
+            "Name": "current",
+            "Description": "Current active version",
+            "DeploymentPreference": {
+                "StateMachineVersionArn": {"Ref": state_machine_version.name},
+                "Type": "ALL_AT_ONCE",
+            },
+        },
+    }
+
+    return Resource(STATE_MACHINE_ALIAS_NAME, ret)
 
 
 def add_definition_substitutions(sfn_resource: Resource, other_resources: dict) -> None:

@@ -94,7 +94,7 @@ def test_get_environment_vars(monkeypatch):
 ])
 def test_pull_images(tag, expected_source, expected_auth, monkeypatch, mock_docker_client_factory):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
-    with moto.mock_ecr():
+    with moto.mock_aws():
         client = mock_docker_client_factory()
         result = pull_image(client, tag)
         assert result.tags == [tag]
@@ -105,7 +105,6 @@ def test_pull_images(tag, expected_source, expected_auth, monkeypatch, mock_dock
 @pytest.mark.parametrize("exit_code", [0, 88])
 @pytest.mark.parametrize("logging_crash", [False, True])
 def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logging_crash, mock_container_factory, mock_docker_client_factory):
-    # todo: is there a race condition in this test?
     bc_scratch_path = "/_bclaw_scratch"
     monkeypatch.setenv("BC_SCRATCH_PATH", bc_scratch_path)
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")

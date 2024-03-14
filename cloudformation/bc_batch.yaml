@@ -16,6 +16,7 @@ Metadata:
           - AmiId
           - RequestType
           - InstanceTypes
+          - GpuEnabled
           - MinvCpus
           - MaxvCpus
       -
@@ -44,6 +45,13 @@ Parameters:
       select an AMI. Otherwise, it is highly recommended that you choose an ECS-optimized Amazon Linux 2
       image to use.
     Default: "auto"
+
+  GpuEnabled:
+    Type: String
+    Description: >
+      Select "True" if this Batch queue will be used for GPU jobs.
+    AllowedValues: ["True", "False"]
+    Default: "False"
 
   InstanceTypes:
     Type: CommaDelimitedList
@@ -122,6 +130,7 @@ Conditions:
   UseSpot: !Equals [!Ref RequestType, "Spot"]
   Uniqify: !And [ !Not [!Equals [!Ref Uniqifier, "None"]],
                   !Not [!Equals [!Ref Uniqifier, "none"]] ]
+  UseGpu: !Equals [!Ref GpuEnabled, "True"]
 
 Resources:
   EcsInstanceRole:
@@ -166,7 +175,6 @@ Resources:
               Encrypted: true
               VolumeSize: !Ref ScratchVolumeSize
               VolumeType: gp3
-        ImageId: !If [UseAmi, !Ref AmiId, !Ref AWS::NoValue]
         InstanceInitiatedShutdownBehavior: terminate
         UserData:
           "Fn::Base64":
@@ -214,6 +222,10 @@ Resources:
         LaunchTemplate:
           LaunchTemplateId: !Ref LaunchTemplate
           Version: !GetAtt LaunchTemplate.LatestVersionNumber
+        Ec2Configuration:
+          -
+            ImageType: !If [UseGpu, "ECS_AL2_NVIDIA", "ECS_AL2"]
+            ImageIdOverride: !If [UseAmi, !Ref AmiId, !Ref AWS::NoValue]
         InstanceRole: !Ref EcsInstanceProfile
         InstanceTypes: !Ref InstanceTypes
         MinvCpus: !Ref MinvCpus
@@ -221,6 +233,39 @@ Resources:
         SecurityGroupIds: !Ref SecurityGroupIds
         Subnets: !Ref Subnets
         UpdateToLatestImageVersion: true
+      Tags:
+        updateAmi: !If [UseAmi, "true", "false"]
+
+#  BackupComputeEnvironment:
+#    Type: AWS::Batch::ComputeEnvironment
+#    Properties:
+#      ComputeEnvironmentName:
+#        !If [Uniqify, !Sub "${QueueName}-bak-${Uniqifier}", !Sub "${QueueName}-bak"]
+#      Type: MANAGED
+#      State: ENABLED
+#      ReplaceComputeEnvironment: false
+#      ComputeResources:
+#        Type:
+#          !If [UseSpot, "SPOT", "EC2"]
+#        AllocationStrategy:
+#          !If [UseSpot, "SPOT_PRICE_CAPACITY_OPTIMIZED", "BEST_FIT_PROGRESSIVE"]
+#        BidPercentage:
+#          !If [UseSpot, 100, !Ref AWS::NoValue]
+#        LaunchTemplate:
+#          LaunchTemplateId: !Ref LaunchTemplate
+#          Version: !GetAtt LaunchTemplate.LatestVersionNumber
+#        Ec2Configuration:
+#          -
+#            ImageType: !If [UseGpu, "ECS_AL2_NVIDIA", "ECS_AL2"]
+#        InstanceRole: !Ref EcsInstanceProfile
+#        InstanceTypes: !Ref InstanceTypes
+#        MinvCpus: !Ref MinvCpus
+#        MaxvCpus: !Ref MaxvCpus
+#        SecurityGroupIds: !Ref SecurityGroupIds
+#        Subnets: !Ref Subnets
+#        UpdateToLatestImageVersion: true
+#      Tags:
+#        updateAmi: "false"
 
   SchedulingPolicy:
     Type: AWS::Batch::SchedulingPolicy
@@ -236,6 +281,8 @@ Resources:
       ComputeEnvironmentOrder:
         - Order: 1
           ComputeEnvironment: !Ref ComputeEnvironment
+#        - Order: 2
+#          ComputeEnvironment: !Ref BackupComputeEnvironment
       SchedulingPolicyArn: !Ref SchedulingPolicy
 
 Outputs:

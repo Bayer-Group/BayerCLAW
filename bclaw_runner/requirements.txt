@@ -1,5 +1,5 @@
 backoff
-boto3
+boto3==1.34.38
 docker
 docopt
 jmespath

@@ -1,13 +1,12 @@
 import json
 
 import boto3
-from moto import mock_sns
+import moto
 import pytest
 import yaml
 
-from ...src.notifications.notifications import make_sfn_console_url, make_state_change_message, \
-    make_message_attributes, make_sns_payload, lambda_handler
-from ...src.notifications.notifications import AWS_SFN_CONSOLE_URL_BASE as URL_BASE
+from ...src.notifications.notifications import (make_state_change_message, make_message_attributes,
+                                                make_sns_payload, lambda_handler)
 
 WORKFLOW_NAME = "test_workflow"
 
@@ -34,14 +33,8 @@ def state_change_event_factory():
         "index": "main",
     }
 
-    def _event_impl(topic: str = "fake_topic", status: str = "UNKNOWN") -> dict:
+    def _event_impl(status: str = "UNKNOWN") -> dict:
         ret = {
-            "workflow_name": WORKFLOW_NAME,
-            "sns_topic_arn": topic,
-            "event": {
-                "detailType": "Step Functions Execution Status Change",
-                "region": REGION,
-            },
             "detail": {
                 "executionArn": EXECUTION_ARN,
                 "stateMachineArn": STATE_MACHINE_ARN,
@@ -58,12 +51,6 @@ def state_change_event_factory():
     return _event_impl
 
 
-def test_make_sfn_console_url():
-    result = make_sfn_console_url(region=REGION, exec_arn=EXECUTION_ARN)
-    expect = f"{URL_BASE}?region={REGION}#/executions/details/{EXECUTION_ARN}"
-    assert result == expect
-
-
 @pytest.mark.parametrize("status, action", [
     ("RUNNING", "has started."),
     ("SUCCEEDED", "has finished."),
@@ -71,22 +58,45 @@ def test_make_sfn_console_url():
     ("ABORTED", "has been aborted."),
     ("TIMED_OUT", "has timed out."),
 ])
-def test_make_state_change_message(state_change_event_factory, status, action):
-    event = state_change_event_factory(status=status)
+def test_make_state_change_message(status, action):
+    attributes = {
+        "status": {
+            "DataType": "String",
+            "StringValue": status,
+        },
+        "workflow_name": {
+            "DataType": "String",
+            "StringValue": WORKFLOW_NAME,
+        },
+        "execution_id": {
+            "DataType": "String",
+            "StringValue": EXECUTION_NAME,
+        },
+        "job_file_bucket": {
+            "DataType": "String",
+            "StringValue": LAUNCHER_BUCKET,
+        },
+        "job_file_key": {
+            "DataType": "String",
+            "StringValue": JOB_DATA_KEY,
+        },
+        "job_file_version": {
+            "DataType": "String",
+            "StringValue": JOB_DATA_VERSION,
+        },
+    }
 
     expected_details = {
         "details": {
             "workflow_name": WORKFLOW_NAME,
-            "state_machine_name": STATE_MACHINE_NAME,
-            "sfn_execution_id": EXECUTION_NAME,
+            "execution_id": EXECUTION_NAME,
             "job_status": status,
             "job_data": JOB_DATA_URI,
             "job_data_version": JOB_DATA_VERSION,
-            "sfn_console_link": f"{URL_BASE}?region={REGION}#/executions/details/{EXECUTION_ARN}",
         },
     }
 
-    message = make_state_change_message(event)
+    message = make_state_change_message(attributes)
     text, details = yaml.safe_load_all(message)
 
     assert WORKFLOW_NAME in text
@@ -107,21 +117,17 @@ def test_make_message_attributes(state_change_event_factory):
         },
         "workflow_name": {
             "DataType": "String",
-            "StringValue": WORKFLOW_NAME,
-        },
-        "state_machine_name": {
-            "DataType": "String",
             "StringValue": STATE_MACHINE_NAME,
         },
         "execution_id": {
             "DataType": "String",
             "StringValue": EXECUTION_NAME,
         },
-        "launcher_bucket": {
+        "job_file_bucket": {
             "DataType": "String",
             "StringValue": LAUNCHER_BUCKET,
         },
-        "job_file": {
+        "job_file_key": {
             "DataType": "String",
             "StringValue": JOB_DATA_KEY,
         },
@@ -133,25 +139,36 @@ def test_make_message_attributes(state_change_event_factory):
     assert result == expect
 
 
-def test_make_sns_publish_payload(state_change_event_factory):
-    event = state_change_event_factory(status="SUCCEEDED", topic="arn:of:fake:topic")
-    result = make_sns_payload("test message", event)
+def test_make_sns_payload(state_change_event_factory, monkeypatch):
+    monkeypatch.setenv("TOPIC_ARN", "arn:of:fake:topic")
+    attributes = {
+        "status": {
+            "DataType": "String",
+            "StringValue": "FAKE_STATUS"
+        },
+        "workflow_name": {
+            "DataType": "String",
+            "StringValue": WORKFLOW_NAME
+        }
+    }
+    result = make_sns_payload("test message", attributes)
     expect = {
         "TopicArn": "arn:of:fake:topic",
         "Message": "test message",
-        "Subject": f"{WORKFLOW_NAME}: job succeeded",
-        "MessageAttributes": make_message_attributes(event),
+        "Subject": f"{WORKFLOW_NAME}: job fake_status",
+        "MessageAttributes": attributes,
     }
     assert result == expect
 
 
-@mock_sns
+@moto.mock_aws
 def test_lambda_handler(monkeypatch, state_change_event_factory):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     sns = boto3.client("sns")
     response0 = sns.create_topic(Name="test_topic")
 
-    event = state_change_event_factory(status="SUCCEEDED", topic=response0["TopicArn"])
+    monkeypatch.setenv("TOPIC_ARN", response0["TopicArn"])
+    event = state_change_event_factory(status="SUCCEEDED")
 
     response = lambda_handler(event, {})
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200

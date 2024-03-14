@@ -70,7 +70,7 @@ data:
 
 @pytest.fixture(scope="module")
 def src_bucket():
-    with moto.mock_s3():
+    with moto.mock_aws():
         yld = boto3.resource("s3", region_name="us-east-1").Bucket("test-bucket")
         yld.create()
         yld.put_object(Key="test-data/file.csv", Body=csv)

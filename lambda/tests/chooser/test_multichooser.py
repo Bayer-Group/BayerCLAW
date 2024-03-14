@@ -3,7 +3,7 @@ import logging
 
 import boto3
 from box import Box, BoxList
-from moto import mock_s3
+import moto
 import pytest
 
 from ...src.chooser.multichooser import load_s3_object, load_vals, eval_this, run_exprs,\
@@ -46,7 +46,7 @@ data5 = "sasquatch"
 
 @pytest.fixture(scope="module")
 def mock_repo():
-    with mock_s3():
+    with moto.mock_aws():
         bucket_name = "repo-bucket"
         repo_name = "repo"
 

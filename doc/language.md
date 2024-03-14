@@ -84,11 +84,8 @@ The `Options` block contains settings that affect the operation of BayerCLAW:
     This allows advanced users to provide custom AWS permissions to the workflow, if needed.
     If this field is not specified, the steps will use a generic role created by BayerCLAW, which is fine for most uses.
     See [bc_core.yaml](../cloudformation/bc_core.yaml) for the definition of the generic role.
-* `versioned` (optional): When this is set to `true`, BayerCLAW will deploy this workflow using 
-    a [blue/green](https://en.wikipedia.org/wiki/Blue-green_deployment) protocol, allowing you to deploy
-    new workflow versions without interrupting running jobs. This involves creating a new version of the
-    workflow's Step Functions state machine for every new revision. When set to `false` (the default), new
-    state machine versions will overwrite existing versions.
+* `versioned` (optional): ‼️ **DEPRECATED** This option is no longer functional, since BayerCLAW workflows are always
+  versioned now.
 
 ## The Steps block
 The `Steps` section consists of a single JSON or YAML list containing processing step specifications.
@@ -140,9 +137,7 @@ The fields of the step specification objects are:
   will *not* be preserved in the S3 repository.
 * `skip_on_rerun` (optional): When rerunning a job, set this to `true` to bypass a step if has already been run successfully.
   Defaults to `false`
-* `skip_if_output_exists` (optional): Similar to `skip_on_rerun`,
-  when set to `true`, this causes a step to be skipped if its output files already exist in the job's repository. This is
-  not as reliable as `skip_on_rerun`, so `skip_on_rerun` is preferred.
+* `skip_if_output_exists` (optional): ‼️ **DEPRECATED** `skip_on_rerun` is preferred.
 * `compute`: An object specifying the compute environment that will be used. Optional.
   * `cpus`:  Specify the number of vCPUs to reserve. Optional. Defaults to 1.
   * `memory`: Specify the amount of memory to reserve. This may be provided as a number (in which case

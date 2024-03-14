@@ -136,6 +136,13 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
 
+  # notifications
+  NotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-notifications"
+      KmsMasterKeyId: "alias/aws/sns"
+
   # lambdas
   CommonLayer:
     Type: AWS::Serverless::LayerVersion
@@ -147,6 +154,77 @@ Resources:
         - python3.8
         - python3.9
         - python3.10
+
+  RouterLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: job_router.lambda_handler
+      Runtime: python3.10
+      CodeUri: lambda/src/router
+      Environment:
+        Variables:
+          REGION: !Ref AWS::Region
+          ACCT_NUM: !Ref AWS::AccountId
+      MemorySize: 128
+      Timeout: 60
+      Layers:
+        - !Ref CommonLayer
+      DeploymentPreference:
+        Enabled: false
+      Policies:
+        -
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: Allow
+              Action:
+                - "states:StartExecution"
+              Resource: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:*"
+              Condition:
+                StringEquals:
+                  "aws:ResourceTag/bclaw:core-stack-name": !Ref AWS::StackName
+      Events:
+        LauncherBucketTrigger:
+          Type: EventBridgeRule
+          Properties:
+            RuleName: !Sub "${AWS::StackName}-launcher"
+            EventBusName: default
+            Pattern:
+              source:
+                - "aws.s3"
+              detail-type:
+                - "Object Created"
+              detail:
+                bucket:
+                  name:
+                    - !Ref LauncherBucket
+            InputTransformer:
+              InputPathsMap:
+                bucket: "$.detail.bucket.name"
+                key: "$.detail.object.key"
+                version: "$.detail.object.version-id"
+              InputTemplate: >-
+                {
+                  "branch": "main",
+                  "job_file_bucket": <bucket>,
+                  "job_file_key": <key>,
+                  "job_file_version": <version>
+                }
+            State: ENABLED
+
+  RouterLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${RouterLambda}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  RouterLambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Condition: MakeSubscriptionFilters
+    Properties:
+      DestinationArn: !Ref LoggingDestinationArn
+      FilterPattern: '{$.function = "router.*"}'
+      LogGroupName: !Ref RouterLambdaLogGroup
 
   ChooserLambda:
     Type: AWS::Serverless::Function
@@ -205,7 +283,7 @@ Resources:
           NOTIFICATIONS_LAMBDA_ARN: !GetAtt NotificationsLambda.Arn
           GATHER_LAMBDA_ARN: !Ref GatherLambda.Version
           INITIALIZER_LAMBDA_ARN: !Ref InitializerLambda.Version
-          JOB_LAUNCHER_REPO_URI: !GetAtt JobLauncherRepo.RepositoryUri
+          JOB_DEF_LAMBDA_ARN: !GetAtt JobDefLambda.Arn
           LAUNCHER_BUCKET_NAME: !Ref LauncherBucket
           LOG_RETENTION_DAYS: !Ref LogRetentionDays
           LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
@@ -218,7 +296,6 @@ Resources:
           SPOT_QUEUE_ARN: !GetAtt SpotQueueStack.Outputs.BatchQueueArn
           STATES_EXECUTION_ROLE_ARN: !GetAtt StatesExecutionRole.Arn
           SUBPIPES_LAMBDA_ARN: !Ref SubpipesLambda.Version
-          VERSIONATOR_LAMBDA_ARN: !GetAtt VersionatorLambda.Arn
       MemorySize: 128
       Timeout: 900
       Layers:
@@ -287,6 +364,48 @@ Resources:
       DestinationArn: !Ref LoggingDestinationArn
       FilterPattern: '{$.function = "initializer.*"}'
       LogGroupName: !Ref InitializerLambdaLogGroup
+
+  JobDefLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: register.lambda_handler
+      Runtime: python3.10
+      CodeUri: lambda/src/job_def
+      # do not enable AutoPublishAlias
+      # https://advancedweb.hu/custom-resources-in-cloudformation-templates-lessons-learned/#cant-change-the-servicetoken
+      Environment:
+        Variables:
+          ACCT_NUM: !Ref AWS::AccountId
+          BCLAW_VERSION: !Ref SourceVersion
+          REGION: !Ref AWS::Region
+      MemorySize: 128
+      Timeout: 60
+      Policies:
+        -
+          Version: "2012-10-17"
+          Statement:
+            -
+              Effect: Allow
+              Action:
+                - "batch:DescribeJobDefinitions"
+                - "batch:RegisterJobDefinition"
+                - "batch:DeregisterJobDefinition"
+                - "batch:TagResource"
+                - "batch:UntagResource"
+              Resource: "*"
+            -
+              Effect: Allow
+              Action:
+                - "iam:PassRole"
+              Resource: "*"
+      DeploymentPreference:
+        Enabled: false
+
+  JobDefLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${JobDefLambda}"
+      RetentionInDays: !Ref LogRetentionDays
 
   ScatterLambda:
     Type: AWS::Serverless::Function
@@ -508,14 +627,14 @@ Resources:
       Handler: notifications.lambda_handler
       Runtime: python3.10
       CodeUri: lambda/src/notifications
-#      AutoPublishAlias: current
-#      Environment:
-#        Variables:
-#          BCLAW_VERSION: !Ref SourceVersion
+      Environment:
+        Variables:
+          TOPIC_ARN: !Ref NotificationsTopic
+          BCLAW_VERSION: !Ref SourceVersion
       MemorySize: 128
       Timeout: 60
-#      Layers:
-#        - !Ref CommonLayer
+      DeploymentPreference:
+        Enabled: false
       Policies:
         -
           Version: "2012-10-17"
@@ -525,48 +644,30 @@ Resources:
               Action:
                 - "sns:Publish"
               Resource: "*"
-      DeploymentPreference:
-        Enabled: False
-
-  PermissionToInvokeNotificationsLambda:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt NotificationsLambda.Arn
-#      FunctionName: !Ref NotificationsLambda.Version
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceAccount: !Ref AWS::AccountId
+      Events:
+        SFNStateChange:
+          Type: EventBridgeRule
+          Properties:
+            RuleName: !Sub "${AWS::StackName}-notifications"
+            EventBusName: default
+            Pattern:
+              source:
+                - "aws.states"
+              detail-type:
+                - "Step Functions Execution Status Change"
+            State: ENABLED
+    Connectors:
+      NotifsSNS:
+        Properties:
+          Destination:
+            Id: NotificationsTopic
+          Permissions:
+            - Write
 
   NotificationsLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${NotificationsLambda}"
-      RetentionInDays: !Ref LogRetentionDays
-
-  VersionatorLambda:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: versionator.lambda_handler
-      Runtime: python3.10
-      CodeUri: lambda/src/versionator
-      MemorySize: 128
-      Timeout: 60
-      Policies:
-        -
-          Version: "2012-10-17"
-          Statement:
-            -
-              Effect: Allow
-              Action:
-                - "lambda:PublishVersion"
-              Resource: "*"
-      DeploymentPreference:
-        Enabled: False
-
-  VersionatorLambdaLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/lambda/${VersionatorLambda}"
       RetentionInDays: !Ref LogRetentionDays
 
   CompilerMacro:
@@ -752,28 +853,16 @@ Resources:
       FilterPattern: '{$.workflow_name = "*"}'
       LogGroupName: /aws/batch/job
 
-  # ecr repositories
+  # ecr repository
   RunnerRepo:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: !Sub "${AWS::StackName}/runner"
       ImageTagMutability: IMMUTABLE
 
-  JobLauncherRepo:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: !Sub "${AWS::StackName}/launcher"
-      ImageTagMutability: IMMUTABLE
-
 Outputs:
   ECSTaskRoleArn:
     Value: !GetAtt EcsTaskRole.Arn
-
-  JobLauncherImageUri:
-    Value: !Sub
-      - "${repo}:${tag}"
-      - repo: !GetAtt JobLauncherRepo.RepositoryUri
-        tag: !Ref SourceVersion
 
   LauncherBucketName:
     Value: !Ref LauncherBucket

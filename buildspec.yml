@@ -55,8 +55,6 @@ phases:
 
       - export RUNNER_IMAGE_TAG=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='RunnerImageUri'].OutputValue" --output text)
       - echo $RUNNER_IMAGE_TAG
-      - export LAUNCHER_IMAGE_TAG=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='$CORE_STACK_NAME'][].Outputs[?OutputKey=='JobLauncherImageUri'].OutputValue" --output text)
-      - echo $LAUNCHER_IMAGE_TAG
 
       - cd $CODEBUILD_SRC_DIR/bclaw_runner
       - >
@@ -69,29 +67,10 @@ phases:
         --build-arg BC_VERSION_ARG=${SOURCE_VERSION}
         -t $RUNNER_IMAGE_TAG -f Dockerfile.alpine .
 
-      - cd $CODEBUILD_SRC_DIR/lambda
-      - > 
-        docker build 
-        --build-arg BUILDKIT_INLINE_CACHE=1
-        --target test -f src/job_launcher/Dockerfile .
-      - >
-        docker build
-        --build-arg BUILDKIT_INLINE_CACHE=1
-        --build-arg BC_VERSION_ARG=${SOURCE_VERSION}
-        -t $LAUNCHER_IMAGE_TAG -f src/job_launcher/Dockerfile .
-
   post_build:
     commands:
       - >
         aws ecr get-login-password --region ${AWS_REGION} |
         docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-
       # don't crash on tag collision
       - docker push ${RUNNER_IMAGE_TAG} || true
-      - docker push ${LAUNCHER_IMAGE_TAG} || true
-
-artifacts:
-  discard-paths: yes
-  files:
-    - cloudformation/wf_launcher.yaml
-    - cloudformation/wf_deploy.yaml

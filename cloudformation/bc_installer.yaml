@@ -307,26 +307,7 @@ Resources:
                 PrimarySource: coreSrc
               InputArtifacts:
                 - Name: coreSrc
-              OutputArtifacts:
-                - Name: coreStackArtifacts
               Namespace: BuildMainStackNS
-              RunOrder: 1
-        -
-          Name: Deploy
-          Actions:
-            -
-              Name: DeployTemplates
-              ActionTypeId:
-                Category: Deploy
-                Owner: AWS
-                Provider: S3
-                Version: "1"
-              Configuration:
-                BucketName: !Ref ResourceBucket
-                ObjectKey: cloudformation/#{BuildMainStackNS.SOURCE_VERSION}
-                Extract: true
-              InputArtifacts:
-                - Name: coreStackArtifacts
               RunOrder: 1
 
   CodePipelineRole:
@@ -384,13 +365,14 @@ Resources:
                 - "ec2:*"
                 - "iam:*"
                 - "s3:*"
-                - "codedeploy:*"
                 - "logs:*"
                 - "batch:*"
                 - "ssm:*"
                 - "cloudformation:*"
                 - "lambda:*"
                 - "ecr:*"
+                - "events:*"
+                - "sns:*"
                 Resource: "*"
         - PolicyName: UseCodestarConnection
           PolicyDocument:
