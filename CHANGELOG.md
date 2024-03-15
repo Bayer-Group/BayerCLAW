@@ -1,5 +1,37 @@
 # Changelog for BayerCLAW
 
+## [v1.2.3] 2024-03-15 Feature release
+
+**NOTE:** Due to changes in the installer stack, you will  need to
+update the [BayerCLAW installer stack](doc/installation.md#updating-bayerclaw) before upgrading to v1.2.2.
+
+Also, though not strictly required, it will speed up the upgrade process to empty the `bayerclaw2-core/launcher` ECR
+repository before upgrading to v1.2.3. You can do this through the AWS Console or use the following commmand:
+
+```commandline
+aws ecr batch-delete-image \
+--repository bayerclaw2-core/launcher \
+--image-ids "$(aws ecr list-images --repository-name bayerclaw2-core/launcher --query 'imageIds[*]' --output json)"
+```
+
+## Added/Changed
+- Workflow versioning now relies on Step Functions' native versioning capability. This reduces the amount of code
+involved in deploying workflows, simplifies rollbacks of Blue/Green deployments, and provides a better user
+experience when working with versioned workflows. For these reasons, workflows are now always versioned, and the
+`versioned` Option is deprecated.
+  - Because workflows are always versioned, all deployments are performed using a Blue/Green strategy.
+  - It is now possible to submit jobs directly to previous versions of a workflow without performing a full rollback.
+- Workflow construction has been streamlined, and is up to 10x faster than previous versions.
+  - Some resources that were formerly part of the workflow CloudFormation stacks have been moved to the BayerCLAW2
+  core stack. Most notably, there is now only a single SNS topic that handles notifications from all workflows, rather
+  than individual per-workflow topics.
+  - Each workflow's resources are no contained in one CloudFormation stack, rather than three.
+  - Little-used workflow resources (event archive, dead letter queue) have been removed.
+  - Redundant Batch job definition registrations have been eliminated.
+
+## Fixed
+- A race condition that caused a unit test to fail intermittently has (probably) been fixed.
+
 ## [v1.2.2] 2023-12-05 Feature release
 
 **NOTE:** Due to Python version upgrades in the CodeBuild project and elsewhere, you will need to
