@@ -13,7 +13,9 @@ from ...src.job_def.register import edit_spec, lambda_handler
 def job_def_spec() -> dict:
     ret = {
         "type": "container",
-        "parameters": {},
+        "parameters": {
+            "image": "mmm",
+        },
         "containerProperties": {
             "image": "docker.io/library/ubuntu",
             "command": ["ls", "-l"],
@@ -49,6 +51,7 @@ def event_factory(job_def_spec):
             "ResourceProperties": {
                 "workflowName": "test-wf",
                 "stepName": "test-step",
+                "image": "docker.io/library/ubuntu",
                 "spec": json.dumps(job_def_spec, sort_keys=True),
             }
         }
@@ -79,7 +82,8 @@ def test_edit_spec(job_def_spec, monkeypatch):
                                                      {"name": "BC_STEP_NAME", "value": "test-step"},
                                                      {"name": "AWS_DEFAULT_REGION", "value": "us-west-1"},
                                                      {"name": "AWS_ACCOUNT_ID", "value": "123456789012"},]
-    result = edit_spec(job_def_spec, "test-wf", "test-step")
+    expect["parameters"]["image"] = "test-image"
+    result = edit_spec(job_def_spec, "test-wf", "test-step", "test-image")
     assert result == expect
 
 

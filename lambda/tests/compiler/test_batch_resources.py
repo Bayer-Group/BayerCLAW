@@ -211,9 +211,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         "type": "container",
         "parameters": {
             "repo": "rrr",
-            "image": {
-                "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp",
-            },
+            "image": "mmm",
             "inputs": "iii",
             "references": "fff",
             "command": json.dumps(step.spec["commands"]),
@@ -280,12 +278,15 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
                 "Ref": "AWS::StackName",
             },
             "stepName": step_name,
+            "image":  {
+                "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp",
+            },
             "spec": json.dumps(expected_job_def_spec, sort_keys=True),
         },
     }
 
     def helper():
-        rc_name1 =  yield from job_definition_rc(step, "arn:task:role", "sh")
+        rc_name1 = yield from job_definition_rc(step, "arn:task:role", "sh")
         assert rc_name1 == expected_rc_name
 
     for resource in helper():

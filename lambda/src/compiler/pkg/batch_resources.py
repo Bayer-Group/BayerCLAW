@@ -162,7 +162,7 @@ def job_definition_rc(step: Step,
         "type": "container",
         "parameters": {
             "repo": "rrr",
-            "image": expand_image_uri(step.spec["image"]),
+            "image": "mmm",
             "inputs": "iii",
             "references": "fff",
             "command": json.dumps(step.spec["commands"]),
@@ -200,10 +200,9 @@ def job_definition_rc(step: Step,
         "UpdateReplacePolicy": "Retain",
         "Properties": {
             "ServiceToken": os.environ["JOB_DEF_LAMBDA_ARN"],
-            "workflowName": {
-                "Ref": "AWS::StackName",
-            },
+            "workflowName": {"Ref": "AWS::StackName"},
             "stepName": step.name,
+            "image": expand_image_uri(step.spec["image"]),
             "spec": json.dumps(job_def_spec, sort_keys=True),
         },
     }
