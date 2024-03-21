@@ -1,5 +1,9 @@
 # Changelog for BayerCLAW
 
+## [v1.2.3r1] 2024-03-21 Bug fix
+### Fixed
+- Fixed a bug in ECR image URI resolution
+
 ## [v1.2.3] 2024-03-15 Feature release
 
 **NOTE:** Due to changes in the installer stack, you will  need to
@@ -14,7 +18,7 @@ aws ecr batch-delete-image \
 --image-ids "$(aws ecr list-images --repository-name bayerclaw2-core/launcher --query 'imageIds[*]' --output json)"
 ```
 
-## Added/Changed
+### Added/Changed
 - Workflow versioning now relies on Step Functions' native versioning capability. This reduces the amount of code
 involved in deploying workflows, simplifies rollbacks of Blue/Green deployments, and provides a better user
 experience when working with versioned workflows. For these reasons, workflows are now always versioned, and the
@@ -29,7 +33,7 @@ experience when working with versioned workflows. For these reasons, workflows a
   - Little-used workflow resources (event archive, dead letter queue) have been removed.
   - Redundant Batch job definition registrations have been eliminated.
 
-## Fixed
+### Fixed
 - A race condition that caused a unit test to fail intermittently has (probably) been fixed.
 
 ## [v1.2.2] 2023-12-05 Feature release
