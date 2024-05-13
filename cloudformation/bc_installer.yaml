@@ -239,9 +239,6 @@ Resources:
           - Name: MIN_VCPUS
             Type: PLAINTEXT
             Value: !Ref MinvCpus
-#          - Name: RESOURCE_BUCKET_NAME
-#            Type: PLAINTEXT
-#            Value: !Ref ResourceBucket
           - Name: ROOT_VOLUME_SIZE
             Type: PLAINTEXT
             Value: !Ref RootVolumeSize
@@ -287,7 +284,6 @@ Resources:
                 ConnectionArn: !Ref CodeStarConnectionArn
                 FullRepositoryId: !Ref CoreRepo
                 BranchName: !Ref CoreBranch
-#                OutputArtifactFormat: CODE_ZIP
                 OutputArtifactFormat: CODEBUILD_CLONE_REF
                 DetectChanges: false
               OutputArtifacts:
