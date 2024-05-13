@@ -153,6 +153,7 @@ Rules:
 Resources:
   ResourceBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
     Properties:
       BucketName: !Sub "${InstallationName}-resources-${AWS::AccountId}"
       BucketEncryption:
@@ -238,9 +239,9 @@ Resources:
           - Name: MIN_VCPUS
             Type: PLAINTEXT
             Value: !Ref MinvCpus
-          - Name: RESOURCE_BUCKET_NAME
-            Type: PLAINTEXT
-            Value: !Ref ResourceBucket
+#          - Name: RESOURCE_BUCKET_NAME
+#            Type: PLAINTEXT
+#            Value: !Ref ResourceBucket
           - Name: ROOT_VOLUME_SIZE
             Type: PLAINTEXT
             Value: !Ref RootVolumeSize

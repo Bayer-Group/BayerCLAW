@@ -40,6 +40,7 @@ def _termination_checker_impl(event: threading.Event, interval: int) -> None:
             _do_termination_check()
 
         except Exception as e:
+            # todo: reduce to a warning
             logger.error(f"termination warning check failed: {str(e)}")
 
         finally:
