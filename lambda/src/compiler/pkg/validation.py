@@ -64,8 +64,10 @@ batch_step_schema = Schema(All(
         # inputs = {} can be used to explicitly specify a step has no inputs at all, with no copy from previous output.
         Optional("inputs", default=None): Any(None, {str: str}),
         Optional("references", default={}): {str: Match(r"^s3://", msg="reference values must be s3 paths")},
-        Required("commands", msg="commands list is required"):
+        Required("commands", msg="commands list is required"): Or(
+            str,
             All(Length(min=1, msg="at least one command is required"), [str]),
+        ),
         Optional("outputs", default={}): {str: str},
         Exclusive("skip_if_output_exists", "skip_behavior", msg=skip_msg): bool,
         Exclusive("skip_on_rerun", "skip_behavior", msg=skip_msg): bool,
