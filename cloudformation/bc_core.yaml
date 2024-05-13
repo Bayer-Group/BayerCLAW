@@ -41,8 +41,8 @@ Parameters:
     Type: Number
     Default: 0
 
-  ResourceBucketName:
-    Type: String
+#  ResourceBucketName:
+#    Type: String
 
   RootVolumeSize:
     Type: Number
@@ -98,6 +98,7 @@ Resources:
           CidrIp: 0.0.0.0/0
       VpcId: !Ref VpcId
 
+  # todo: only allow inbound (custom)TCP on port 2049
   SecurityGroupIngress:
     Condition: MakeSecurityGroup
     Type: AWS::EC2::SecurityGroupIngress
@@ -124,6 +125,11 @@ Resources:
           -
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 1
+            Status: Enabled
+          -
+            Prefix: "__tmp__"
+            ExpirationInDays: 2
+            NoncurrentVersionExpirationInDays: 1
             Status: Enabled
       NotificationConfiguration:
         EventBridgeConfiguration:
@@ -289,7 +295,7 @@ Resources:
           LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
           ON_DEMAND_QUEUE_ARN: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
           QC_CHECKER_LAMBDA_ARN: !Ref QCCheckerLambda.Version
-          RESOURCE_BUCKET_NAME: !Ref ResourceBucketName
+#          RESOURCE_BUCKET_NAME: !Ref ResourceBucketName
           RUNNER_REPO_URI: !GetAtt RunnerRepo.RepositoryUri
           SCATTER_INIT_LAMBDA_ARN: !Ref ScatterInitLambda.Version
           SCATTER_LAMBDA_ARN: !Ref ScatterLambda.Version
@@ -859,6 +865,7 @@ Resources:
     Properties:
       RepositoryName: !Sub "${AWS::StackName}/runner"
       ImageTagMutability: IMMUTABLE
+      EmptyOnDelete: true
 
 Outputs:
   ECSTaskRoleArn:

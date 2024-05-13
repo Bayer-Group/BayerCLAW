@@ -29,8 +29,9 @@ phases:
         sam deploy
         --template-file build/template.yaml
         --stack-name ${CORE_STACK_NAME}
-        --s3-bucket ${RESOURCE_BUCKET_NAME}
-        --s3-prefix lambda
+        --resolve-s3
+#        --s3-bucket ${RESOURCE_BUCKET_NAME}
+#        --s3-prefix lambda
         --capabilities CAPABILITY_NAMED_IAM
         --no-fail-on-empty-changeset
         --tags "bclaw:version=${SOURCE_VERSION}"
@@ -44,7 +45,7 @@ phases:
         LoggingDestinationArn=${LOGGING_DESTINATION}
         MaxvCpus=${MAX_VCPUS}
         MinvCpus=${MIN_VCPUS}
-        ResourceBucketName=${RESOURCE_BUCKET_NAME}
+#        ResourceBucketName=${RESOURCE_BUCKET_NAME}
         RootVolumeSize=${ROOT_VOLUME_SIZE}
         ScratchVolumeSize=${SCRATCH_VOLUME_SIZE}
         SecurityGroups=${SECURITY_GROUPS}

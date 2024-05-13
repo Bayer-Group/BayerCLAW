@@ -15,6 +15,8 @@ def tag_this_instance():
         response.raise_for_status()
         instance_id = response.text
 
+        # todo: log instance id
+
         tag = ".".join([os.environ.get("BC_WORKFLOW_NAME", "undefined"),
                         os.environ.get("BC_STEP_NAME", "undefined")])
 
@@ -23,4 +25,6 @@ def tag_this_instance():
         instance.create_tags(Tags=[{"Key": "Name", "Value": tag}])
 
     except Exception:
+        # todo: reduce to a warning
+        # todo: instance, not image
         logger.exception("unable to tag image, continuing...")
