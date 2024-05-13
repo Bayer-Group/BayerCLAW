@@ -41,9 +41,6 @@ Parameters:
     Type: Number
     Default: 0
 
-#  ResourceBucketName:
-#    Type: String
-
   RootVolumeSize:
     Type: Number
     Default: 100
@@ -98,7 +95,6 @@ Resources:
           CidrIp: 0.0.0.0/0
       VpcId: !Ref VpcId
 
-  # todo: only allow inbound (custom)TCP on port 2049
   SecurityGroupIngress:
     Condition: MakeSecurityGroup
     Type: AWS::EC2::SecurityGroupIngress
@@ -299,7 +295,6 @@ Resources:
           LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
           ON_DEMAND_QUEUE_ARN: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
           QC_CHECKER_LAMBDA_ARN: !Ref QCCheckerLambda.Version
-#          RESOURCE_BUCKET_NAME: !Ref ResourceBucketName
           RUNNER_REPO_URI: !GetAtt RunnerRepo.RepositoryUri
           SCATTER_INIT_LAMBDA_ARN: !Ref ScatterInitLambda.Version
           SCATTER_LAMBDA_ARN: !Ref ScatterLambda.Version

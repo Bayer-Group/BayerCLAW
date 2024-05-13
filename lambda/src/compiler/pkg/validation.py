@@ -5,6 +5,8 @@ from voluptuous import *
 
 from .util import Step
 
+DEFAULT_IMAGE = "public.ecr.aws/ubuntu/ubuntu:latest"
+
 
 class CompilerError(Exception):
     def __init__(self, invalid_exception: Invalid, where=None):
@@ -55,7 +57,8 @@ next_or_end = {
 
 batch_step_schema = Schema(All(
     {
-        Required("image"): str,
+        # Required("image"): str,
+        Optional("image", default=DEFAULT_IMAGE): str,
         Optional("task_role", default=None): Maybe(str),
         # None is used as a signal that inputs was not specified at all, and should be copied from previous outputs.
         # inputs = {} can be used to explicitly specify a step has no inputs at all, with no copy from previous output.

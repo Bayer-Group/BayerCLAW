@@ -74,7 +74,8 @@ def process_step(step: Step,
                                                             options,
                                                             depth)
 
-    elif "image" in step.spec:
+    # elif "image" in step.spec:
+    elif "commands" in step.spec:
         normalized_step = validate_batch_step(step)
         scattered = depth > 0
         states_to_add = yield from b.handle_batch(normalized_step,
