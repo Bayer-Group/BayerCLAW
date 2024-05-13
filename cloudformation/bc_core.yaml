@@ -204,6 +204,10 @@ Resources:
                 bucket:
                   name:
                     - !Ref LauncherBucket
+                object:
+                  key:
+                    - anything-but:
+                        prefix: "__tmp__"
             InputTransformer:
               InputPathsMap:
                 bucket: "$.detail.bucket.name"

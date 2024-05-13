@@ -151,7 +151,7 @@ def write_state_machine_to_s3(sfn_def: dict) -> dict:
     bucket = os.environ["LAUNCHER_BUCKET_NAME"]
 
     base_filename = uuid4().hex
-    key = f"__tmp__/stepfunctions/{base_filename}.json"
+    key = f"__tmp__/sfn/{base_filename}.json"
 
     s3 = boto3.client("s3")
     response = s3.put_object(
