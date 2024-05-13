@@ -158,6 +158,12 @@ def job_definition_rc(step: Step,
                       shell_opt: str) -> Generator[Resource, None, str]:
     logical_name = make_logical_name(f"{step.name}.job.def")
 
+    # todo: test this
+    if isinstance(step.spec["commands"], str):
+        command_list = [step.spec["commands"]]
+    else:
+        command_list = step.spec["commands"]
+
     job_def_spec = {
         "type": "container",
         "parameters": {
@@ -165,7 +171,7 @@ def job_definition_rc(step: Step,
             "image": "mmm",
             "inputs": "iii",
             "references": "fff",
-            "command": json.dumps(step.spec["commands"]),
+            "command": json.dumps(command_list),
             "outputs": "ooo",
             "shell": shell_opt,
             "skip": "sss",

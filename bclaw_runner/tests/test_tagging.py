@@ -35,4 +35,4 @@ def test_tag_this_instance_never_crashes(monkeypatch, requests_mock, problem, ca
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     requests_mock.get(INSTANCE_ID_URL, **problem)
     tag_this_instance()
-    assert "unable to tag image, continuing" in caplog.text
+    assert "unable to tag instance, continuing" in caplog.text
