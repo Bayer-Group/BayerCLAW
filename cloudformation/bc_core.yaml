@@ -314,7 +314,7 @@ Resources:
               Effect: Allow
               Action:
                 - "s3:PutObject"
-              Resource: !Sub "arn:${AWS::Partition}:s3:::${ResourceBucketName}/*"
+              Resource: !Sub "arn:${AWS::Partition}:s3:::${LauncherBucket}/*"
             -
               Effect: Allow
               Action:
