@@ -839,11 +839,28 @@ Resources:
       Parameters:
         AmiId: !Ref AmiId
         GpuEnabled: "True"
-        InstanceTypes: ""
+        InstanceTypes: "g3,g4dn,g5,p3,p3dn,p4d,p5"
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
         QueueName: !Sub ${AWS::StackName}-on-demand-gpu-queue
         RequestType: "On-demand"
+        RootVolumeSize: !Ref RootVolumeSize
+        ScratchVolumeSize: !Ref ScratchVolumeSize
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
+        Subnets: !Join [",", !Ref Subnets]
+        Uniqifier: !Ref Uniqifier
+
+  SpotQueueStack:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: bc_batch.yaml
+      Parameters:
+        AmiId: !Ref AmiId
+        MaxvCpus: !Ref MaxvCpus
+        MinvCpus: !Ref MinvCpus
+        QueueName: !Sub ${AWS::StackName}-spot-queue
+        RequestType: "Spot"
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
         SecurityGroupIds:
@@ -858,6 +875,7 @@ Resources:
       Parameters:
         AmiId: !Ref AmiId
         BackupComputeEnvironmentArn: !GetAtt OnDemandGpuQueueStack.Outputs.ComputeEnvironmentArn
+        InstanceTypes: "g3,g4dn,g5,p3,p3dn,p4d,p5"
         GpuEnabled: "True"
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
