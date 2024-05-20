@@ -815,23 +815,6 @@ Resources:
                   - "ec2:DeleteTags"
                 Resource: "*"
 
-  SpotQueueStack:
-    Type: AWS::Serverless::Application
-    Properties:
-      Location: bc_batch.yaml
-      Parameters:
-        AmiId: !Ref AmiId
-        MaxvCpus: !Ref MaxvCpus
-        MinvCpus: !Ref MinvCpus
-        QueueName: !Sub ${AWS::StackName}-spot-queue
-        RequestType: "Spot"
-        RootVolumeSize: !Ref RootVolumeSize
-        ScratchVolumeSize: !Ref ScratchVolumeSize
-        SecurityGroupIds:
-          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
-        Subnets: !Join [",", !Ref Subnets]
-        Uniqifier: !Ref Uniqifier
-
   OnDemandQueueStack:
     Type: AWS::Serverless::Application
     Properties:
@@ -842,6 +825,44 @@ Resources:
         MinvCpus: !Ref MinvCpus
         QueueName: !Sub ${AWS::StackName}-on-demand-queue
         RequestType: "On-demand"
+        RootVolumeSize: !Ref RootVolumeSize
+        ScratchVolumeSize: !Ref ScratchVolumeSize
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
+        Subnets: !Join [",", !Ref Subnets]
+        Uniqifier: !Ref Uniqifier
+
+  OnDemandGpuQueueStack:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: bc_batch.yaml
+      Parameters:
+        AmiId: !Ref AmiId
+        GpuEnabled: "True"
+        InstanceTypes: ""
+        MaxvCpus: !Ref MaxvCpus
+        MinvCpus: !Ref MinvCpus
+        QueueName: !Sub ${AWS::StackName}-on-demand-gpu-queue
+        RequestType: "On-demand"
+        RootVolumeSize: !Ref RootVolumeSize
+        ScratchVolumeSize: !Ref ScratchVolumeSize
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
+        Subnets: !Join [",", !Ref Subnets]
+        Uniqifier: !Ref Uniqifier
+
+  SpotGpuQueueStack:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: bc_batch.yaml
+      Parameters:
+        AmiId: !Ref AmiId
+        BackupComputeEnvironmentArn: !GetAtt OnDemandGpuQueueStack.Outputs.ComputeEnvironmentArn
+        GpuEnabled: "True"
+        MaxvCpus: !Ref MaxvCpus
+        MinvCpus: !Ref MinvCpus
+        QueueName: !Sub ${AWS::StackName}-spot-gpu-queue
+        RequestType: "Spot"
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
         SecurityGroupIds:
