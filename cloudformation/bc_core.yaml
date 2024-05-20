@@ -839,7 +839,7 @@ Resources:
       Parameters:
         AmiId: !Ref AmiId
         GpuEnabled: "True"
-        InstanceTypes: "g3,g4dn,g5,p3,p3dn,p4d,p5"
+        InstanceTypes: "g3,g4dn,g5,p3,p4d,p5"
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
         QueueName: !Sub ${AWS::StackName}-on-demand-gpu-queue
@@ -875,7 +875,7 @@ Resources:
       Parameters:
         AmiId: !Ref AmiId
         BackupComputeEnvironmentArn: !GetAtt OnDemandGpuQueueStack.Outputs.ComputeEnvironmentArn
-        InstanceTypes: "g3,g4dn,g5,p3,p3dn,p4d,p5"
+        InstanceTypes: "g3,g4dn,g5,p3,p4d,p5"
         GpuEnabled: "True"
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
