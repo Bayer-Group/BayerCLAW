@@ -293,11 +293,13 @@ Resources:
           LAUNCHER_BUCKET_NAME: !Ref LauncherBucket
           LOG_RETENTION_DAYS: !Ref LogRetentionDays
           LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
+          ON_DEMAND_GPU_QUEUE_ARN: !GetAtt OnDemandGpuQueueStack.Outputs.BatchQueueArn
           ON_DEMAND_QUEUE_ARN: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
           QC_CHECKER_LAMBDA_ARN: !Ref QCCheckerLambda.Version
           RUNNER_REPO_URI: !GetAtt RunnerRepo.RepositoryUri
           SCATTER_INIT_LAMBDA_ARN: !Ref ScatterInitLambda.Version
           SCATTER_LAMBDA_ARN: !Ref ScatterLambda.Version
+          SPOT_GPU_QUEUE_ARN: !GetAtt SpotGpuQueueStack.Outputs.BatchQueueArn
           SPOT_QUEUE_ARN: !GetAtt SpotQueueStack.Outputs.BatchQueueArn
           STATES_EXECUTION_ROLE_ARN: !GetAtt StatesExecutionRole.Arn
           SUBPIPES_LAMBDA_ARN: !Ref SubpipesLambda.Version

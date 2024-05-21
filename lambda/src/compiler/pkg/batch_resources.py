@@ -26,12 +26,13 @@ def expand_image_uri(uri: str) -> Union[str, dict]:
 
 
 def get_job_queue(compute_spec: dict) -> str:
+    gpu_requested = str(compute_spec["gpu"]) != "0"
     if (queue_name := compute_spec.get("queue_name")) is not None:
         ret = f"arn:aws:batch:${{AWSRegion}}:${{AWSAccountId}}:job-queue/{queue_name}"
     elif compute_spec["spot"]:
-        ret = os.environ["SPOT_QUEUE_ARN"]
+        ret = os.environ["SPOT_GPU_QUEUE_ARN"] if gpu_requested else os.environ["SPOT_QUEUE_ARN"]
     else:
-        ret = os.environ["ON_DEMAND_QUEUE_ARN"]
+        ret = os.environ["ON_DEMAND_GPU_QUEUE_ARN"] if gpu_requested else os.environ["ON_DEMAND_QUEUE_ARN"]
     return ret
 
 
@@ -160,6 +161,7 @@ def job_definition_rc(step: Step,
 
     # todo: test this
     if isinstance(step.spec["commands"], str):
+        # todo: split on newlines?
         command_list = [step.spec["commands"]]
     else:
         command_list = step.spec["commands"]
