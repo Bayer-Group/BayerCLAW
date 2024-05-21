@@ -37,9 +37,15 @@ def test_get_memory_in_mibs(req, mibs):
 
 
 @pytest.mark.parametrize("spec, expected", [
-    ({"spot": True}, "spot_queue_arn"),
-    ({"spot": False}, "on_demand_queue_arn"),
-    ({"spot": True, "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue")
+    ({"spot": True, "gpu": 0}, "spot_queue_arn"),
+    ({"spot": True, "gpu": 99}, "spot_gpu_queue_arn"),
+    ({"spot": True, "gpu": "all"}, "spot_gpu_queue_arn"),
+    ({"spot": False, "gpu": 0}, "on_demand_queue_arn"),
+    ({"spot": False, "gpu": 88}, "on_demand_gpu_queue_arn"),
+    ({"spot": False, "gpu": "all"}, "on_demand_gpu_queue_arn"),
+    ({"spot": True,  "gpu": 0, "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue"),
+    ({"spot": True,  "gpu": 77, "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue"),
+    ({"spot": True,  "gpu": "all", "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue"),
 ])
 def test_get_job_queue(spec, expected, compiler_env):
     result = get_job_queue(spec)
@@ -340,7 +346,7 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
         "Parameters": {
             "JobName.$": job_name,
             "JobDefinition": "${TestJobDef}",
-            "JobQueue": "spot_queue_arn",
+            "JobQueue": "spot_gpu_queue_arn",
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
                 "repo.$": "$.repo.uri",
