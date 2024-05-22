@@ -1,5 +1,11 @@
 # Changelog for BayerCLAW
 
+## [v1.2.3.2] 2024-05-22 Bug fix
+### Fixed
+- Existing batch job definitions (pre v1.2.3) could not be updated because their resource type changed.
+Changed the logical name of these resources so CloudFormation could handle them.
+- Pinned requests version for compatibility with the current version of docker-py.
+
 ## [v1.2.3r1] 2024-03-21 Bug fix
 ### Fixed
 - Fixed a bug in ECR image URI resolution
