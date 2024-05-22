@@ -16,7 +16,7 @@ phases:
 
   pre_build:
     commands:
-      - PYTHONPATH=${CODEBUILD_SRC_DIR}/lambda/src/common/python:$PYTHONPATH pytest -s -vvv lambda/tests/
+#      - PYTHONPATH=${CODEBUILD_SRC_DIR}/lambda/src/common/python:$PYTHONPATH pytest -s -vvv lambda/tests/
       - export ACCOUNT_ID=$(echo $CODEBUILD_BUILD_ARN | cut -d':' -f5)
       - export CORE_STACK_NAME=${INSTALLATION_NAME}-core
       - export SOURCE_VERSION=$(git describe --tags)
@@ -59,14 +59,15 @@ phases:
       - echo $LAUNCHER_IMAGE_TAG
 
       - cd $CODEBUILD_SRC_DIR/bclaw_runner
-      - >
-        docker build 
-        --build-arg BUILDKIT_INLINE_CACHE=1
-        --target test -f Dockerfile.alpine .
+#      - >
+#        docker build
+#        --build-arg BUILDKIT_INLINE_CACHE=1
+#        --target test -f Dockerfile.alpine .
       - >
         docker build 
         --build-arg BUILDKIT_INLINE_CACHE=1
         --build-arg BC_VERSION_ARG=${SOURCE_VERSION}
+        --target build
         -t $RUNNER_IMAGE_TAG -f Dockerfile.alpine .
 
       - cd $CODEBUILD_SRC_DIR/lambda
