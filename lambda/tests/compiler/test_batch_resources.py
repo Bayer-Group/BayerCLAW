@@ -204,7 +204,7 @@ def sample_batch_step():
 
 def test_job_definition_rc(sample_batch_step, compiler_env):
     step_name = "skim3-fastp"
-    expected_rc_name = "Skim3FastpJobDef"
+    expected_rc_name = "Skim3FastpJobDefx"
     step = Step(step_name, sample_batch_step, "next_step")
 
     expected_job_def_spec = {
@@ -408,7 +408,7 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
         assert isinstance(states[0], State)
         assert states[0].name == "step_name"
         assert states[0].spec["Resource"] == "arn:aws:states:::batch:submitJob.sync"
-        assert states[0].spec["Parameters"]["JobDefinition"] == "${StepNameJobDef}"
+        assert states[0].spec["Parameters"]["JobDefinition"] == "${StepNameJobDefx}"
         assert states[0].spec["Next"] == "next_step_name"
 
         references = json.loads(states[0].spec["Parameters"]["Parameters"]["references"])
@@ -449,7 +449,7 @@ def test_handle_batch_with_qc(sample_batch_step, compiler_env):
 
         assert states[0].name == "step_name"
         assert states[0].spec["Resource"] == "arn:aws:states:::batch:submitJob.sync"
-        assert states[0].spec["Parameters"]["JobDefinition"] == "${StepNameJobDef}"
+        assert states[0].spec["Parameters"]["JobDefinition"] == "${StepNameJobDefx}"
         assert states[0].spec["Next"] == "step_name.qc_checker"
 
         assert states[1].name == "step_name.qc_checker"
@@ -458,10 +458,10 @@ def test_handle_batch_with_qc(sample_batch_step, compiler_env):
     resource_gen = helper()
     resource_dict = dict(resource_gen)
 
-    expected_keys = ["StepNameJobDef"]
+    expected_keys = ["StepNameJobDefx"]
     assert list(resource_dict.keys()) == expected_keys
 
-    assert resource_dict["StepNameJobDef"]["Type"] == "Custom::BatchJobDefinition"
+    assert resource_dict["StepNameJobDefx"]["Type"] == "Custom::BatchJobDefinition"
 
 
 def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):
@@ -488,5 +488,5 @@ def test_handle_batch_shell_opt(sample_batch_step, step_shell, expect, compiler_
 
     rc = dict(helper())
 
-    spec = json.loads(rc["StepNameJobDef"]["Properties"]["spec"])
+    spec = json.loads(rc["StepNameJobDefx"]["Properties"]["spec"])
     assert spec["parameters"]["shell"] == expect
