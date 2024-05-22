@@ -156,7 +156,7 @@ def get_timeout(step: Step) -> dict:
 def job_definition_rc(step: Step,
                       task_role: str,
                       shell_opt: str) -> Generator[Resource, None, str]:
-    logical_name = make_logical_name(f"{step.name}.job.def")
+    logical_name = make_logical_name(f"{step.name}.job.defx")
 
     job_def_spec = {
         "type": "container",

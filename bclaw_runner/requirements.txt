@@ -5,4 +5,4 @@ docopt
 jmespath
 more_itertools
 pytest
-requests
+requests<2.32.0
