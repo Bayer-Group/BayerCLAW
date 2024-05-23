@@ -41,6 +41,8 @@ jobs:
       - name: installCore
         id: install-core
         run: |
+          ls -lR .git/refs
+          
           export SOURCE_VERSION=$(git describe --tags)
           export UNIQIFIER=$(date | md5sum | head -c 16)
           
