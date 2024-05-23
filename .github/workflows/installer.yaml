@@ -1,0 +1,67 @@
+on:
+  push:
+    branches:
+      - installer
+
+jobs:
+  doIt:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setupPython
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: setupSam
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: getCreds
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "arn:aws:iam::934778205429:role/jaxGithubActionsRole"
+          aws-region: us-east-1
+
+      # todo: run tests
+
+      - name: installCore
+        id: install-core
+        run: |
+          sam build -b ./build -s . -t cloudformation/bc_core.yaml
+          sam deploy
+          --template-file build/template.yaml \
+          --stack-name bayerclaw2-core \
+          --resolve-s3 \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --no-fail-on-empty-changeset \
+          --parameter-overrides \
+          RootVolumeSize=50 \
+          ScratchVolumeSize=100 \
+          SourceVersion=$(git describe --tags) \
+          Subnets="subnet-3ffe7854,subnet-b3b296ff,subnet-e1c63a9c" \
+          Uniqifier=$(date | md5sum | head -c 16) \
+          VpcId="vpc-00cb556b"
+
+          echo "runner_image_tag=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='bayerclaw2-core'][].Outputs[?OutputKey=='RunnerImageUri'].OutputValue" --output text)" >> $GITHUB_OUTPUT
+
+      - name: loginToEcr
+        id: login-to-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: buildRunner
+        working-directory: bclaw_runner
+        env:
+          DOCKER_BUILDKIT: 1
+          RUNNER_IMAGE_TAG: ${{ steps.install-core.outputs.runner_image_tag }}
+        run: |
+          docker build --target test -f Dockerfile.alpine "."
+          docker build --target build -t ${RUNNER_IMAGE_TAG} -f Dockerfile.alpine "."
+          docker push ${RUNNER_IMAGE_TAG} || true
