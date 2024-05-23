@@ -40,7 +40,7 @@ jobs:
         id: install-core
         run: |
           sam build -b ./build -s . -t cloudformation/bc_core.yaml
-          sam deploy
+          sam deploy \
           --template-file build/template.yaml \
           --stack-name bayerclaw2-core \
           --resolve-s3 \
