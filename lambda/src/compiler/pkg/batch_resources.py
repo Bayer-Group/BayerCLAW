@@ -166,6 +166,13 @@ def job_definition_rc(step: Step,
     else:
         command_list = step.spec["commands"]
 
+    # todo: test this
+    if isinstance(step.spec["commands"], str):
+        # todo: split on newlines?
+        command_list = [step.spec["commands"]]
+    else:
+        command_list = step.spec["commands"]
+
     job_def_spec = {
         "type": "container",
         "parameters": {
