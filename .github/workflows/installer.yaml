@@ -14,9 +14,9 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           fetch-tags: true
-          ref: ${{ github.head_ref }}
+#          ref: ${{ github.head_ref }}
 
       - name: setupPython
         uses: actions/setup-python@v5
