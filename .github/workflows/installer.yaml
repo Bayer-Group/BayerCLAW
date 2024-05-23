@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - installer
+  workflow_dispatch:
 
 jobs:
   doIt:
