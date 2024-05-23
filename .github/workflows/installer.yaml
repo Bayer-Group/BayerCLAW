@@ -33,7 +33,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: "arn:aws:iam::934778205429:role/jaxGithubActionsRole"
-          aws-region: us-east-1
+          aws-region: us-east-2
 
       - name: runTests
         run: |
