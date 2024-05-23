@@ -39,6 +39,12 @@ jobs:
       - name: installCore
         id: install-core
         run: |
+          export SOURCE_VERSION=$(git describe --tags)
+          export UNIQIFIER=$(date | md5sum | head -c 16)
+          
+          echo $SOURCE_VERSION
+          echo $UNIQIFIER
+          
           sam build -b ./build -s . -t cloudformation/bc_core.yaml
           sam deploy \
           --template-file build/template.yaml \
@@ -49,9 +55,9 @@ jobs:
           --parameter-overrides \
           RootVolumeSize=50 \
           ScratchVolumeSize=100 \
-          SourceVersion=$(git describe --tags) \
+          SourceVersion=${SOURCE_VERSION} \
           Subnets="subnet-3ffe7854,subnet-b3b296ff,subnet-e1c63a9c" \
-          Uniqifier=$(date | md5sum | head -c 16) \
+          Uniqifier=${UNIQIFIER} \
           VpcId="vpc-00cb556b"
 
           echo "runner_image_tag=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='bayerclaw2-core'][].Outputs[?OutputKey=='RunnerImageUri'].OutputValue" --output text)" >> $GITHUB_OUTPUT
