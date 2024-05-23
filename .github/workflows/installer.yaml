@@ -30,7 +30,10 @@ jobs:
           role-to-assume: "arn:aws:iam::934778205429:role/jaxGithubActionsRole"
           aws-region: us-east-1
 
-      # todo: run tests
+      - name: runTests
+        run: |
+          pip install -r lambda/tests/requirements.txt
+          PYTHONPATH=${GITHUB_WORKSPACE}/lambda/src/common/python:$PYTHONPATH pytest -s -vvv lambda/tests/
 
       - name: installCore
         id: install-core
