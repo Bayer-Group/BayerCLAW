@@ -16,7 +16,6 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-#          ref: ${{ github.head_ref }}
 
       - name: setupPython
         uses: actions/setup-python@v5
@@ -42,6 +41,9 @@ jobs:
 
       - name: installCore
         id: install-core
+        env:
+          SUBNETS: "subnet-3ffe7854,subnet-b3b296ff,subnet-e1c63a9c"
+          VPC_ID: "vpc-00cb556b"
         run: |
           ls -la .git/refs/tags
 
@@ -62,9 +64,9 @@ jobs:
           RootVolumeSize=50 \
           ScratchVolumeSize=100 \
           SourceVersion=${SOURCE_VERSION} \
-          Subnets="subnet-3ffe7854,subnet-b3b296ff,subnet-e1c63a9c" \
+          Subnets=${SUBNETS} \
           Uniqifier=${UNIQIFIER} \
-          VpcId="vpc-00cb556b"
+          VpcId=${VPC_ID}
 
           echo "runner_image_tag=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='bayerclaw2-core'][].Outputs[?OutputKey=='RunnerImageUri'].OutputValue" --output text)" >> $GITHUB_OUTPUT
 
