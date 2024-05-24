@@ -250,6 +250,8 @@ Resources:
     Type: AWS::Batch::SchedulingPolicy
     Properties:
       Name: !Sub "${QueueName}-scheduling-policy"
+      FairsharePolicy:
+        ShareDecaySeconds: 1000
 
   BatchQueue:
     Type: AWS::Batch::JobQueue
