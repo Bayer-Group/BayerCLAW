@@ -45,13 +45,8 @@ jobs:
           SUBNETS: "subnet-3ffe7854,subnet-b3b296ff,subnet-e1c63a9c"
           VPC_ID: "vpc-00cb556b"
         run: |
-          ls -la .git/refs/tags
-
           export SOURCE_VERSION=$(git describe --tags)
           export UNIQIFIER=$(date | md5sum | head -c 16)
-          
-          echo $SOURCE_VERSION
-          echo $UNIQIFIER
           
           sam build -b ./build -s . -t cloudformation/bc_core.yaml
           sam deploy \
@@ -60,9 +55,19 @@ jobs:
           --resolve-s3 \
           --capabilities "CAPABILITY_NAMED_IAM" "CAPABILITY_AUTO_EXPAND" \
           --no-fail-on-empty-changeset \
+          --tags "bclaw:version=${SOURCE_VERSION}" \
           --parameter-overrides \
+          AmiId=auto \
+          CompilerMacroName=BC2_Compiler \
+          ExistingBatchSubscriptionFilter=none \
+          InstallationName=bayerclaw2 \
+          LauncherBucketName=default \
+          LogRetentionDays=30 \
+          MaxvCpus=256 \
+          MinvCpus=0 \
           RootVolumeSize=50 \
           ScratchVolumeSize=100 \
+          SecurityGroups=auto \
           SourceVersion=${SOURCE_VERSION} \
           Subnets=${SUBNETS} \
           Uniqifier=${UNIQIFIER} \
