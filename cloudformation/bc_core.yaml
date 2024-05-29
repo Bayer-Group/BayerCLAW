@@ -16,6 +16,10 @@ Parameters:
     Type: String
     Default: "none"
 
+  GpuAmiId:
+    Type: String
+    Default: "auto"
+
   InstallationName:
     Type: String
     Default: "bayerclaw2"
@@ -81,6 +85,9 @@ Conditions:
 
   MakeBatchSubscriptionFilter: !And [ !Condition MakeSubscriptionFilters,
                                       !Condition NoBatchSubscriptionFilter ]
+
+  MakeGpuQueues: !Not [!Or [ !Equals [!Ref GpuAmiId, "None"],
+                             !Equals [!Ref GpuAmiId, "none"] ] ]
 
 Resources:
   # network
@@ -836,10 +843,11 @@ Resources:
 
   OnDemandGpuQueueStack:
     Type: AWS::Serverless::Application
+    Condition: MakeGpuQueues
     Properties:
       Location: bc_batch.yaml
       Parameters:
-        AmiId: !Ref AmiId
+        AmiId: !Ref GpuAmiId
         GpuEnabled: "True"
         InstanceTypes: "g3,g4dn,g5,p3,p4d,p5"
         MaxvCpus: !Ref MaxvCpus
@@ -872,10 +880,11 @@ Resources:
 
   SpotGpuQueueStack:
     Type: AWS::Serverless::Application
+    Condition: MakeGpuQueues
     Properties:
       Location: bc_batch.yaml
       Parameters:
-        AmiId: !Ref AmiId
+        AmiId: !Ref GpuAmiId
         BackupComputeEnvironmentArn: !GetAtt OnDemandGpuQueueStack.Outputs.ComputeEnvironmentArn
         InstanceTypes: "g3,g4dn,g5,p3,p4d,p5"
         GpuEnabled: "True"

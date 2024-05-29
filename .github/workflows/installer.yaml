@@ -60,6 +60,7 @@ jobs:
           AmiId=auto \
           CompilerMacroName=BC2_Compiler \
           ExistingBatchSubscriptionFilter=none \
+          GpuAmiId=auto \
           InstallationName=bayerclaw2 \
           LauncherBucketName=default \
           LogRetentionDays=30 \
