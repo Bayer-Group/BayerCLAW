@@ -902,7 +902,7 @@ Resources:
         GpuEnabled: "True"
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
-        QueueName: "!Sub ${AWS::StackName}-spot-gpu-queue"
+        QueueName: !Sub "${AWS::StackName}-spot-gpu-queue"
         RequestType: "Spot"
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
