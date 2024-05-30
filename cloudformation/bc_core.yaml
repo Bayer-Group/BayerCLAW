@@ -292,7 +292,8 @@ Resources:
           CORE_STACK_NAME: !Ref "AWS::StackName"
           SOURCE_VERSION: !Ref SourceVersion
           CHOOSER_LAMBDA_ARN: !Ref ChooserLambda.Version
-          ECS_TASK_ROLE_ARN: !GetAtt EcsTaskRole.Arn
+#          ECS_TASK_ROLE_ARN: !GetAtt EcsTaskRole.Arn
+          ECS_TASK_ROLE_ARN: !GetAtt EcsTaskRoleStack.Outputs.EcsTaskRoleArn
           NOTIFICATIONS_LAMBDA_ARN: !GetAtt NotificationsLambda.Arn
           GATHER_LAMBDA_ARN: !Ref GatherLambda.Version
           INITIALIZER_LAMBDA_ARN: !Ref InitializerLambda.Version
@@ -758,9 +759,20 @@ Resources:
         - !Ref StatesExecutionRole
 
   # batch
+  EcsTaskRoleStack:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: bc_ecs_task_role.yaml
+      Parameters:
+        RoleName: !Sub "${AWS::StackName}-EcsTaskRole-${AWS::Region}"
+
+  # todo: keep this around a while longer, because deleting it will break every workflow in the account
   EcsTaskRole:
     Type: AWS::IAM::Role
+    DeletionPolicy: Retain
     Properties:
+      Description: !Sub |
+        DEPRECATED: Use !Sub ${EcsTaskRoleStack.Outputs.EcsTaskRoleArn} instead.
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -832,7 +844,7 @@ Resources:
         AmiId: !Ref AmiId
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
-        QueueName: !Sub ${AWS::StackName}-on-demand-queue
+        QueueName: !Sub "${AWS::StackName}-on-demand-queue"
         RequestType: "On-demand"
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
@@ -852,7 +864,7 @@ Resources:
         InstanceTypes: "g3,g4dn,g5,p3,p4d,p5"
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
-        QueueName: !Sub ${AWS::StackName}-on-demand-gpu-queue
+        QueueName: !Sub "${AWS::StackName}-on-demand-gpu-queue"
         RequestType: "On-demand"
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
@@ -869,7 +881,7 @@ Resources:
         AmiId: !Ref AmiId
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
-        QueueName: !Sub ${AWS::StackName}-spot-queue
+        QueueName: !Sub "${AWS::StackName}-spot-queue"
         RequestType: "Spot"
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
@@ -890,7 +902,7 @@ Resources:
         GpuEnabled: "True"
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
-        QueueName: !Sub ${AWS::StackName}-spot-gpu-queue
+        QueueName: "!Sub ${AWS::StackName}-spot-gpu-queue"
         RequestType: "Spot"
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
@@ -918,7 +930,7 @@ Resources:
 
 Outputs:
   ECSTaskRoleArn:
-    Value: !GetAtt EcsTaskRole.Arn
+    Value: !GetAtt EcsTaskRoleStack.Outputs.EcsTaskRoleArn
 
   LauncherBucketName:
     Value: !Ref LauncherBucket

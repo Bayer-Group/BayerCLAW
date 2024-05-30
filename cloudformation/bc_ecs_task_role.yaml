@@ -1,10 +1,20 @@
 AWSTemplateFormatVersion: "2010-09-09"
 
+Parameters:
+  RoleName:
+    Type: String
+    Default: "default"
+
+Conditions:
+  UseDefaultRoleName: !Or [ !Equals [!Ref RoleName, "Default"],
+                            !Equals [!Ref RoleName, "default"] ]
+
 Resources:
   EcsTaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${AWS::StackName}-${AWS::Region}"
+      RoleName:
+        !If [UseDefaultRoleName, !Sub "${AWS::StackName}-${AWS::Region}", !Ref RoleName]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -16,9 +26,9 @@ Resources:
               - "sts:AssumeRole"
 
   EcsTaskPolicy:
-    Type: AWS::IAM::Policy
+    Type: AWS::IAM::ManagedPolicy
     Properties:
-      PolicyName: !Sub "${AWS::StackName}-${AWS::Region}-policy"
+      ManagedPolicyName: !Sub "${EcsTaskRole}-policy"
       Roles:
         - !Ref EcsTaskRole
       PolicyDocument:
@@ -56,3 +66,10 @@ Resources:
               - "ec2:CreateTags"
               - "ec2:DeleteTags"
             Resource: "*"
+
+Outputs:
+  EcsTaskRoleArn:
+    Value: !GetAtt EcsTaskRole.Arn
+
+  EcsTaskPolicyArn:
+    Value: !Ref EcsTaskPolicy
