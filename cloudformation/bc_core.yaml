@@ -763,8 +763,8 @@ Resources:
     Type: AWS::Serverless::Application
     Properties:
       Location: bc_ecs_task_role.yaml
-      Parameters:
-        RoleName: !Sub "${AWS::StackName}-EcsTaskRole-${AWS::Region}"
+#      Parameters:
+#        RoleName: !Sub "${AWS::StackName}-EcsTaskRole-${AWS::Region}"
 
   # todo: keep this around a while longer, because deleting it will break every workflow in the account
   EcsTaskRole:
@@ -772,7 +772,7 @@ Resources:
     DeletionPolicy: Retain
     Properties:
       Description: !Sub |
-        DEPRECATED: Use !Sub ${EcsTaskRoleStack.Outputs.EcsTaskRoleArn} instead.
+        DEPRECATED: Use ${EcsTaskRoleStack.Outputs.EcsTaskRoleArn} instead.
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:

@@ -5,16 +5,24 @@ Parameters:
     Type: String
     Default: "default"
 
+  PolicyName:
+    Type: String
+    Default: "default"
+
 Conditions:
   UseDefaultRoleName: !Or [ !Equals [!Ref RoleName, "Default"],
                             !Equals [!Ref RoleName, "default"] ]
+
+  UseDefaultPolicyName: !Or [ !Equals [!Ref PolicyName, "Default"],
+                              !Equals [!Ref PolicyName, "default"] ]
 
 Resources:
   EcsTaskRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName:
-        !If [UseDefaultRoleName, !Sub "${AWS::StackName}-${AWS::Region}", !Ref RoleName]
+        !If [UseDefaultRoleName, !Ref AWS::NoValue, !Ref RoleName]
+#        !If [UseDefaultRoleName, !Sub "${AWS::StackName}-${AWS::Region}", !Ref RoleName]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -28,7 +36,9 @@ Resources:
   EcsTaskPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName: !Sub "${EcsTaskRole}-policy"
+      ManagedPolicyName:
+        !If [UseDefaultPolicyName, !Ref AWS::NoValue, !Ref PolicyName]
+#      ManagedPolicyName: !Sub "${EcsTaskRole}-policy"
       Roles:
         - !Ref EcsTaskRole
       PolicyDocument:
