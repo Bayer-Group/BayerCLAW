@@ -46,37 +46,48 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Effect: "Allow"
+          - Sid: "write logs"
+            Effect: "Allow"
             Action:
               - "logs:CreateLogStream"
               - "logs:PutLogEvents"
             Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
-          - Effect: "Allow"
+          - Sid: "s3 bucket access"
+            Effect: "Allow"
             Action:
               - "s3:ListBucket"
             Resource: "arn:aws:s3:::*"
-          - Effect: "Allow"
+          - Sid: "s3 object access"
+            Effect: "Allow"
             Action:
               - "s3:PutObject"
               - "s3:GetObject"
               - "s3:PutObjectAcl"
               - "s3:AbortMultipartUpload"
             Resource: "arn:aws:s3:::*/*"
-          - Effect: "Allow"
+          - Sid: "delete s3 control objects"
+            Effect: "Allow"
             Action:
               - "s3:DeleteObject"
             Resource: "arn:aws:s3:::*/_control_/*"
-          - Effect: "Allow"
+          - Sid: "ecr access"
+            Effect: "Allow"
             Action:
               - "ecr:GetAuthorizationToken"
               - "ecr:BatchCheckLayerAvailability"
               - "ecr:GetDownloadUrlForLayer"
               - "ecr:BatchGetImage"
             Resource: "*"
-          - Effect: "Allow"
+          - Sid: "ec2 instance tagging"
+            Effect: "Allow"
             Action:
               - "ec2:CreateTags"
               - "ec2:DeleteTags"
+            Resource: "*"
+          - Sid: "terminate state machine execution"
+            Effect: "Allow"
+            Action:
+              - "states:StopExecution"
             Resource: "*"
 
 Outputs:
