@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import shutil
+import time
 from tempfile import mkdtemp, NamedTemporaryFile
 
 from .dind import run_child_container
@@ -25,6 +26,7 @@ def workspace() -> str:
         logger.info("cleaning up workspace")
         os.chdir(orig_path)
         shutil.rmtree(work_path, ignore_errors=True)
+        time.sleep(15)
         logger.info("finished")
 
 
