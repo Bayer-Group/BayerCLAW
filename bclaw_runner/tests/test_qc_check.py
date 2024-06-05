@@ -94,7 +94,7 @@ def test_run_qc_check(expression, expect_abort, mocker):
 
 
 def test_abort_execution(mock_state_machine, monkeypatch):
-    sfn = boto3.client("stepfunctions")
+    sfn = boto3.client("stepfunctions", region_name="us-east-1")
     sfn_execution = sfn.start_execution(
         stateMachineArn=mock_state_machine,
         name="fake_execution",
