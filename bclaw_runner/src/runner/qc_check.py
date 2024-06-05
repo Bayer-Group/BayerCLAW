@@ -8,18 +8,21 @@ logger = logging.getLogger(__name__)
 
 
 def run_qc_checks(checks: list) -> None:
-    logger.info("starting QC checks")
-    for item in checks:
-        qc_file = item["qc_result_file"]
-        logger.info(f"{qc_file=}")
+    if checks:
+        logger.info("starting QC checks")
+        for item in checks:
+            qc_file = item["qc_result_file"]
+            logger.info(f"{qc_file=}")
 
-        with open(qc_file) as fp:
-            qc_data = json.load(fp)
+            with open(qc_file) as fp:
+                qc_data = json.load(fp)
 
-        for qc_expression in item["stop_early_if"]:
-            run_qc_check(qc_data, qc_expression)
+            for qc_expression in item["stop_early_if"]:
+                run_qc_check(qc_data, qc_expression)
 
-    logger.info("QC checks finished")
+        logger.info("QC checks finished")
+    else:
+        logger.info("no QC checks requested")
 
 
 def run_qc_check(qc_data: dict, qc_expression: str) -> None:
