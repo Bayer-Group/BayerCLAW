@@ -9,6 +9,7 @@ Options:
     --image STRING       Docker image tag
     --in JSON_STRING     input files
     --out JSON_STRING    output files
+    --qc JSON_STRING     QC check spec
     --ref JSON_STRING    reference files
     --repo S3_PATH       repository path
     --shell SHELL        unix shell to run commands in (bash | sh | sh-pipefail) [default: sh]
@@ -28,6 +29,7 @@ from docopt import docopt
 from .cache import get_reference_inputs
 from .custom_logs import LOGGING_CONFIG
 from .string_subs import substitute, substitute_image_tag
+from .qc_check import run_qc_checks
 from .repo import Repository
 from .tagging import tag_this_instance
 from .termination import spot_termination_checker
@@ -43,6 +45,7 @@ def main(commands: List[str],
          image: str,
          inputs: Dict[str, str],
          outputs: Dict[str, str],
+         qc: List[dict],
          references: Dict[str, str],
          repo_path: str,
          shell: str,
@@ -98,6 +101,8 @@ def main(commands: List[str],
 
             # mark job complete on success
             if status == 0:
+                # todo: raise exception if qc fails
+                run_qc_checks(qc)
                 repo.put_run_status()
 
         except Exception as e:
@@ -128,10 +133,11 @@ def cli() -> int:
         image    = args["--image"]
         inputs   = json.loads(args["--in"])
         outputs  = json.loads(args["--out"])
+        qc       = json.loads(args["--qc"])
         refs     = json.loads(args["--ref"])
         repo     = args["--repo"]
         shell    = args["--shell"]
         skip     = args["--skip"]
 
-        ret = main(commands, image, inputs, outputs, refs, repo, shell, skip)
+        ret = main(commands, image, inputs, outputs, qc, refs, repo, shell, skip)
         return ret

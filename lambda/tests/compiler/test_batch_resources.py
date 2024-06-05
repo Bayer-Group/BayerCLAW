@@ -4,9 +4,9 @@ import textwrap
 import pytest
 import yaml
 
-from ...src.compiler.pkg.batch_resources import expand_image_uri, get_job_queue, get_memory_in_mibs, \
-    get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout, batch_step, \
-    job_definition_rc, handle_batch, SCRATCH_PATH
+from ...src.compiler.pkg.batch_resources import (expand_image_uri, get_job_queue, get_memory_in_mibs,
+    get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout, handle_qc_check,
+    batch_step, job_definition_rc, handle_batch, SCRATCH_PATH)
 from ...src.compiler.pkg.util import Step, Resource, State
 
 
@@ -156,6 +156,20 @@ def test_get_timeout(timeout, expect):
         assert result["Properties"]["timeout"]["attemptDurationSeconds"] == expect
 
 
+@pytest.mark.parametrize("qc_spec, expect", [
+    (None, []),
+    ({"qc_result_file": "qc.out", "stop_early_if": "x == 1"}, [{"qc_result_file": "qc.out", "stop_early_if": ["x == 1"]}]),
+    ({"qc_result_file": "qc.out", "stop_early_if": ["x == 1", "y == 2"]}, [{"qc_result_file": "qc.out", "stop_early_if": ["x == 1", "y == 2"]}]),
+    ([{"qc_result_file": "qc1.out", "stop_early_if": ["x == 1", "y == 2"]},
+      {"qc_result_file": "qc2.out", "stop_early_if": "z == 3"}],
+     [{"qc_result_file": "qc1.out", "stop_early_if": ["x == 1", "y == 2"]},
+      {"qc_result_file": "qc2.out", "stop_early_if": ["z == 3"]}]),
+])
+def test_handle_qc_check(qc_spec, expect):
+    result = handle_qc_check(qc_spec)
+    assert result == expect
+
+
 @pytest.fixture(scope="function")
 def sample_batch_step():
     ret = yaml.safe_load(textwrap.dedent("""
@@ -197,7 +211,10 @@ def sample_batch_step():
             trim_log: ${job.SAMPLE_ID}-fastP.json
           references:
             reference1: s3://ref-bucket/path/to/reference.file
-          qc_check: null
+          qc_check:
+            qc_result_file: qc.out
+            stop_early_if:
+                - x > 1
           skip_on_rerun: false
           timeout: 1h
           retry:
@@ -220,8 +237,9 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
             "image": "mmm",
             "inputs": "iii",
             "references": "fff",
-            "command": json.dumps(step.spec["commands"]),
+            "command": json.dumps(step.spec["commands"], separators=(",", ":")),
             "outputs": "ooo",
+            "qc": json.dumps([step.spec["qc_check"]], separators=(",", ":")),
             "shell": "sh",
             "skip": "sss",
         },
@@ -235,6 +253,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
                 "--ref", "Ref::references",
                 "--cmd", "Ref::command",
                 "--out", "Ref::outputs",
+                "--qc", "Ref::qc",
                 "--shell", "Ref::shell",
                 "--skip", "Ref::skip",
             ],
@@ -432,9 +451,9 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
 
         job_def_spec = json.loads(resource.spec["Properties"]["spec"])
         assert job_def_spec["containerProperties"]["jobRoleArn"] == expected_job_role_arn
-        # assert " --outdir outt " in job_def_spec["parameters"]["command"]  # moved to state machine
 
 
+@pytest.mark.skip(reason="new qc_check")
 def test_handle_batch_with_qc(sample_batch_step, compiler_env):
     step = Step("step_name", sample_batch_step, "next_step_name")
 

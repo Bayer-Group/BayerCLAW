@@ -19,6 +19,7 @@ Conditions:
 Resources:
   EcsTaskRole:
     Type: AWS::IAM::Role
+    DeletionPolicy: Retain
     Properties:
       RoleName:
         !If [UseDefaultRoleName, !Ref AWS::NoValue, !Ref RoleName]
@@ -35,6 +36,7 @@ Resources:
 
   EcsTaskPolicy:
     Type: AWS::IAM::ManagedPolicy
+    DeletionPolicy: Retain
     Properties:
       ManagedPolicyName:
         !If [UseDefaultPolicyName, !Ref AWS::NoValue, !Ref PolicyName]

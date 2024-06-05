@@ -292,7 +292,6 @@ Resources:
           CORE_STACK_NAME: !Ref "AWS::StackName"
           SOURCE_VERSION: !Ref SourceVersion
           CHOOSER_LAMBDA_ARN: !Ref ChooserLambda.Version
-#          ECS_TASK_ROLE_ARN: !GetAtt EcsTaskRole.Arn
           ECS_TASK_ROLE_ARN: !GetAtt EcsTaskRoleStack.Outputs.EcsTaskRoleArn
           NOTIFICATIONS_LAMBDA_ARN: !GetAtt NotificationsLambda.Arn
           GATHER_LAMBDA_ARN: !Ref GatherLambda.Version
@@ -763,8 +762,9 @@ Resources:
     Type: AWS::Serverless::Application
     Properties:
       Location: bc_ecs_task_role.yaml
-#      Parameters:
-#        RoleName: !Sub "${AWS::StackName}-EcsTaskRole-${AWS::Region}"
+      Parameters:
+        RoleName: !Sub "${AWS::StackName}-EcsTaskRole-${AWS::Region}"
+        PolicyName: !Sub "${AWS::StackName}-EcsTaskRole-Policy-${AWS::Region}"
 
   # todo: keep this around a while longer, because deleting it will break every workflow in the account
   EcsTaskRole:

@@ -55,9 +55,13 @@ next_or_end = {
     Exclusive("end", "next_or_end", msg=next_or_end_msg): All(Boolean(), Msg(True, "'end' value must be truthy")),
 }
 
+qc_check_block = {
+    Required("qc_result_file"): str,
+    Required("stop_early_if"): Any(str, All([str], Length(min=1)))
+}
+
 batch_step_schema = Schema(All(
     {
-        # Required("image"): str,
         Optional("image", default=DEFAULT_IMAGE): str,
         Optional("task_role", default=None): Maybe(str),
         # None is used as a signal that inputs was not specified at all, and should be copied from previous outputs.
@@ -95,13 +99,17 @@ batch_step_schema = Schema(All(
                                                        no_substitutions),
             },
         ],
-        Optional("qc_check", default=None): Any(None, {
-            Optional("type", default="choice"): str,
-            Required("qc_result_file"): str,
-            Required("stop_early_if"): str,
-            Optional("email_subject", default="qc failure alert!"): str,
-            Optional("notification", default=[]): [str],
-        }),
+        Optional("qc_check", default=None): Maybe(Any(
+            qc_check_block,
+            All([qc_check_block], Length(min=1))
+        )),
+        # Optional("qc_check", default=None): Any(None, {
+        #     Optional("type", default="choice"): str,
+        #     Required("qc_result_file"): str,
+        #     Required("stop_early_if"): str,
+        #     Optional("email_subject", default="qc failure alert!"): str,
+        #     Optional("notification", default=[]): [str],
+        # }),
         Optional("retry", default={}): {
             Optional("attempts", default=3): int,
             Optional("interval", default="3s"): Match(r"^\d+\s?[smhdw]$",
