@@ -29,11 +29,10 @@ from docopt import docopt
 from .cache import get_reference_inputs
 from .custom_logs import LOGGING_CONFIG
 from .string_subs import substitute, substitute_image_tag
-from .qc_check import run_qc_checks
+from .qc_check import do_checks
 from .repo import Repository
 from .tagging import tag_this_instance
 from .termination import spot_termination_checker
-# from .version import VERSION
 from .workspace import workspace, write_job_data_file, run_commands
 
 
@@ -101,8 +100,8 @@ def main(commands: List[str],
 
             # mark job complete on success
             if status == 0:
-                # todo: raise exception if qc fails
-                run_qc_checks(qc)
+                # todo: raise exception if qc fails?
+                do_checks(qc)
                 repo.put_run_status()
 
         except Exception as e:

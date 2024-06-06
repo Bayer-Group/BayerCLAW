@@ -103,7 +103,7 @@ def test_main(monkeypatch, tmp_path, mock_bucket, mocker):
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
 
-    mock_run_qc_checks = mocker.patch("bclaw_runner.src.runner.runner_main.run_qc_checks")
+    mock_do_checks = mocker.patch("bclaw_runner.src.runner.runner_main.do_checks")
 
     response = main(image="fake_image:${job.img_tag}",
                     commands=commands,
@@ -172,7 +172,7 @@ def test_main(monkeypatch, tmp_path, mock_bucket, mocker):
         contents = next(fp)
         assert contents == "reference"
 
-    mock_run_qc_checks.assert_called_once_with(qc)
+    mock_do_checks.assert_called_once_with(qc)
 
 
 def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):

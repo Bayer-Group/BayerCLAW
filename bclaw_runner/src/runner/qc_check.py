@@ -1,40 +1,41 @@
 import json
 import logging
 import os
+from typing import Generator
 
 import boto3
 
 logger = logging.getLogger(__name__)
 
 
-def run_qc_checks(checks: list) -> None:
-    if checks:
-        logger.info("starting QC checks")
-        for item in checks:
-            qc_file = item["qc_result_file"]
-            logger.info(f"{qc_file=}")
-
-            with open(qc_file) as fp:
-                qc_data = json.load(fp)
-
-            for qc_expression in item["stop_early_if"]:
-                run_qc_check(qc_data, qc_expression)
-
-        logger.info("QC checks finished")
-    else:
-        logger.info("no QC checks requested")
-
-
-def run_qc_check(qc_data: dict, qc_expression: str) -> None:
-    result = eval(qc_expression, globals(), qc_data)
-    if result:
-        logger.warning(f"failed QC check: {qc_expression}; aborting")
-        abort_execution(qc_expression)
-    else:
-        logger.info(f"passed QC check: {qc_expression}")
+# def run_qc_checks(checks: list) -> None:
+#     if checks:
+#         logger.info("starting QC checks")
+#         for item in checks:
+#             qc_file = item["qc_result_file"]
+#             logger.info(f"{qc_file=}")
+#
+#             with open(qc_file) as fp:
+#                 qc_data = json.load(fp)
+#
+#             for qc_expression in item["stop_early_if"]:
+#                 run_qc_check(qc_data, qc_expression)
+#
+#         logger.info("QC checks finished")
+#     else:
+#         logger.info("no QC checks requested")
 
 
-def abort_execution(qc_expression: str) -> None:
+# def run_qc_check(qc_data: dict, qc_expression: str) -> None:
+#     result = eval(qc_expression, globals(), qc_data)
+#     if result:
+#         logger.warning(f"failed QC check: {qc_expression}; aborting workflow execution")
+#         abort_execution(qc_expression)
+#     else:
+#         logger.info(f"passed QC check: {qc_expression}")
+
+
+def abort_execution(failed_expressions: list) -> None:
     region = os.environ["AWS_DEFAULT_REGION"]
     acct = os.environ["AWS_ACCOUNT_ID"]
     wf_name = os.environ["BC_WORKFLOW_NAME"]
@@ -42,9 +43,45 @@ def abort_execution(qc_expression: str) -> None:
     step_name = os.environ["BC_STEP_NAME"]
     execution_arn = f"arn:aws:states:{region}:{acct}:execution:{wf_name}:{exec_id}"
 
+    cause = "\n".join(["failed QC conditions:"] + failed_expressions)
+
     sfn = boto3.client("stepfunctions")
     sfn.stop_execution(
         executionArn=execution_arn,
         error=f"Job {exec_id} failed QC check at step {step_name}",
-        cause=f"failed condition: {qc_expression}"
+        cause=cause
     )
+
+
+def run_one_qc_check(qc_data: dict, qc_expression: str) -> bool:
+    if result := eval(qc_expression, globals(), qc_data):
+        logger.warning(f"failed QC check: {qc_expression}")
+    else:
+        logger.info(f"passed QC check: {qc_expression}")
+    return result
+
+
+def run_all_qc_checks(checks: list) -> Generator[str, None, None]:
+    for item in checks:
+        qc_file = item["qc_result_file"]
+        logger.info(f"{qc_file=}")
+
+        with open(qc_file) as fp:
+            qc_data = json.load(fp)
+
+        for qc_expression in item["stop_early_if"]:
+            if run_one_qc_check(qc_data, qc_expression):
+                yld = f"{os.path.basename(qc_file)}: {qc_expression}"
+                yield yld
+
+
+def do_checks(checks: list) -> None:
+    if checks:
+        logger.info("starting QC checks")
+        failures = list(run_all_qc_checks(checks))
+        if failures:
+            logger.warning(f"aborting workflow execution")
+            abort_execution(failures)
+        logger.info("QC checks finished")
+    else:
+        logger.info("no QC checks requested")
