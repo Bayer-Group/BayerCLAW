@@ -548,6 +548,7 @@ Resources:
 
   QCCheckerLambda:
     Type: AWS::Serverless::Function
+    DeletionPolicy: "Retain"
     Properties:
       Handler: qc_checker.lambda_handler
       Runtime: python3.10
@@ -580,6 +581,7 @@ Resources:
 
   QCCheckerLambdaLogGroup:
     Type: AWS::Logs::LogGroup
+    DeletionPolicy: "Retain"
     Properties:
       LogGroupName: !Sub "/aws/lambda/${QCCheckerLambda}"
       RetentionInDays: !Ref LogRetentionDays
@@ -587,6 +589,7 @@ Resources:
   QCCheckerLambdaSubscriptionFilter:
     Type: AWS::Logs::SubscriptionFilter
     Condition: MakeSubscriptionFilters
+    DeletionPolicy: "Retain"
     Properties:
       DestinationArn: !Ref LoggingDestinationArn
       FilterPattern: '{$.function = "qc_checker.*"}'

@@ -28,10 +28,10 @@ def workspace() -> str:
         yield work_path
 
     finally:
-        logger.info("cleaning up workspace")
+        logger.debug("cleaning up workspace")
         os.chdir(orig_path)
         shutil.rmtree(work_path, ignore_errors=True)
-        logger.info("finished")
+        logger.debug("cleanup finished")
 
 
 def write_job_data_file(job_data: dict, dest_dir: str) -> str:

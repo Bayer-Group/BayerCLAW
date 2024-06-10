@@ -7,7 +7,6 @@ from typing import Generator, List, Union
 
 import humanfriendly
 
-# from .qc_resources import handle_qc_check
 from .util import Step, Resource, State, make_logical_name, time_string_to_seconds
 
 SCRATCH_PATH = "/_bclaw_scratch"

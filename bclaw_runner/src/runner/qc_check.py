@@ -59,7 +59,7 @@ def run_all_qc_checks(checks: list) -> Generator[str, None, None]:
 def do_checks(checks: list) -> None:
     if checks:
         logger.info("starting QC checks")
-        if (failures := list(run_all_qc_checks(checks))):
+        if failures := list(run_all_qc_checks(checks)):
             raise QCFailure("QC checks failed", failures)
         logger.info("QC checks finished")
     else:

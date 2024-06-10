@@ -6,6 +6,10 @@ import pytest
 
 from ...src.qc_checker.qc_checker import lambda_handler, QCFailed
 
+
+# todo: remove module
+pytest.skip(reason="to be removed", allow_module_level=True)
+
 logging.basicConfig(level=logging.INFO)
 
 
