@@ -546,6 +546,7 @@ Resources:
       FilterPattern: '{$.function = "gather.*"}'
       LogGroupName: !Ref GatherLambdaLogGroup
 
+  # todo: remove this lambda + associated resources
   QCCheckerLambda:
     Type: AWS::Serverless::Function
     DeletionPolicy: "Retain"

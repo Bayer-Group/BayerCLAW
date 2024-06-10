@@ -95,14 +95,15 @@ def test_run_all_qc_checks(fake1_cond, fake2_cond, expect, mock_qc_data_files):
     assert result == expect
 
 
-@pytest.mark.parametrize("fake1_cond, fake2_cond, expect_qc_fail", [
-    (None, None, False),  # no checks
-    (["a>1"], ["x<99"], False),  # all pass
-    (["a>1", "b==2"], ["y<98"], True),  # one fail
-    (["b==1"], ["x==99", "y==98"], True),  # multi fail
-    (["a==1", "b==2"], ["x==99", "y==98"], True),  # all fail
+@pytest.mark.parametrize("fake1_cond, fake2_cond, expect", [
+    (None, None, []),  # no checks
+    (["a>1"], ["x<99"], []),  # all pass
+    (["a>1", "b==2"], ["y<98"], ["fake1: b==2"]),  # one fail
+    (["b==1"], ["x==99", "y==98"], ["fake2: x==99", "fake2: y==98"]),  # multi fail
+    (["a==1", "b==2"], ["x==99", "y==98"],
+     ["fake1: a==1", "fake1: b==2", "fake2: x==99", "fake2: y==98"]),  # all fail
 ])
-def test_do_checks(fake1_cond, fake2_cond, expect_qc_fail, mock_qc_data_files, mocker):
+def test_do_checks(fake1_cond, fake2_cond, expect, mock_qc_data_files, mocker):
     mock_abort_execution = mocker.patch("bclaw_runner.src.runner.qc_check.abort_execution")
 
     if fake1_cond is None:
@@ -119,9 +120,9 @@ def test_do_checks(fake1_cond, fake2_cond, expect_qc_fail, mock_qc_data_files, m
             },
         ]
 
-    if expect_qc_fail:
-        # todo: should probably check the contents of qcf.failures
+    if expect:
         with pytest.raises(QCFailure) as qcf:
             do_checks(spec)
+        assert qcf.value.failures == expect
     else:
         do_checks(spec)

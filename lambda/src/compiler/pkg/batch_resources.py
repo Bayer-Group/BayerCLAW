@@ -173,9 +173,7 @@ def job_definition_rc(step: Step,
                       shell_opt: str) -> Generator[Resource, None, str]:
     logical_name = make_logical_name(f"{step.name}.job.defx")
 
-    # todo: test this
     if isinstance(step.spec["commands"], str):
-        # todo: split on newlines?
         command_list = [step.spec["commands"]]
     else:
         command_list = step.spec["commands"]

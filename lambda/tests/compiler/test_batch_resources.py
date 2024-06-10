@@ -320,6 +320,27 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         assert resource.spec == expected_rc_spec
 
 
+def test_job_definition_rc_single_line_command(sample_batch_step, compiler_env):
+    command_str = textwrap.dedent("""\
+        commands: |
+            echo one > ${outfile1}
+            echo two > ${outfile2}
+            echo three > ${outfile3}
+    """)
+    command_spec = yaml.safe_load(command_str)
+    nu_sample_batch_step = sample_batch_step.copy()
+    nu_sample_batch_step.update(**command_spec)
+    step = Step("test_step", nu_sample_batch_step, "next_step")
+
+    def helper():
+        _ = yield from job_definition_rc(step, "arn:task:role", "sh")
+
+    for resource in helper():
+        result_spec = json.loads(resource.spec["Properties"]["spec"])
+        command = result_spec["parameters"]["command"]
+        assert command == '["echo one > ${outfile1}\\necho two > ${outfile2}\\necho three > ${outfile3}\\n"]'
+
+
 @pytest.mark.parametrize("spec, expect", [
     ({}, "none"),
     ({"skip_if_output_exists": True}, "output"),
@@ -451,42 +472,6 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
 
         job_def_spec = json.loads(resource.spec["Properties"]["spec"])
         assert job_def_spec["containerProperties"]["jobRoleArn"] == expected_job_role_arn
-
-
-@pytest.mark.skip(reason="new qc_check")
-def test_handle_batch_with_qc(sample_batch_step, compiler_env):
-    step = Step("step_name", sample_batch_step, "next_step_name")
-
-    step.spec["qc_check"] = {
-        "qc_result_file": "qc_file.json",
-        "stop_early_if": "test_expression",
-        "email_subject": "test subject",
-        "notification": [
-            "test_one@case.com",
-            "test_two@case.com",
-        ],
-    }
-
-    def helper():
-        states = yield from handle_batch(step, {"wf": "params", "versioned": "true"}, False)
-        assert len(states) == 2
-        assert all(isinstance(s, State) for s in states)
-
-        assert states[0].name == "step_name"
-        assert states[0].spec["Resource"] == "arn:aws:states:::batch:submitJob.sync"
-        assert states[0].spec["Parameters"]["JobDefinition"] == "${StepNameJobDefx}"
-        assert states[0].spec["Next"] == "step_name.qc_checker"
-
-        assert states[1].name == "step_name.qc_checker"
-        assert states[1].spec["Next"] == "next_step_name"
-
-    resource_gen = helper()
-    resource_dict = dict(resource_gen)
-
-    expected_keys = ["StepNameJobDefx"]
-    assert list(resource_dict.keys()) == expected_keys
-
-    assert resource_dict["StepNameJobDefx"]["Type"] == "Custom::BatchJobDefinition"
 
 
 def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):
