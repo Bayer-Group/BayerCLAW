@@ -29,18 +29,91 @@ from docopt import docopt
 from .cache import get_reference_inputs
 from .custom_logs import LOGGING_CONFIG
 from .string_subs import substitute, substitute_image_tag
-from .qc_check import do_checks
-from .repo import Repository
+from .qc_check import do_checks, abort_execution, QCFailure
+from .repo import Repository, SkipExecution
 from .tagging import tag_this_instance
 from .termination import spot_termination_checker
-from .workspace import workspace, write_job_data_file, run_commands
+from .workspace import workspace, write_job_data_file, run_commands, UserCommandsFailed
 
 
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 
-
 def main(commands: List[str],
+         image: str,
+         inputs: Dict[str, str],
+         outputs: Dict[str, str],
+         qc: List[dict],
+         references: Dict[str, str],
+         repo_path: str,
+         shell: str,
+         skip: str) -> int:
+    exit_code = 0
+    try:
+        repo = Repository(repo_path)
+
+        if skip == "rerun":
+            repo.check_for_previous_run()
+        elif skip == "output":
+            repo.check_files_exist(list(outputs.values()))
+
+        repo.clear_run_status()
+
+        job_data_obj = repo.read_job_data()
+
+        jobby_commands   = substitute(commands,   job_data_obj)
+        jobby_inputs     = substitute(inputs,     job_data_obj)
+        jobby_outputs    = substitute(outputs,    job_data_obj)
+        jobby_references = substitute(references, job_data_obj)
+
+        jobby_image = substitute_image_tag(image, job_data_obj)
+
+        with workspace() as wrk:
+            # download references, link to workspace
+            local_references = get_reference_inputs(jobby_references)
+
+            # download inputs -> returns local filenames
+            local_inputs = repo.download_inputs(jobby_inputs)
+            local_outputs = jobby_outputs
+
+            subbed_commands = substitute(jobby_commands,
+                                         local_inputs |
+                                         local_outputs |
+                                         local_references)
+
+            local_job_data = write_job_data_file(job_data_obj, wrk)
+
+            try:
+                run_commands(jobby_image, subbed_commands, wrk, local_job_data, shell)
+                do_checks(qc)
+
+            finally:
+                repo.upload_outputs(jobby_outputs)
+
+    except UserCommandsFailed as uce:
+        exit_code = uce.exit_code
+        logger.error(str(uce))
+
+    except QCFailure as qcf:
+        logger.error(str(qcf))
+        abort_execution(qcf.failures)
+
+    except SkipExecution as se:
+        logger.info(str(se))
+        pass
+
+    except Exception as e:
+        logger.exception("bclaw_runner error: ")
+        exit_code = 255
+
+    else:
+        repo.put_run_status()
+        logger.info("runner finished")
+
+    return exit_code
+
+
+def main0(commands: List[str],
          image: str,
          inputs: Dict[str, str],
          outputs: Dict[str, str],
@@ -126,7 +199,7 @@ def cli() -> int:
     with spot_termination_checker():
         args = docopt(__doc__, version=os.environ["BC_VERSION"])
 
-        logger.info(f"{args = }")
+        logger.info(f"{args=}")
 
         commands = json.loads(args["--cmd"])
         image    = args["--image"]

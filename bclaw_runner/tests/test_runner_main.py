@@ -286,6 +286,7 @@ def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect):
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
     monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
 
+    # note: this only tests skip = output with empty outputs
     references = {}
     inputs = {}
     outputs = {}

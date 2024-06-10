@@ -15,6 +15,10 @@ from more_itertools import peekable
 logger = logging.getLogger(__name__)
 
 
+class SkipExecution(Exception):
+    pass
+
+
 def _file_metadata():
     ret = {"execution_id": os.environ.get("BC_EXECUTION_ID", "undefined")}
     return ret
@@ -80,7 +84,29 @@ class Repository(object):
             else:
                 raise
 
-    def files_exist(self, filenames: List[str]) -> bool:
+
+    def check_files_exist(self, filenames: List[str]) -> None:
+        """
+        Raises SkipExecution if this step has been run before
+        """
+        # this is for backward compatibility. Note that if you have a step that produces
+        # no outputs (i.e. being run for side effects only), it will always be skipped
+        # if run with skip_if_files_exist
+        # if len(filenames) == 0:
+        #    raise SkipExecution("found output files; skipping")
+
+        # there's no way to know if all the files included in a glob were uploaded in
+        # a previous run, so always rerun to be safe
+        if any(_is_glob(f) for f in filenames):
+            return
+
+        # note: all([]) = True
+        keys = (self.qualify(os.path.basename(f)) for f in filenames)
+        if all(self._s3_file_exists(k) for k in keys):
+            raise SkipExecution("found output files; skipping")
+
+
+    def files_exist0(self, filenames: List[str]) -> bool:
         # this is for backward compatibility. Note that if you have a step that produces
         # no outputs (i.e. being run for side effects only), it will always be skipped
         # if run with skip_if_files_exist
@@ -95,6 +121,7 @@ class Repository(object):
         keys = (self.qualify(os.path.basename(f)) for f in filenames)
         ret = all(self._s3_file_exists(k) for k in keys)
         return ret
+
 
     def _inputerator(self, input_spec: Dict[str, str]) -> Generator[str, None, None]:
         for symbolic_name, filename in input_spec.items():
@@ -170,7 +197,27 @@ class Repository(object):
             result = list(executor.map(self._upload_that, self._outputerator(output_spec.values())))
         logger.info(f"{len(result)} files uploaded")
 
-    def check_for_previous_run(self) -> bool:
+    def check_for_previous_run(self) -> None:
+        """
+        Raises SkipExecution if this step has been run before
+        """
+        try:
+            result = self._s3_file_exists(self.qualify(self.run_status_obj))
+        except Exception:
+            logger.warning("unable to query previous run status, assuming none")
+        else:
+            if result:
+                raise SkipExecution("found previous run; skipping")
+        # pharque!!!
+        # try:
+        #     if self._s3_file_exists(self.qualify(self.run_status_obj)):
+        #         raise SkipExecution("found previous run; skipping")
+        # # pharque!!!
+        # except Exception:
+        #     logger.warning("unable to query previous run status, assuming none")
+
+
+    def check_for_previous_run0(self) -> bool:
         """
         Returns:
             True if this step has been run before

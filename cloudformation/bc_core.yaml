@@ -302,7 +302,6 @@ Resources:
           LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
           ON_DEMAND_GPU_QUEUE_ARN: !GetAtt OnDemandGpuQueueStack.Outputs.BatchQueueArn
           ON_DEMAND_QUEUE_ARN: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
-#          QC_CHECKER_LAMBDA_ARN: !Ref QCCheckerLambda.Version
           RUNNER_REPO_URI: !GetAtt RunnerRepo.RepositoryUri
           SCATTER_INIT_LAMBDA_ARN: !Ref ScatterInitLambda.Version
           SCATTER_LAMBDA_ARN: !Ref ScatterLambda.Version
@@ -385,7 +384,7 @@ Resources:
       Handler: register.lambda_handler
       Runtime: python3.10
       CodeUri: lambda/src/job_def
-      # do not enable AutoPublishAlias
+      # do not enable AutoPublishAlias for custom resource lambdas
       # https://advancedweb.hu/custom-resources-in-cloudformation-templates-lessons-learned/#cant-change-the-servicetoken
       Environment:
         Variables:

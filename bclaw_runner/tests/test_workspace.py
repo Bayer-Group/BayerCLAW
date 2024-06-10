@@ -5,7 +5,7 @@ import subprocess
 import pytest
 
 from ..src import runner
-from ..src.runner.workspace import workspace, write_job_data_file, run_commands, run_commands
+from ..src.runner.workspace import workspace, write_job_data_file, run_commands, run_commands, UserCommandsFailed
 
 
 def test_workspace(monkeypatch, tmp_path):
@@ -43,7 +43,7 @@ def fake_container(image_tag: str, command: str, work_dir: str, job_data_file) -
     return response.returncode
 
 
-def test_run_commands(tmp_path, monkeypatch):
+def test_run_commands(tmp_path, monkeypatch, caplog):
     monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
     f = tmp_path / "test_success.out"
 
@@ -56,7 +56,7 @@ def test_run_commands(tmp_path, monkeypatch):
     os.chdir(tmp_path)
     response = run_commands("fake/image:tag", commands, tmp_path, "fake/job/data/file.json", "sh")
 
-    assert response == 0
+    assert "command block succeeded" in caplog.text
     assert f.exists()
     with f.open() as fp:
         lines = fp.readlines()
@@ -74,8 +74,9 @@ def test_exit_on_command_fail1(tmp_path, monkeypatch):
     ]
 
     os.chdir(tmp_path)
-    response = run_commands("fake/image:tag", commands, tmp_path, "fake/job/data/file.json", "sh")
-    assert response != 0
+    with pytest.raises(UserCommandsFailed) as ucf:
+        run_commands("fake/image:tag", commands, tmp_path, "fake/job/data/file.json", "sh")
+        assert ucf.value.exit_code != 0
 
     assert f.exists()
     with f.open() as fp:
@@ -94,8 +95,9 @@ def test_exit_on_undef_var1(tmp_path, monkeypatch):
     ]
 
     os.chdir(tmp_path)
-    response = run_commands("fake/image:tag", commands, tmp_path, "fake/job/data/file.json", "sh")
-    assert response != 0
+    with pytest.raises(UserCommandsFailed) as ucf:
+        run_commands("fake/image:tag", commands, tmp_path, "fake/job/data/file.json", "sh")
+        assert ucf.value.exit_code != 0
 
     assert f.exists()
     with f.open() as fp:
