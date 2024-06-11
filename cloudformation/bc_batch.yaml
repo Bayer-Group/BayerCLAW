@@ -35,7 +35,6 @@ Metadata:
         Label:
           default: Advanced
         Parameters:
-          - BackupComputeEnvironmentArn
           - Uniqifier
 
 Parameters:
@@ -46,13 +45,6 @@ Parameters:
       select an AMI. Otherwise, it is highly recommended that you choose an ECS-optimized Amazon Linux 2
       image to use.
     Default: "auto"
-
-  BackupComputeEnvironmentArn:
-    Type: String
-    Description: >
-      Amazon Resource Name (ARN) of an existing Batch compute environment (CE) that will back up the
-      CE created by this template.
-    Default: "None"
 
   GpuEnabled:
     Type: String
@@ -137,8 +129,8 @@ Conditions:
                  !Not [!Equals [!Ref AmiId, "auto"]] ]
   Uniqify: !And [ !Not [!Equals [!Ref Uniqifier, "None"]],
                   !Not [!Equals [!Ref Uniqifier, "none"]] ]
-  UseBackupCE: !And [ !Not [!Equals [!Ref BackupComputeEnvironmentArn, "None"]],
-                      !Not [!Equals [!Ref BackupComputeEnvironmentArn, "none"]] ]
+#  UseBackupCE: !And [ !Not [!Equals [!Ref BackupComputeEnvironmentArn, "None"]],
+#                      !Not [!Equals [!Ref BackupComputeEnvironmentArn, "none"]] ]
   UseGpu: !Equals [!Ref GpuEnabled, "True"]
   UseSpot: !Equals [!Ref RequestType, "Spot"]
 
@@ -262,11 +254,6 @@ Resources:
       ComputeEnvironmentOrder:
         - Order: 1
           ComputeEnvironment: !Ref ComputeEnvironment
-        - !If [
-            UseBackupCE,
-            {"Order": 2, "ComputeEnvironment": !Ref BackupComputeEnvironmentArn},
-            !Ref AWS::NoValue
-          ]
       SchedulingPolicyArn: !Ref SchedulingPolicy
 
 Outputs:

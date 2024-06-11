@@ -62,4 +62,5 @@ def run_commands(image_tag: str, commands: list, work_dir: str, job_data_file: s
     if (exit_code := run_child_container(image_tag, command, work_dir, job_data_file)) == 0:
         logger.info("command block succeeded")
     else:
+        logger.error("command block failed")
         raise UserCommandsFailed(f"command block failed with exit code {exit_code}", exit_code)

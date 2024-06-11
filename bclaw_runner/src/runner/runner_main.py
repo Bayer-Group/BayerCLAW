@@ -39,6 +39,7 @@ from .workspace import workspace, write_job_data_file, run_commands, UserCommand
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 
+
 def main(commands: List[str],
          image: str,
          inputs: Dict[str, str],
@@ -91,8 +92,8 @@ def main(commands: List[str],
                 repo.upload_outputs(jobby_outputs)
 
     except UserCommandsFailed as uce:
-        exit_code = uce.exit_code
         logger.error(str(uce))
+        exit_code = uce.exit_code
 
     except QCFailure as qcf:
         logger.error(str(qcf))
@@ -104,7 +105,7 @@ def main(commands: List[str],
 
     except Exception as e:
         logger.exception("bclaw_runner error: ")
-        exit_code = 255
+        exit_code = 199
 
     else:
         repo.put_run_status()

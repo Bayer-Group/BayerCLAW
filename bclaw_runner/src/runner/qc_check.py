@@ -60,6 +60,7 @@ def do_checks(checks: list) -> None:
     if checks:
         logger.info("starting QC checks")
         if failures := list(run_all_qc_checks(checks)):
+            logger.error(f"{len(failures)} QC checks failed")
             raise QCFailure("QC checks failed", failures)
         logger.info("QC checks finished")
     else:
