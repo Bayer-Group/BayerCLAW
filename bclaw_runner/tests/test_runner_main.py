@@ -208,7 +208,7 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
                     shell="sh",
                     skip="true")
 
-    assert response == 255
+    assert response == 199
     curr_bucket_contents = {o.key for o in mock_bucket.objects.all()}
     assert curr_bucket_contents == orig_bucket_contents
 
