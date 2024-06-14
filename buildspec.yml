@@ -37,6 +37,7 @@ phases:
         AmiId=${AMI_ID:-auto}
         CompilerMacroName=${COMPILER_MACRO_NAME}
         ExistingBatchSubscriptionFilter="${BATCH_FILTER:-none}"
+        GpuAmiId=${GPU_AMI_ID:-auto}
         InstallationName=${INSTALLATION_NAME}
         LauncherBucketName=${LAUNCHER_BUCKET_NAME}
         LogRetentionDays=${LOG_RETENTION_DAYS}
