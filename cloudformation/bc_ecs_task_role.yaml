@@ -23,7 +23,6 @@ Resources:
     Properties:
       RoleName:
         !If [UseDefaultRoleName, !Ref AWS::NoValue, !Ref RoleName]
-#        !If [UseDefaultRoleName, !Sub "${AWS::StackName}-${AWS::Region}", !Ref RoleName]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -40,7 +39,6 @@ Resources:
     Properties:
       ManagedPolicyName:
         !If [UseDefaultPolicyName, !Ref AWS::NoValue, !Ref PolicyName]
-#      ManagedPolicyName: !Sub "${EcsTaskRole}-policy"
       Roles:
         - !Ref EcsTaskRole
       PolicyDocument:

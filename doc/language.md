@@ -92,12 +92,17 @@ The `Steps` section consists of a single JSON or YAML list containing processing
 Workflow steps will be run in the order listed in the workflow template file.
 
 The fields of the step specification objects are:
-* `image` (required): The name of the Docker image to use. If you specify a plain name, such as `ubuntu` or `my_image:v1`,
+* `image` (optional): The name of the Docker image to use. Defaults to a generic Ubuntu image. 
+  
+  If you specify a plain name, such as `ubuntu` or `my_image:v1`,
   BayerCLAW will attempt to pull the image out of your account's ECR repository. Use a fully qualified URI, such as
   `docker.io/library/ubuntu` to access images in public repositories. You can also use fully qualified URIs for images
-  in ECR. Use of version tags is recommended but optional; per custom, the version tag defaults to `:latest`. The usual
+  in ECR. 
+
+  Use of version tags is optional but recommended. Per custom, the version tag defaults to `:latest`. The usual
   [caveats](https://www.howtogeek.com/devops/understanding-dockers-latest-tag/) about the `:latest` tag apply.
 
+  <!-- this is less important now that compile-time parameters are available
   You can [substitute](#string-substitution) values from the job data file into the
   image name or version tag of your image, for example:
   ```yaml
@@ -107,83 +112,105 @@ The fields of the step specification objects are:
 
   String substitutions can only be performed in the image name and the version tag, not in any other part of
   the image name.
-* `task_role` (optional): allows overriding the global `task_role` on a per-step basis, if desired.
-* `inputs`: A set of key-value pairs indicating files to be downloaded from S3 for processing.
+  -->
+
+* `task_role` (optional): allows overriding the global `task_role` on a per-step basis.
+
+* `inputs` (optional): A set of key-value pairs indicating files to be downloaded from S3 for processing.
+
   The value can be either an absolute S3 path (`s3://example-bucket/myfile.txt`) or a relative path (`myfile.txt`).
-  Relative paths are assumed to be relative to the workflow's [repository](#the-repository-line) in S3.
-  In either case, the downloaded file will be placed in the working directory with the same base name as the S3 path (`myfile.txt` in the examples above).
+  Relative paths are assumed to be relative to the workflow's [repository](#the-repository-line) in S3. In either case, the downloaded
+  file will be placed in the working directory with the same base name as the S3 path (`myfile.txt` in the examples above).
+
   During parameter substitution, references to the input will resolve to this unqualified local file name.
-  Shell-style wildcards (globs) are accepted in place of single file names, and will expand to all matching files in S3 (e.g. `s3://example-bucket/mydir/*.txt`).
-  Optional -- if no `inputs` block is specified, the inputs will default to outputs of previous step.
+
+  Shell-style wildcards (globs) are accepted in place of single file names, and will expand to all matching files in S3
+  (e.g. `s3://example-bucket/mydir/*.txt`).
+
+  If no `inputs` block is specified, the inputs will default to outputs of previous step.
   See [Auto Inputs](#auto-repo-and-auto-inputs). To specify that a step has no inputs from S3, write `inputs: {}` instead.
+
 * `references` (optional): If a step uses a large (multi-gigabyte), static reference data file as an input, you may list it under
   `references`. The first time the step is run on an EC2 host, files in the `references` section will be downloaded and
   cached on the host. Subsequent executions of this step will then use the cached reference files. Files listed in the
   `references` section must be full S3 paths. Shell-style wildcards are not allowed.
-* `commands` (required): A list of commands to run. By default, commands are run in the Bourne shell (`/bin/sh`).
+
+* `commands` (required): The commands to run in this step. This may be provided either as a list of strings or as a
+  [multi-line YAML string](https://yaml-multiline.info/).
+
   All commands are run in the same shell, so communication between
   commands is possible, e.g. assigning a computed value to a variable with one command and then using that variable in
   subsequent commands.
   If any command returns a non-zero exit code, the BayerCLAW command runner terminates the Docker container and returns an error to Batch.
   To aid in debugging, any `outputs` (see below) that are available will be uploaded to the `repository` before termination.
-  Failed jobs may be retried, but if the error persists it will eventually cause the workflow execution to abort and fail.
+  Failed jobs may be retried, but if the error persists it will eventually cause the workflow execution to fail.
   If all commands return success (exit code 0), the step will be considered a success and the workflow execution will continue.
-* `outputs`: Output files to save to S3.
+
+* `outputs` (optional): Output files to save to S3.
   The value specifies the local path to the file relative to the working directory inside the Docker container.
   Even if the local path contains several directory names, only the base name of the file will be appended to the workflow
   `repository` path to determine its destination in S3. Shell-style wildcards (globs) are accepted in place of single
   file names, and will expand to all matching local files (e.g. `outdir[0-9]/*.txt`). In addition, you can use the
   pattern `**` to search for files recursively through a directory structure. Note, however, that the directory structure
   will *not* be preserved in the S3 repository.
-* `skip_on_rerun` (optional): When rerunning a job, set this to `true` to bypass a step if has already been run successfully.
-  Defaults to `false`
+
+* `skip_on_rerun` (optional, default = `false`): When rerunning a job, set this to `true` to bypass a step if has already been run successfully.
+
 * `skip_if_output_exists` (optional): ‼️ **DEPRECATED** `skip_on_rerun` is preferred.
-* `compute`: An object specifying the compute environment that will be used. Optional.
-  * `cpus`:  Specify the number of vCPUs to reserve. Optional. Defaults to 1.
-  * `memory`: Specify the amount of memory to reserve. This may be provided as a number (in which case
+
+* `compute` (optional): An object specifying the compute environment that will be used.
+  * `cpus` (optional, default = 1):  Specify the number of vCPUs to reserve.
+
+  * `memory` (optional, default = 1 Gb): Specify the amount of memory to reserve. This may be provided as a number (in which case
    it specifies the number of megabytes to reserve), or as a string containing units such as Gb or Mb.
-   Optional. Defaults to 1 Gib.
-  * `spot`: Specifies whether to run batch jobs on spot instances. Optional. Defaults to `true`.
-    Spot instances cost roughly 1/3 of what on-demand instances do.
-    In the unlikely event your spot instance is interrupted, Batch will automatically retry your job.
-    No additional logic or effort is required on your part.
+
+  * `spot` (optional, default = true): Specifies whether to run batch jobs on spot instances.
+    
+    Spot instances cost roughly 1/3 of what on-demand instances do. In the unlikely event your spot instance is
+    interrupted, Batch will automatically retry your job. No additional logic or effort is required on your part.
     You should always use spot instances unless there is a compelling reason a job cannot be safely retried, e.g.
     it loads data into a database in multiple transactions, sends an email, charges someone's credit card, or launches
     a missile. Even so, jobs may be retried due to other failure modes, so your code should include special provisions
     for any action that is not idempotent (must happen exactly once / cannot safely be repeated).
-  * `queue_name`: Under most circumstances, AWS Batch can be trusted to choose the best EC2 instance types to run your
+    
+  * `queue_name` (optional): Under most circumstances, AWS Batch can be trusted to choose the best EC2 instance types to run your
     jobs on. However, some workflows may require specialized compute resources. In such cases, a custom Batch compute environment
     and job queue can be constructed manually, and the name of the custom job queue provided by adding a `queue_name` field to
     the compute block. When `queue_name` is specified, `cpus` and `memory` should be specified so as to take full advantage
     of the custom resources. However, the `spot` field will have no effect when `queue_name` is specified: spot instance
     usage should be requested in your custom compute environment.
-  * `gpu`: Specify the number of GPUs that will be allocated to each batch job. Note that BayerCLAW's default queues do not
-    natively support the use of GPU resources: you will need to create a custom GPU-enabled job queue and use the
-    `queue_name` parameter to direct jobs to it. See [the custom queue documentation](custom_queue.md) for
-    details.
-  * `shell`: Overrides the global `shell` option from the [Options](#the-options-block) block. Choices are
-      `sh`, `bash`, and `sh-pipefail`, defaults to `sh`.
-* `filesystems`: A list of objects describing EFS filesystems that will be mounted for this job. Note that you may
+    
+  * `gpu` (optional, default = 0): Specify the number of GPUs that will be allocated to each batch job. You may also 
+  specify `all` to indicate that the job will use all of the host's GPUs. If the number of GPUs requested is 
+  greater than 0, BayerCLAW will direct jobs to one of the built-in GPU-enabled job queues.
+
+  * `shell` (optional, default = `sh`): Overrides the global `shell` option from the [Options](#the-options-block) block. Choices are
+       `sh`, `bash`, and `sh-pipefail`.
+
+* `filesystems` (optional): A list of objects describing EFS filesystems that will be mounted for this job. Note that you may
   have several entries in this list, but each `efs_id` must be unique.
-  * `efs_id`: An EFS filesystem ID. Should be something like `fs-1234abcd`.
-  * `host_path`: A fully qualified path where the EFS filesystem will be mounted in your Docker container.
+  * `efs_id` (required): An EFS filesystem ID. Should be something like `fs-1234abcd`.
+  * `host_path` (required): A fully qualified path where the EFS filesystem will be mounted in your Docker container.
   * `root_dir` (optional): Directory within the EFS filesystem that will become the `host_path` in your Docker container.
   Default is `/`, i.e., the root of the EFS volume.
   
   [String substitutions](#string-substitution) are not allowed in the `filesystems` block.
-* `retry`: An object defining how the workflow retries failed jobs. Optional.
-  * `attempts` (optional): The number of times to retry a failed job. This does not include the initial execution, so
-  for instance setting `attempts` to 3 will result in up to 4 total runs. Default is 3, set to 0 to disable retries.
-  * `interval` (optional): The amount of time to wait between retries, expressed as a string consisting of an integer and
+
+* `retry` (optional): An object defining how the workflow retries failed jobs.
+  * `attempts` (optional, default = 3): The number of times to retry a failed job. This does not include the initial execution, so
+  for instance setting `attempts` to 3 will result in up to 4 total runs. Set to 0 to disable retries.
+  * `interval` (optional, default = `3s`): The amount of time to wait between retries, expressed as a string consisting of an integer and
   a one-letter abbreviated time unit (s = seconds, m = minutes, h = hours, d = days, w = weeks). Only one number-unit
-  pair is allowed. Default is `3s`
-  * `backoff_rate` (optional): An exponential backoff multiplier. Must be greater than 1.0. Default is 1.5
-* `timeout` (optional): Amount of time to allow batch jobs to run before terminating them. Expressed as a time string
-as described under `retry/interval` above. Default is to impose no timeout on batch jobs.
+  pair is allowed.
+  * `backoff_rate` (optional, default = 1.5): An exponential backoff multiplier. Must be greater than 1.0.
+  * `timeout` (optional): Amount of time to allow batch jobs to run before terminating them. Expressed as a time string
+  as described under `retry/interval` above. Default is to impose no timeout on batch jobs.
+
 * `next` (optional): Name of the next step to execute after the current step completes. Default behavior is to
 go to the next step in the steps list. Using a `next` field, you can make your workflow skip over steps or even return
 to an earlier step in the process. `next` cannot, however, be used to jump into or out of the steps block of a
  Parallel or scatter-gather type step. `next` is useful in conjunction with [chooser steps](#chooser-steps).
+
 * `end` (optional): Causes the workflow (or current steps block) to terminate in a SUCCESS state immediately after
 the current step finishes. Also useful in conjunction with [chooser steps](#chooser-steps).
 
@@ -213,8 +240,9 @@ Steps:
         reads2: ${job.READS2}
       commands:
         - shovill -R1 ${reads1} -R2 ${reads2} --outdir .
+        - rename_contigs.py contigs.fa > ${contigs}
       outputs:
-        contigs: contigs.fa
+        contigs: renamed_contigs.fa
       skip_on_rerun: true
       compute:
         cpus: 4
@@ -248,8 +276,10 @@ Steps:
         -
           efs_id: fs-12345678
           host_path: /ref_data
-      commands:
-        - blastp -query ${inputs} -db /ref_data/${blastDb} -out ${blast_out} -evalue 1e-10
+      # this commands block uses a multiline yaml string instead of a list of commands
+      commands: |
+        blastp -query ${inputs} -db /ref_data/${blastDb} -out raw_output.txt -evalue 1e-10
+        parse_blast.py raw_output.txt > ${blast_out}
       outputs:
         blast_out: prots_v_uniprot.txt
       skip_on_rerun: false

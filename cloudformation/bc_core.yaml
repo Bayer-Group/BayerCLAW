@@ -765,9 +765,6 @@ Resources:
     Type: AWS::Serverless::Application
     Properties:
       Location: bc_ecs_task_role.yaml
-#      Parameters:
-#        RoleName: !Sub "${AWS::StackName}-EcsTaskRole-${AWS::Region}"
-#        PolicyName: !Sub "${AWS::StackName}-EcsTaskRole-Policy-${AWS::Region}"
 
   # todo: keep this around a while longer, because deleting it will break every workflow in the account
   EcsTaskRole:
