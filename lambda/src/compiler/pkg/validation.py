@@ -29,6 +29,16 @@ class CompilerError(Exception):
         return ret
 
 
+# todo: check min length
+def Listified(validator):
+    listy_validator = Schema([validator])
+    def f(v):
+        if not isinstance(v, list):
+            v = [v]
+        return listy_validator(v)
+    return f
+
+
 def no_shared_keys(*field_names):
     def _impl(record: dict) -> dict:
         key_iters = ((record.get(f) or {}).keys() for f in field_names)
@@ -57,7 +67,18 @@ next_or_end = {
 
 qc_check_block = {
     Required("qc_result_file"): str,
-    Required("stop_early_if"): Any(str, All([str], Length(min=1)))
+    # Required("stop_early_if"): Any(str, All([str], Length(min=1)))
+    Required("stop_early_if"): Listified(str)
+}
+
+filesystem_block = {
+    Required("efs_id", msg="EFS filesystem ID is required"): All(str, Match(r"^fs-[0-9a-fA-F]+$")),
+    Required("host_path", msg="host path for EFS mount is required"): All(str,
+                                                                          Match(r"^/", msg="host_path must be fully qualified"),
+                                                                          no_substitutions),
+    Optional("root_dir", default="/"): All(str,
+                                           Match(r"^/", msg="root_dir mut be a fully qualified path"),
+                                           no_substitutions),
 }
 
 batch_step_schema = Schema(All(
@@ -68,10 +89,11 @@ batch_step_schema = Schema(All(
         # inputs = {} can be used to explicitly specify a step has no inputs at all, with no copy from previous output.
         Optional("inputs", default=None): Any(None, {str: str}),
         Optional("references", default={}): {str: Match(r"^s3://", msg="reference values must be s3 paths")},
-        Required("commands", msg="commands list is required"): Or(
-            str,
-            All(Length(min=1, msg="at least one command is required"), [str]),
-        ),
+        Required("commands", msg="commands list is required"): Listified(str),
+        # Required("commands", msg="commands list is required"): Or(
+        #     str,
+        #     All(Length(min=1, msg="at least one command is required"), [str]),
+        # ),
         Optional("outputs", default={}): {str: str},
         Exclusive("skip_if_output_exists", "skip_behavior", msg=skip_msg): bool,
         Exclusive("skip_on_rerun", "skip_behavior", msg=skip_msg): bool,
@@ -88,28 +110,23 @@ batch_step_schema = Schema(All(
             Optional("shell", default=None): Any(None, "bash", "sh", "sh-pipefail",
                                                  msg="shell option must be bash, sh, or sh-pipefail"),
         },
-        Optional("filesystems", default=[]): [
-            {
-                Required("efs_id", msg="EFS filesystem ID is required"): All(str, Match(r"^fs-[0-9a-fA-F]+$")),
-                Required("host_path", msg="host path for EFS mount is required"): All(str,
-                                                                                      Match(r"^/", msg="host_path must be fully qualified"),
-                                                                                      no_substitutions),
-                Optional("root_dir", default="/"): All(str,
-                                                       Match(r"^/", msg="root_dir mut be a fully qualified path"),
-                                                       no_substitutions),
-            },
-        ],
-        Optional("qc_check", default=None): Maybe(Any(
-            qc_check_block,
-            All([qc_check_block], Length(min=1))
-        )),
-        # Optional("qc_check", default=None): Any(None, {
-        #     Optional("type", default="choice"): str,
-        #     Required("qc_result_file"): str,
-        #     Required("stop_early_if"): str,
-        #     Optional("email_subject", default="qc failure alert!"): str,
-        #     Optional("notification", default=[]): [str],
-        # }),
+        Optional("filesystems", default=[]): Listified(filesystem_block),
+        # Optional("filesystems", default=[]): [
+        #     {
+        #         Required("efs_id", msg="EFS filesystem ID is required"): All(str, Match(r"^fs-[0-9a-fA-F]+$")),
+        #         Required("host_path", msg="host path for EFS mount is required"): All(str,
+        #                                                                               Match(r"^/", msg="host_path must be fully qualified"),
+        #                                                                               no_substitutions),
+        #         Optional("root_dir", default="/"): All(str,
+        #                                                Match(r"^/", msg="root_dir mut be a fully qualified path"),
+        #                                                no_substitutions),
+        #     },
+        # ],
+        Optional("qc_check", default=[]): Listified(qc_check_block),
+        # Optional("qc_check", default=None): Maybe(Any(
+        #     qc_check_block,
+        #     All([qc_check_block], Length(min=1))
+        # )),
         Optional("retry", default={}): {
             Optional("attempts", default=3): int,
             Optional("interval", default="3s"): Match(r"^\d+\s?[smhdw]$",
@@ -208,6 +225,8 @@ subpipe_step_schema = Schema(
 )
 
 
+wf_step = {Coerce(str): dict}
+
 workflow_schema = Schema(
     {
         Required("Repository", msg="Repository is required"): str,
@@ -223,9 +242,10 @@ workflow_schema = Schema(
             Optional("task_role", default=None): Maybe(str),
             Optional("versioned", default="false"): All(Lower, Coerce(str), Any("true", "false"))
         },
-        Required("Steps", "Steps list not found"):
-            All(Length(min=1, msg="at least one step is required"),
-            [{Coerce(str): dict}]),
+        Required("Steps", "Steps list not found"): Listified(wf_step),
+        # Required("Steps", "Steps list not found"):
+        #     All(Length(min=1, msg="at least one step is required"),
+        #     [{Coerce(str): dict}]),
     }
 )
 
