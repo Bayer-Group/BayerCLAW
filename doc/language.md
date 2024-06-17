@@ -206,6 +206,14 @@ The fields of the step specification objects are:
   * `timeout` (optional): Amount of time to allow batch jobs to run before terminating them. Expressed as a time string
   as described under `retry/interval` above. Default is to impose no timeout on batch jobs.
 
+* `qc_check` (optional): Allows you to perform QC checks on output files, and abort the workflow execution if specified
+conditions are not met.
+  * `qc_result_file` (required): The name of a JSON-formatted file in the Batch job's working directory containing the
+QC check output.
+  * `stop_early_if` (required): One or more lines of Python code expressing the conditions under which execution will be
+halted. Keys from the `qc_result_file` are treated as variables in the expressions. If there are multiple expressions,
+execution will be stopped if any of them evaluates to True.
+
 * `next` (optional): Name of the next step to execute after the current step completes. Default behavior is to
 go to the next step in the steps list. Using a `next` field, you can make your workflow skip over steps or even return
 to an earlier step in the process. `next` cannot, however, be used to jump into or out of the steps block of a
@@ -240,9 +248,15 @@ Steps:
         reads2: ${job.READS2}
       commands:
         - shovill -R1 ${reads1} -R2 ${reads2} --outdir .
+        - do_contig_qc.py contigs.fa > contig_qc.json 
         - rename_contigs.py contigs.fa > ${contigs}
       outputs:
         contigs: renamed_contigs.fa
+      qc_check:
+        qc_result_file: contig_qc.json
+        stop_early_if:
+          - n_contigs < 100
+          - avg_length < 1000
       skip_on_rerun: true
       compute:
         cpus: 4
@@ -284,14 +298,6 @@ Steps:
         blast_out: prots_v_uniprot.txt
       skip_on_rerun: false
 ```
-
-## QC steps
-
-Any step may include a quality control check.
-If the check fails, the pipeline will abort and not continue to the end.
-This is typically used when the input data is not adequate for the pipeline to continue.
-
-[Click here](qc.md) for full documentation of the QC syntax.
 
 ## Scatter-gather steps
 

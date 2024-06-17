@@ -25,7 +25,7 @@ Here is a step definition example that includes QC check:
         output_file: qc_out.json
       qc_check:
         qc_result_file: "qc_out.json"
-        stop_early_if: "float(qc_result) > 0.8"        
+        stop_early_if: "float(qc_result) > 0.8"
       compute:
         cpus: 4
         memory: 4 Gb

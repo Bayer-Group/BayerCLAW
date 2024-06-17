@@ -71,6 +71,7 @@ The following options are highly specialized and may be safely ignored if they m
         - **Batch parameters**
             - AmiID: If you want to run Batch jobs in a custom AMI, enter its ID here. Otherwise, accept the default
             ("auto").
+            - GpuAmiId: You may enter the ID of a GPU-enabled AMI, or use the Batch default ("auto").
             - RootVolumeSize: Size (in Gb) of the EBS volume that hosts Docker images in Batch jobs. Default is 100 Gb.
             - ScratchVolumeSize: Size (in Gb) of the EBS volumes that hold the working directories for Batch jobs.
             Default is 1 Tb.

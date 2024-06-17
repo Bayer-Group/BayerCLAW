@@ -292,7 +292,6 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         "tags": {
             "bclaw:version": "1234567",
         }
-
     }
 
     expected_rc_spec = {
