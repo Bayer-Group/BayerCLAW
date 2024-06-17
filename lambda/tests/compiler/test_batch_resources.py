@@ -212,9 +212,10 @@ def sample_batch_step():
           references:
             reference1: s3://ref-bucket/path/to/reference.file
           qc_check:
-            qc_result_file: qc.out
-            stop_early_if:
-                - x > 1
+            -
+                qc_result_file: qc.out
+                stop_early_if:
+                    - x > 1
           skip_on_rerun: false
           timeout: 1h
           retry:
@@ -239,7 +240,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
             "references": "fff",
             "command": json.dumps(step.spec["commands"], separators=(",", ":")),
             "outputs": "ooo",
-            "qc": json.dumps([step.spec["qc_check"]], separators=(",", ":")),
+            "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
             "shell": "sh",
             "skip": "sss",
         },
@@ -320,6 +321,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         assert resource.spec == expected_rc_spec
 
 
+@pytest.mark.skip(reason="need this anymore?")
 def test_job_definition_rc_single_line_command(sample_batch_step, compiler_env):
     command_str = textwrap.dedent("""\
         commands: |

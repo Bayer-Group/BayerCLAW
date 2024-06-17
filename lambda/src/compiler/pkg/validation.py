@@ -30,11 +30,13 @@ class CompilerError(Exception):
 
 
 # todo: check min length
-def Listified(validator):
+def Listified(validator, min: int = 0):
     listy_validator = Schema([validator])
     def f(v):
         if not isinstance(v, list):
             v = [v]
+        if len(v) < min:
+            raise ValueError("not enough items in list")
         return listy_validator(v)
     return f
 
@@ -68,7 +70,7 @@ next_or_end = {
 qc_check_block = {
     Required("qc_result_file"): str,
     # Required("stop_early_if"): Any(str, All([str], Length(min=1)))
-    Required("stop_early_if"): Listified(str)
+    Required("stop_early_if"): Listified(str, min=1)
 }
 
 filesystem_block = {
@@ -89,7 +91,7 @@ batch_step_schema = Schema(All(
         # inputs = {} can be used to explicitly specify a step has no inputs at all, with no copy from previous output.
         Optional("inputs", default=None): Any(None, {str: str}),
         Optional("references", default={}): {str: Match(r"^s3://", msg="reference values must be s3 paths")},
-        Required("commands", msg="commands list is required"): Listified(str),
+        Required("commands", msg="commands list is required"): Listified(str, min=1),
         # Required("commands", msg="commands list is required"): Or(
         #     str,
         #     All(Length(min=1, msg="at least one command is required"), [str]),
@@ -160,10 +162,12 @@ parallel_step_schema = Schema(
         Optional("inputs", default={}): {str: str},
         Required("branches", msg="branches not found"):
             All(
+                # todo: listify
                 Length(min=1, msg="at least one branch is required"),
                 [
                     {
                         Optional("if"): str,
+                        # todo: listify
                         Required("steps", msg="steps list not found"):
                             All(
                                 Length(min=1, msg="at least one step is required"),
@@ -181,6 +185,7 @@ chooser_step_schema = Schema(
     {
         Optional("inputs", default={}): {str: str},
         Required("choices", msg="choices list not found"):
+            # todo: listify
             All(Length(min=1, msg="at least one choice is required"),
                 [
                     {
@@ -198,6 +203,7 @@ scatter_step_schema = Schema(All(
         Required("scatter"): {str: Any(str, list)},
         Optional("inputs", default=None):
             Maybe({str: str}),
+        # todo: listify
         Required("steps", "steps list is required"):
             All(Length(min=1, msg="at least one step is required"), [{str: dict}]),
         Optional("outputs", default={}):
@@ -217,8 +223,10 @@ scatter_step_schema = Schema(All(
 subpipe_step_schema = Schema(
     {
         Optional("job_data", default=None): Maybe(str),
+        # todo: listify
         Optional("submit", default=[]): [str],  # deprecated
         Required("subpipe"): str,
+        # todo: listify
         Optional("retrieve", default=[]): [str],
         **next_or_end,
     }
@@ -242,7 +250,7 @@ workflow_schema = Schema(
             Optional("task_role", default=None): Maybe(str),
             Optional("versioned", default="false"): All(Lower, Coerce(str), Any("true", "false"))
         },
-        Required("Steps", "Steps list not found"): Listified(wf_step),
+        Required("Steps", "Steps list not found"): Listified(wf_step, min=1),
         # Required("Steps", "Steps list not found"):
         #     All(Length(min=1, msg="at least one step is required"),
         #     [{Coerce(str): dict}]),
