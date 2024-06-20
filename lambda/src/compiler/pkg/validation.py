@@ -29,7 +29,6 @@ class CompilerError(Exception):
         return ret
 
 
-# todo: check min length
 def Listified(validator, min: int = 0):
     listy_validator = Schema([validator])
     def f(v):
@@ -157,42 +156,49 @@ native_step_schema = Schema(
 )
 
 
+parallel_branch = {
+    Optional("if"): str,
+    Required("steps", msg="steps list not found"): Listified(dict, min=1),
+}
+
 parallel_step_schema = Schema(
     {
         Optional("inputs", default={}): {str: str},
-        Required("branches", msg="branches not found"):
-            All(
-                # todo: listify
-                Length(min=1, msg="at least one branch is required"),
-                [
-                    {
-                        Optional("if"): str,
-                        # todo: listify
-                        Required("steps", msg="steps list not found"):
-                            All(
-                                Length(min=1, msg="at least one step is required"),
-                                [dict]
-                            )
-                    },
-                ]
-            ),
+        Required("branches", msg="branches not found"): Listified(parallel_branch, min=1),
+            # All(
+            #     Length(min=1, msg="at least one branch is required"),
+            #     [
+            #         {
+            #             Optional("if"): str,
+            #             Required("steps", msg="steps list not found"): Listified(dict, min=1),
+                            # All(
+                            #     Length(min=1, msg="at least one step is required"),
+                            #     [dict]
+                            # )
+            #         },
+            #     ]
+            # ),
         **next_or_end,
     }
 )
 
 
+choice = {
+    Required("if", msg="no 'if' condition found"): str,
+    Required("next", msg="no 'next' name found"): str,
+}
+
 chooser_step_schema = Schema(
     {
         Optional("inputs", default={}): {str: str},
-        Required("choices", msg="choices list not found"):
-            # todo: listify
-            All(Length(min=1, msg="at least one choice is required"),
-                [
-                    {
-                        Required("if", msg="no 'if' condition found"): str,
-                        Required("next", msg="no 'next' name found"): str,
-                    },
-                ]),
+        Required("choices", msg="choices list not found"): Listified(choice, min=1),
+            # All(Length(min=1, msg="at least one choice is required"),
+            #     [
+            #         {
+            #             Required("if", msg="no 'if' condition found"): str,
+            #             Required("next", msg="no 'next' name found"): str,
+            #         },
+            #     ]),
         Optional("next"): str,
     }
 )
@@ -203,9 +209,8 @@ scatter_step_schema = Schema(All(
         Required("scatter"): {str: Any(str, list)},
         Optional("inputs", default=None):
             Maybe({str: str}),
-        # todo: listify
-        Required("steps", "steps list is required"):
-            All(Length(min=1, msg="at least one step is required"), [{str: dict}]),
+        Required("steps", "steps list is required"): Listified({str: dict}, min=1),
+            # All(Length(min=1, msg="at least one step is required"), [{str: dict}]),
         Optional("outputs", default={}):
             {str: str},
         Optional("max_concurrency", default=0):
@@ -223,11 +228,11 @@ scatter_step_schema = Schema(All(
 subpipe_step_schema = Schema(
     {
         Optional("job_data", default=None): Maybe(str),
-        # todo: listify
-        Optional("submit", default=[]): [str],  # deprecated
+        # Optional("submit", default=[]): [str],  # deprecated
+        Optional("submit", default=[]): Listified(str),
         Required("subpipe"): str,
-        # todo: listify
-        Optional("retrieve", default=[]): [str],
+        # Optional("retrieve", default=[]): [str],
+        Optional("retrieve", default=[]): Listified(str),
         **next_or_end,
     }
 )

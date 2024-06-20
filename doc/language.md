@@ -83,7 +83,8 @@ The `Options` block contains settings that affect the operation of BayerCLAW:
     to be used by all the steps in this workflow, such as `arn:aws:iam::123456789012:role/hello-world-ecs-task-role`.
     This allows advanced users to provide custom AWS permissions to the workflow, if needed.
     If this field is not specified, the steps will use a generic role created by BayerCLAW, which is fine for most uses.
-    See [bc_core.yaml](../cloudformation/bc_core.yaml) for the definition of the generic role.
+    You can use the [bc_ecs_task_role.yaml](../cloudformation/bc_ecs_task_role.yaml) CloudFormation template to create a
+    task role with the necessary permissions.
 * `versioned` (optional): ‼️ **DEPRECATED** This option is no longer functional, since BayerCLAW workflows are always
   versioned now.
 
