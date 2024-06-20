@@ -36,12 +36,11 @@ The BayerCLAW workflow template is a JSON- or YAML-formatted file describing the
 Here is an example of a very simple, one-step workflow:
 
 ```YAML
-Transform: BC_Compiler
+Transform: BC2_Compiler
 
-params:
-  repository: s3://example-bucket/hello-world/${job.SAMPLE_ID}
+Repository: s3://example-bucket/hello-world/${job.SAMPLE_ID}
 
-steps:
+Steps:
   - hello:
       image: docker.io/library/ubuntu
       commands:
