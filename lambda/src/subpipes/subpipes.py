@@ -146,6 +146,13 @@ def lambda_handler(event: dict, context: object) -> dict:
                 _ = list(executor.map(copy_file, subbed_specs))
 
         # return sub repo
-        ret = {"sub_repo": sub_repo}
+        sub_repo_bucket, sub_repo_prefix = sub_repo.split("/", 3)[2:]
+        ret = {
+            "sub_repo": {
+                "bucket": sub_repo_bucket,
+                "prefix": sub_repo_prefix,
+                "uri": sub_repo,
+            }
+        }
 
         return ret

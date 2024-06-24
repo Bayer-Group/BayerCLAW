@@ -82,7 +82,13 @@ def test_lambda_handler_submit(repo_bucket, sub_job_data, expect):
         },
     }
 
-    expected_result = {"sub_repo": f"s3://{repo_bucket.name}/repo/subpipe"}
+    expected_result = {
+        "sub_repo": {
+            "bucket": repo_bucket.name,
+            "prefix": "repo/subpipe",
+            "uri": f"s3://{repo_bucket.name}/repo/subpipe",
+        }
+    }
 
     result = lambda_handler(event, {})
     assert result == expected_result
@@ -135,7 +141,13 @@ def test_lambda_handler_submit_no_files(repo_bucket):
         },
     }
 
-    expected_result = {"sub_repo": f"s3://{repo_bucket.name}/repo/subpipe"}
+    expected_result = {
+        "sub_repo": {
+            "bucket": repo_bucket.name,
+            "prefix": "repo/subpipe",
+            "uri": f"s3://{repo_bucket.name}/repo/subpipe",
+        }
+    }
 
     result = lambda_handler(event, {})
     assert result == expected_result
