@@ -106,23 +106,6 @@ class Repository(object):
             raise SkipExecution("found output files; skipping")
 
 
-    def files_exist0(self, filenames: List[str]) -> bool:
-        # this is for backward compatibility. Note that if you have a step that produces
-        # no outputs (i.e. being run for side effects only), it will always be skipped
-        # if run with skip_if_files_exist
-        if len(filenames) == 0:
-            return True
-
-        # there's no way to know if all the files included in a glob were uploaded in
-        # a previous run, so just return False to be safe
-        if any(_is_glob(f) for f in filenames):
-            return False
-
-        keys = (self.qualify(os.path.basename(f)) for f in filenames)
-        ret = all(self._s3_file_exists(k) for k in keys)
-        return ret
-
-
     def _inputerator(self, input_spec: Dict[str, str]) -> Generator[str, None, None]:
         for symbolic_name, filename in input_spec.items():
             optional = symbolic_name.endswith("?")
@@ -208,26 +191,6 @@ class Repository(object):
         else:
             if result:
                 raise SkipExecution("found previous run; skipping")
-        # pharque!!!
-        # try:
-        #     if self._s3_file_exists(self.qualify(self.run_status_obj)):
-        #         raise SkipExecution("found previous run; skipping")
-        # # pharque!!!
-        # except Exception:
-        #     logger.warning("unable to query previous run status, assuming none")
-
-
-    def check_for_previous_run0(self) -> bool:
-        """
-        Returns:
-            True if this step has been run before
-        """
-        try:
-            ret = self._s3_file_exists(self.qualify(self.run_status_obj))
-        except Exception:
-            logger.warning("unable to query previous run status, assuming none")
-            ret = False
-        return ret
 
     def clear_run_status(self) -> None:
         try:

@@ -18,7 +18,6 @@ def compiler_env():
         "LAUNCHER_BUCKET_NAME": "launcher_bucket_name",
         "LOG_RETENTION_DAYS": "99",
         "LOGGING_DESTINATION_ARN": "logging_destination_arn",
-        # "QC_CHECKER_LAMBDA_ARN": "qc_checker_lambda_arn",
         "RESOURCE_BUCKET_NAME": "resource_bucket_name",
         "RUNNER_REPO_URI": "runner_repo_uri",
         "SCATTER_INIT_LAMBDA_ARN": "scatter_init_lambda_arn",

@@ -91,10 +91,6 @@ batch_step_schema = Schema(All(
         Optional("inputs", default=None): Any(None, {str: str}),
         Optional("references", default={}): {str: Match(r"^s3://", msg="reference values must be s3 paths")},
         Required("commands", msg="commands list is required"): Listified(str, min=1),
-        # Required("commands", msg="commands list is required"): Or(
-        #     str,
-        #     All(Length(min=1, msg="at least one command is required"), [str]),
-        # ),
         Optional("outputs", default={}): {str: str},
         Exclusive("skip_if_output_exists", "skip_behavior", msg=skip_msg): bool,
         Exclusive("skip_on_rerun", "skip_behavior", msg=skip_msg): bool,
@@ -112,22 +108,7 @@ batch_step_schema = Schema(All(
                                                  msg="shell option must be bash, sh, or sh-pipefail"),
         },
         Optional("filesystems", default=[]): Listified(filesystem_block),
-        # Optional("filesystems", default=[]): [
-        #     {
-        #         Required("efs_id", msg="EFS filesystem ID is required"): All(str, Match(r"^fs-[0-9a-fA-F]+$")),
-        #         Required("host_path", msg="host path for EFS mount is required"): All(str,
-        #                                                                               Match(r"^/", msg="host_path must be fully qualified"),
-        #                                                                               no_substitutions),
-        #         Optional("root_dir", default="/"): All(str,
-        #                                                Match(r"^/", msg="root_dir mut be a fully qualified path"),
-        #                                                no_substitutions),
-        #     },
-        # ],
         Optional("qc_check", default=[]): Listified(qc_check_block),
-        # Optional("qc_check", default=None): Maybe(Any(
-        #     qc_check_block,
-        #     All([qc_check_block], Length(min=1))
-        # )),
         Optional("retry", default={}): {
             Optional("attempts", default=3): int,
             Optional("interval", default="3s"): Match(r"^\d+\s?[smhdw]$",
@@ -165,19 +146,6 @@ parallel_step_schema = Schema(
     {
         Optional("inputs", default={}): {str: str},
         Required("branches", msg="branches not found"): Listified(parallel_branch, min=1),
-            # All(
-            #     Length(min=1, msg="at least one branch is required"),
-            #     [
-            #         {
-            #             Optional("if"): str,
-            #             Required("steps", msg="steps list not found"): Listified(dict, min=1),
-                            # All(
-                            #     Length(min=1, msg="at least one step is required"),
-                            #     [dict]
-                            # )
-            #         },
-            #     ]
-            # ),
         **next_or_end,
     }
 )
@@ -192,13 +160,6 @@ chooser_step_schema = Schema(
     {
         Optional("inputs", default={}): {str: str},
         Required("choices", msg="choices list not found"): Listified(choice, min=1),
-            # All(Length(min=1, msg="at least one choice is required"),
-            #     [
-            #         {
-            #             Required("if", msg="no 'if' condition found"): str,
-            #             Required("next", msg="no 'next' name found"): str,
-            #         },
-            #     ]),
         Optional("next"): str,
     }
 )
@@ -210,7 +171,6 @@ scatter_step_schema = Schema(All(
         Optional("inputs", default=None):
             Maybe({str: str}),
         Required("steps", "steps list is required"): Listified({str: dict}, min=1),
-            # All(Length(min=1, msg="at least one step is required"), [{str: dict}]),
         Optional("outputs", default={}):
             {str: str},
         Optional("max_concurrency", default=0):
@@ -228,10 +188,8 @@ scatter_step_schema = Schema(All(
 subpipe_step_schema = Schema(
     {
         Optional("job_data", default=None): Maybe(str),
-        # Optional("submit", default=[]): [str],  # deprecated
-        Optional("submit", default=[]): Listified(str),
+        Optional("submit", default=[]): Listified(str),  # deprecated
         Required("subpipe"): str,
-        # Optional("retrieve", default=[]): [str],
         Optional("retrieve", default=[]): Listified(str),
         **next_or_end,
     }
@@ -256,9 +214,6 @@ workflow_schema = Schema(
             Optional("versioned", default="false"): All(Lower, Coerce(str), Any("true", "false"))
         },
         Required("Steps", "Steps list not found"): Listified(wf_step, min=1),
-        # Required("Steps", "Steps list not found"):
-        #     All(Length(min=1, msg="at least one step is required"),
-        #     [{Coerce(str): dict}]),
     }
 )
 

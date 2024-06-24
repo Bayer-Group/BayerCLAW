@@ -129,8 +129,6 @@ Conditions:
                  !Not [!Equals [!Ref AmiId, "auto"]] ]
   Uniqify: !And [ !Not [!Equals [!Ref Uniqifier, "None"]],
                   !Not [!Equals [!Ref Uniqifier, "none"]] ]
-#  UseBackupCE: !And [ !Not [!Equals [!Ref BackupComputeEnvironmentArn, "None"]],
-#                      !Not [!Equals [!Ref BackupComputeEnvironmentArn, "none"]] ]
   UseGpu: !Equals [!Ref GpuEnabled, "True"]
   UseSpot: !Equals [!Ref RequestType, "Spot"]
 
@@ -242,8 +240,6 @@ Resources:
     Type: AWS::Batch::SchedulingPolicy
     Properties:
       Name: !Sub "${QueueName}-scheduling-policy"
-      FairsharePolicy:
-        ShareDecaySeconds: 1000
 
   BatchQueue:
     Type: AWS::Batch::JobQueue

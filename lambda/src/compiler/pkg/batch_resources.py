@@ -173,11 +173,6 @@ def job_definition_rc(step: Step,
                       shell_opt: str) -> Generator[Resource, None, str]:
     logical_name = make_logical_name(f"{step.name}.job.defx")
 
-    # if isinstance(step.spec["commands"], str):
-    #     command_list = [step.spec["commands"]]
-    # else:
-    #     command_list = step.spec["commands"]
-
     job_def_spec = {
         "type": "container",
         "parameters": {
@@ -185,10 +180,8 @@ def job_definition_rc(step: Step,
             "image": "mmm",
             "inputs": "iii",
             "references": "fff",
-            # "command": json.dumps(command_list, separators=(",", ":")),
             "command": json.dumps(step.spec["commands"], separators=(",", ":")),
             "outputs": "ooo",
-            # "qc": json.dumps(handle_qc_check(step.spec["qc_check"]), separators=(",", ":")),
             "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
             "shell": shell_opt,
             "skip": "sss",
@@ -343,21 +336,6 @@ def handle_batch(step: Step,
     shell_opt = step.spec["compute"]["shell"] or options.get("shell")
 
     job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt)
-
-    # if step.spec["qc_check"] is not None:
-    #     qc_state = handle_qc_check(step)
-    #     ret0 = batch_step(step,
-    #                       job_def_logical_name,
-    #                       **step.spec["retry"],
-    #                       scattered=scattered,
-    #                       next_step_override=qc_state.name)
-    #     ret = [State(step.name, ret0), qc_state]
-    #
-    # else:
-    #     ret = [State(step.name, batch_step(step,
-    #                                        job_def_logical_name,
-    #                                        **step.spec["retry"],
-    #                                        scattered=scattered))]
 
     ret = [State(step.name, batch_step(step,
                                        job_def_logical_name,
