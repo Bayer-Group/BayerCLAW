@@ -96,7 +96,7 @@ def test_file_retrieve_step(next_step_name, next_or_end, sample_subpipe_spec, co
             "repo.$": "$.repo.uri",
             "retrieve": json.dumps(sample_subpipe_spec["retrieve"]),
             "subpipe": {
-                "sub_repo.$": "$.subpipe.sub_repo",
+                "sub_repo.$": "$.subpipe.sub_repo.uri",
             },
             "logging": {
                 "branch.$": "$.index",
