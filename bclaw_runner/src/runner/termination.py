@@ -39,8 +39,8 @@ def _termination_checker_impl(event: threading.Event, interval: int) -> None:
             logger.debug("checking instance metadata")
             _do_termination_check()
 
-        except Exception as e:
-            logger.error(f"termination warning check failed: {str(e)}")
+        except Exception:
+            logger.warning(f"termination warning check failed")
 
         finally:
             stopped = event.wait(interval)

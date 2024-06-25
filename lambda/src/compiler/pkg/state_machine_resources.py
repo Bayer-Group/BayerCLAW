@@ -74,7 +74,7 @@ def process_step(step: Step,
                                                             options,
                                                             depth)
 
-    elif "image" in step.spec:
+    elif "commands" in step.spec:
         normalized_step = validate_batch_step(step)
         scattered = depth > 0
         states_to_add = yield from b.handle_batch(normalized_step,
@@ -147,10 +147,11 @@ def write_state_machine_to_fh(sfn_def: dict, fh) -> dict:
 def write_state_machine_to_s3(sfn_def: dict) -> dict:
     def_json = json.dumps(sfn_def, indent=4)
 
-    bucket = os.environ["RESOURCE_BUCKET_NAME"]
+    # bucket = os.environ["RESOURCE_BUCKET_NAME"]
+    bucket = os.environ["LAUNCHER_BUCKET_NAME"]
 
     base_filename = uuid4().hex
-    key = f"stepfunctions/{base_filename}.json"
+    key = f"__tmp__/sfn/{base_filename}.json"
 
     s3 = boto3.client("s3")
     response = s3.put_object(

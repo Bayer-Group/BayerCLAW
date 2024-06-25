@@ -13,6 +13,9 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: setupPython
         uses: actions/setup-python@v5
@@ -29,7 +32,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: "arn:aws:iam::934778205429:role/jaxGithubActionsRole"
-          aws-region: us-east-1
+          aws-region: us-east-2
 
       - name: runTests
         run: |
@@ -38,21 +41,38 @@ jobs:
 
       - name: installCore
         id: install-core
+        env:
+          SUBNETS: "subnet-3ffe7854,subnet-b3b296ff,subnet-e1c63a9c"
+          VPC_ID: "vpc-00cb556b"
         run: |
+          export SOURCE_VERSION=$(git describe --tags)
+          export UNIQIFIER=$(date | md5sum | head -c 16)
+          
           sam build -b ./build -s . -t cloudformation/bc_core.yaml
-          sam deploy
+          sam deploy \
           --template-file build/template.yaml \
           --stack-name bayerclaw2-core \
           --resolve-s3 \
-          --capabilities CAPABILITY_NAMED_IAM \
+          --capabilities "CAPABILITY_NAMED_IAM" "CAPABILITY_AUTO_EXPAND" \
           --no-fail-on-empty-changeset \
+          --tags "bclaw:version=${SOURCE_VERSION}" \
           --parameter-overrides \
+          AmiId=auto \
+          CompilerMacroName=BC2_Compiler \
+          ExistingBatchSubscriptionFilter=none \
+          GpuAmiId=auto \
+          InstallationName=bayerclaw2 \
+          LauncherBucketName=default \
+          LogRetentionDays=30 \
+          MaxvCpus=256 \
+          MinvCpus=0 \
           RootVolumeSize=50 \
           ScratchVolumeSize=100 \
-          SourceVersion=$(git describe --tags) \
-          Subnets="subnet-3ffe7854,subnet-b3b296ff,subnet-e1c63a9c" \
-          Uniqifier=$(date | md5sum | head -c 16) \
-          VpcId="vpc-00cb556b"
+          SecurityGroups=auto \
+          SourceVersion=${SOURCE_VERSION} \
+          Subnets=${SUBNETS} \
+          Uniqifier=${UNIQIFIER} \
+          VpcId=${VPC_ID}
 
           echo "runner_image_tag=$(aws cloudformation describe-stacks --query "Stacks[?StackName=='bayerclaw2-core'][].Outputs[?OutputKey=='RunnerImageUri'].OutputValue" --output text)" >> $GITHUB_OUTPUT
 

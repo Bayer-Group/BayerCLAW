@@ -24,6 +24,7 @@ The parameters for the `bc_batch` template are as follows:
     - `InstanceTypes`: A comma-separated list of EC2 instance types to use. Enter `optimal` to allow
       AWS Batch to choose a suitable instance type from among the M4, C4, or R4 instance families.
       [Optional, default=optimal]
+    - `GpuEnabled`: Enter "True" if this Batch queue will be used to run jobs on GPU-enabled EC2 instances.
     - `MinvCpus`: The minimum number of EC2 vCPUs that Batch will keep running at all times.
       [Optional, default=0]
     - `MaxvCpus`: The maximum number of EC2 vCPUs that Batch will allow to run simultaneously.
@@ -79,20 +80,22 @@ specified in that compute block will have no effect.
 
 ## Building a GPU-enabled job queue
 
+### NOTE!!! As of v1.2.4, BayerCLAW includes built-in GPU-enabled job queues. The following information is included only for users who haven't upgraded yet.
+
 One of the major motivations for providing BayerCLAW with custom job queue capability is to allow the
 use of GPU-enabled compute resources in workflows. Here are some special considerations for creating
 job queues with GPU support:
 
 `AMI ID`: If the AmiID parameter is set to `auto`, AWS Batch will select a GPU-enabled AMI for you.
 Otherwise, you must choose an AMI that both supports GPU and is ECS-optimized. You can typically find 
-these by searching for the strings "gpu" and "ecs" in the EC2 AMI console. Again, Amazon Linux 2
+these by searching for the strings "gpu" and "ecs" in the EC2 AMI console. An ami based on Amazon Linux 2
 is recommended.
 
 `Instance types`: At the time of writing, AWS Batch supports the p2, p3, p4, g3, g3s, and g4
 accelerated EC2 instance families. See [the documentation](https://aws.amazon.com/ec2/instance-types/#Accelerated_Computing)
 for details.
 
-`GPU allocatio`n: In your workflow, each step that needs GPU support must request the number of 
+`GPU allocation`: In your workflow, each step that needs GPU support must request the number of 
 GPUs to allocate to each job. This is done using the `gpu` parameter of the `compute` block:
 
 ```yaml

@@ -4,9 +4,9 @@ import textwrap
 import pytest
 import yaml
 
-from ...src.compiler.pkg.batch_resources import expand_image_uri, get_job_queue, get_memory_in_mibs, \
-    get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout, batch_step, \
-    job_definition_rc, handle_batch, SCRATCH_PATH
+from ...src.compiler.pkg.batch_resources import (expand_image_uri, get_job_queue, get_memory_in_mibs,
+    get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout, handle_qc_check,
+    batch_step, job_definition_rc, handle_batch, SCRATCH_PATH)
 from ...src.compiler.pkg.util import Step, Resource, State
 
 
@@ -37,9 +37,15 @@ def test_get_memory_in_mibs(req, mibs):
 
 
 @pytest.mark.parametrize("spec, expected", [
-    ({"spot": True}, "spot_queue_arn"),
-    ({"spot": False}, "on_demand_queue_arn"),
-    ({"spot": True, "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue")
+    ({"spot": True, "gpu": 0}, "spot_queue_arn"),
+    ({"spot": True, "gpu": 99}, "spot_gpu_queue_arn"),
+    ({"spot": True, "gpu": "all"}, "spot_gpu_queue_arn"),
+    ({"spot": False, "gpu": 0}, "on_demand_queue_arn"),
+    ({"spot": False, "gpu": 88}, "on_demand_gpu_queue_arn"),
+    ({"spot": False, "gpu": "all"}, "on_demand_gpu_queue_arn"),
+    ({"spot": True,  "gpu": 0, "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue"),
+    ({"spot": True,  "gpu": 77, "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue"),
+    ({"spot": True,  "gpu": "all", "queue_name": "custom-queue"}, "arn:aws:batch:${AWSRegion}:${AWSAccountId}:job-queue/custom-queue"),
 ])
 def test_get_job_queue(spec, expected, compiler_env):
     result = get_job_queue(spec)
@@ -150,6 +156,20 @@ def test_get_timeout(timeout, expect):
         assert result["Properties"]["timeout"]["attemptDurationSeconds"] == expect
 
 
+@pytest.mark.parametrize("qc_spec, expect", [
+    (None, []),
+    ({"qc_result_file": "qc.out", "stop_early_if": "x == 1"}, [{"qc_result_file": "qc.out", "stop_early_if": ["x == 1"]}]),
+    ({"qc_result_file": "qc.out", "stop_early_if": ["x == 1", "y == 2"]}, [{"qc_result_file": "qc.out", "stop_early_if": ["x == 1", "y == 2"]}]),
+    ([{"qc_result_file": "qc1.out", "stop_early_if": ["x == 1", "y == 2"]},
+      {"qc_result_file": "qc2.out", "stop_early_if": "z == 3"}],
+     [{"qc_result_file": "qc1.out", "stop_early_if": ["x == 1", "y == 2"]},
+      {"qc_result_file": "qc2.out", "stop_early_if": ["z == 3"]}]),
+])
+def test_handle_qc_check(qc_spec, expect):
+    result = handle_qc_check(qc_spec)
+    assert result == expect
+
+
 @pytest.fixture(scope="function")
 def sample_batch_step():
     ret = yaml.safe_load(textwrap.dedent("""
@@ -191,7 +211,11 @@ def sample_batch_step():
             trim_log: ${job.SAMPLE_ID}-fastP.json
           references:
             reference1: s3://ref-bucket/path/to/reference.file
-          qc_check: null
+          qc_check:
+            -
+                qc_result_file: qc.out
+                stop_early_if:
+                    - x > 1
           skip_on_rerun: false
           timeout: 1h
           retry:
@@ -214,8 +238,9 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
             "image": "mmm",
             "inputs": "iii",
             "references": "fff",
-            "command": json.dumps(step.spec["commands"]),
+            "command": json.dumps(step.spec["commands"], separators=(",", ":")),
             "outputs": "ooo",
+            "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
             "shell": "sh",
             "skip": "sss",
         },
@@ -229,6 +254,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
                 "--ref", "Ref::references",
                 "--cmd", "Ref::command",
                 "--out", "Ref::outputs",
+                "--qc", "Ref::qc",
                 "--shell", "Ref::shell",
                 "--skip", "Ref::skip",
             ],
@@ -266,7 +292,6 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         "tags": {
             "bclaw:version": "1234567",
         }
-
     }
 
     expected_rc_spec = {
@@ -340,7 +365,7 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
         "Parameters": {
             "JobName.$": job_name,
             "JobDefinition": "${TestJobDef}",
-            "JobQueue": "spot_queue_arn",
+            "JobQueue": "spot_gpu_queue_arn",
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
                 "repo.$": "$.repo.uri",
@@ -426,42 +451,6 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
 
         job_def_spec = json.loads(resource.spec["Properties"]["spec"])
         assert job_def_spec["containerProperties"]["jobRoleArn"] == expected_job_role_arn
-        # assert " --outdir outt " in job_def_spec["parameters"]["command"]  # moved to state machine
-
-
-def test_handle_batch_with_qc(sample_batch_step, compiler_env):
-    step = Step("step_name", sample_batch_step, "next_step_name")
-
-    step.spec["qc_check"] = {
-        "qc_result_file": "qc_file.json",
-        "stop_early_if": "test_expression",
-        "email_subject": "test subject",
-        "notification": [
-            "test_one@case.com",
-            "test_two@case.com",
-        ],
-    }
-
-    def helper():
-        states = yield from handle_batch(step, {"wf": "params", "versioned": "true"}, False)
-        assert len(states) == 2
-        assert all(isinstance(s, State) for s in states)
-
-        assert states[0].name == "step_name"
-        assert states[0].spec["Resource"] == "arn:aws:states:::batch:submitJob.sync"
-        assert states[0].spec["Parameters"]["JobDefinition"] == "${StepNameJobDefx}"
-        assert states[0].spec["Next"] == "step_name.qc_checker"
-
-        assert states[1].name == "step_name.qc_checker"
-        assert states[1].spec["Next"] == "next_step_name"
-
-    resource_gen = helper()
-    resource_dict = dict(resource_gen)
-
-    expected_keys = ["StepNameJobDefx"]
-    assert list(resource_dict.keys()) == expected_keys
-
-    assert resource_dict["StepNameJobDefx"]["Type"] == "Custom::BatchJobDefinition"
 
 
 def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):

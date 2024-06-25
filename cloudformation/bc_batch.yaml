@@ -127,10 +127,10 @@ Parameters:
 Conditions:
   UseAmi: !And [ !Not [!Equals [!Ref AmiId, "Auto"]],
                  !Not [!Equals [!Ref AmiId, "auto"]] ]
-  UseSpot: !Equals [!Ref RequestType, "Spot"]
   Uniqify: !And [ !Not [!Equals [!Ref Uniqifier, "None"]],
                   !Not [!Equals [!Ref Uniqifier, "none"]] ]
   UseGpu: !Equals [!Ref GpuEnabled, "True"]
+  UseSpot: !Equals [!Ref RequestType, "Spot"]
 
 Resources:
   EcsInstanceRole:
@@ -236,37 +236,6 @@ Resources:
       Tags:
         updateAmi: !If [UseAmi, "true", "false"]
 
-#  BackupComputeEnvironment:
-#    Type: AWS::Batch::ComputeEnvironment
-#    Properties:
-#      ComputeEnvironmentName:
-#        !If [Uniqify, !Sub "${QueueName}-bak-${Uniqifier}", !Sub "${QueueName}-bak"]
-#      Type: MANAGED
-#      State: ENABLED
-#      ReplaceComputeEnvironment: false
-#      ComputeResources:
-#        Type:
-#          !If [UseSpot, "SPOT", "EC2"]
-#        AllocationStrategy:
-#          !If [UseSpot, "SPOT_PRICE_CAPACITY_OPTIMIZED", "BEST_FIT_PROGRESSIVE"]
-#        BidPercentage:
-#          !If [UseSpot, 100, !Ref AWS::NoValue]
-#        LaunchTemplate:
-#          LaunchTemplateId: !Ref LaunchTemplate
-#          Version: !GetAtt LaunchTemplate.LatestVersionNumber
-#        Ec2Configuration:
-#          -
-#            ImageType: !If [UseGpu, "ECS_AL2_NVIDIA", "ECS_AL2"]
-#        InstanceRole: !Ref EcsInstanceProfile
-#        InstanceTypes: !Ref InstanceTypes
-#        MinvCpus: !Ref MinvCpus
-#        MaxvCpus: !Ref MaxvCpus
-#        SecurityGroupIds: !Ref SecurityGroupIds
-#        Subnets: !Ref Subnets
-#        UpdateToLatestImageVersion: true
-#      Tags:
-#        updateAmi: "false"
-
   SchedulingPolicy:
     Type: AWS::Batch::SchedulingPolicy
     Properties:
@@ -281,10 +250,11 @@ Resources:
       ComputeEnvironmentOrder:
         - Order: 1
           ComputeEnvironment: !Ref ComputeEnvironment
-#        - Order: 2
-#          ComputeEnvironment: !Ref BackupComputeEnvironment
       SchedulingPolicyArn: !Ref SchedulingPolicy
 
 Outputs:
   BatchQueueArn:
     Value: !Ref BatchQueue
+
+  ComputeEnvironmentArn:
+    Value: !Ref ComputeEnvironment

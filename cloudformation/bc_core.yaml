@@ -16,6 +16,10 @@ Parameters:
     Type: String
     Default: "none"
 
+  GpuAmiId:
+    Type: String
+    Default: "auto"
+
   InstallationName:
     Type: String
     Default: "bayerclaw2"
@@ -40,9 +44,6 @@ Parameters:
   MinvCpus:
     Type: Number
     Default: 0
-
-  ResourceBucketName:
-    Type: String
 
   RootVolumeSize:
     Type: Number
@@ -85,6 +86,9 @@ Conditions:
   MakeBatchSubscriptionFilter: !And [ !Condition MakeSubscriptionFilters,
                                       !Condition NoBatchSubscriptionFilter ]
 
+  MakeGpuQueues: !Not [!Or [ !Equals [!Ref GpuAmiId, "None"],
+                             !Equals [!Ref GpuAmiId, "none"] ] ]
+
 Resources:
   # network
   SecurityGroup:
@@ -124,6 +128,11 @@ Resources:
           -
             AbortIncompleteMultipartUpload:
               DaysAfterInitiation: 1
+            Status: Enabled
+          -
+            Prefix: "__tmp__"
+            ExpirationInDays: 2
+            NoncurrentVersionExpirationInDays: 1
             Status: Enabled
       NotificationConfiguration:
         EventBridgeConfiguration:
@@ -198,6 +207,10 @@ Resources:
                 bucket:
                   name:
                     - !Ref LauncherBucket
+                object:
+                  key:
+                    - anything-but:
+                        prefix: "__tmp__"
             InputTransformer:
               InputPathsMap:
                 bucket: "$.detail.bucket.name"
@@ -279,7 +292,7 @@ Resources:
           CORE_STACK_NAME: !Ref "AWS::StackName"
           SOURCE_VERSION: !Ref SourceVersion
           CHOOSER_LAMBDA_ARN: !Ref ChooserLambda.Version
-          ECS_TASK_ROLE_ARN: !GetAtt EcsTaskRole.Arn
+          ECS_TASK_ROLE_ARN: !GetAtt EcsTaskRoleStack.Outputs.EcsTaskRoleArn
           NOTIFICATIONS_LAMBDA_ARN: !GetAtt NotificationsLambda.Arn
           GATHER_LAMBDA_ARN: !Ref GatherLambda.Version
           INITIALIZER_LAMBDA_ARN: !Ref InitializerLambda.Version
@@ -287,12 +300,12 @@ Resources:
           LAUNCHER_BUCKET_NAME: !Ref LauncherBucket
           LOG_RETENTION_DAYS: !Ref LogRetentionDays
           LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
+          ON_DEMAND_GPU_QUEUE_ARN: !GetAtt OnDemandGpuQueueStack.Outputs.BatchQueueArn
           ON_DEMAND_QUEUE_ARN: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
-          QC_CHECKER_LAMBDA_ARN: !Ref QCCheckerLambda.Version
-          RESOURCE_BUCKET_NAME: !Ref ResourceBucketName
           RUNNER_REPO_URI: !GetAtt RunnerRepo.RepositoryUri
           SCATTER_INIT_LAMBDA_ARN: !Ref ScatterInitLambda.Version
           SCATTER_LAMBDA_ARN: !Ref ScatterLambda.Version
+          SPOT_GPU_QUEUE_ARN: !GetAtt SpotGpuQueueStack.Outputs.BatchQueueArn
           SPOT_QUEUE_ARN: !GetAtt SpotQueueStack.Outputs.BatchQueueArn
           STATES_EXECUTION_ROLE_ARN: !GetAtt StatesExecutionRole.Arn
           SUBPIPES_LAMBDA_ARN: !Ref SubpipesLambda.Version
@@ -308,7 +321,7 @@ Resources:
               Effect: Allow
               Action:
                 - "s3:PutObject"
-              Resource: !Sub "arn:${AWS::Partition}:s3:::${ResourceBucketName}/*"
+              Resource: !Sub "arn:${AWS::Partition}:s3:::${LauncherBucket}/*"
             -
               Effect: Allow
               Action:
@@ -371,7 +384,7 @@ Resources:
       Handler: register.lambda_handler
       Runtime: python3.10
       CodeUri: lambda/src/job_def
-      # do not enable AutoPublishAlias
+      # do not enable AutoPublishAlias for custom resource lambdas
       # https://advancedweb.hu/custom-resources-in-cloudformation-templates-lessons-learned/#cant-change-the-servicetoken
       Environment:
         Variables:
@@ -533,8 +546,10 @@ Resources:
       FilterPattern: '{$.function = "gather.*"}'
       LogGroupName: !Ref GatherLambdaLogGroup
 
+  # todo: remove this lambda + associated resources
   QCCheckerLambda:
     Type: AWS::Serverless::Function
+    DeletionPolicy: "Retain"
     Properties:
       Handler: qc_checker.lambda_handler
       Runtime: python3.10
@@ -567,6 +582,7 @@ Resources:
 
   QCCheckerLambdaLogGroup:
     Type: AWS::Logs::LogGroup
+    DeletionPolicy: "Retain"
     Properties:
       LogGroupName: !Sub "/aws/lambda/${QCCheckerLambda}"
       RetentionInDays: !Ref LogRetentionDays
@@ -574,6 +590,7 @@ Resources:
   QCCheckerLambdaSubscriptionFilter:
     Type: AWS::Logs::SubscriptionFilter
     Condition: MakeSubscriptionFilters
+    DeletionPolicy: "Retain"
     Properties:
       DestinationArn: !Ref LoggingDestinationArn
       FilterPattern: '{$.function = "qc_checker.*"}'
@@ -744,9 +761,18 @@ Resources:
         - !Ref StatesExecutionRole
 
   # batch
+  EcsTaskRoleStack:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: bc_ecs_task_role.yaml
+
+  # todo: keep this around a while longer, because deleting it will break every workflow in the account
   EcsTaskRole:
     Type: AWS::IAM::Role
+    DeletionPolicy: Retain
     Properties:
+      Description: !Sub |
+        DEPRECATED: Use ${EcsTaskRoleStack.Outputs.EcsTaskRoleArn} instead.
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -810,23 +836,6 @@ Resources:
                   - "ec2:DeleteTags"
                 Resource: "*"
 
-  SpotQueueStack:
-    Type: AWS::Serverless::Application
-    Properties:
-      Location: bc_batch.yaml
-      Parameters:
-        AmiId: !Ref AmiId
-        MaxvCpus: !Ref MaxvCpus
-        MinvCpus: !Ref MinvCpus
-        QueueName: !Sub ${AWS::StackName}-spot-queue
-        RequestType: "Spot"
-        RootVolumeSize: !Ref RootVolumeSize
-        ScratchVolumeSize: !Ref ScratchVolumeSize
-        SecurityGroupIds:
-          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
-        Subnets: !Join [",", !Ref Subnets]
-        Uniqifier: !Ref Uniqifier
-
   OnDemandQueueStack:
     Type: AWS::Serverless::Application
     Properties:
@@ -835,8 +844,65 @@ Resources:
         AmiId: !Ref AmiId
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
-        QueueName: !Sub ${AWS::StackName}-on-demand-queue
+        QueueName: !Sub "${AWS::StackName}-on-demand-queue"
         RequestType: "On-demand"
+        RootVolumeSize: !Ref RootVolumeSize
+        ScratchVolumeSize: !Ref ScratchVolumeSize
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
+        Subnets: !Join [",", !Ref Subnets]
+        Uniqifier: !Ref Uniqifier
+
+  OnDemandGpuQueueStack:
+    Type: AWS::Serverless::Application
+    Condition: MakeGpuQueues
+    Properties:
+      Location: bc_batch.yaml
+      Parameters:
+        AmiId: !Ref GpuAmiId
+        GpuEnabled: "True"
+        InstanceTypes: "g3,g4dn,g5,p3,p4d,p5"
+        MaxvCpus: !Ref MaxvCpus
+        MinvCpus: !Ref MinvCpus
+        QueueName: !Sub "${AWS::StackName}-on-demand-gpu-queue"
+        RequestType: "On-demand"
+        RootVolumeSize: !Ref RootVolumeSize
+        ScratchVolumeSize: !Ref ScratchVolumeSize
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
+        Subnets: !Join [",", !Ref Subnets]
+        Uniqifier: !Ref Uniqifier
+
+  SpotQueueStack:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: bc_batch.yaml
+      Parameters:
+        AmiId: !Ref AmiId
+        MaxvCpus: !Ref MaxvCpus
+        MinvCpus: !Ref MinvCpus
+        QueueName: !Sub "${AWS::StackName}-spot-queue"
+        RequestType: "Spot"
+        RootVolumeSize: !Ref RootVolumeSize
+        ScratchVolumeSize: !Ref ScratchVolumeSize
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
+        Subnets: !Join [",", !Ref Subnets]
+        Uniqifier: !Ref Uniqifier
+
+  SpotGpuQueueStack:
+    Type: AWS::Serverless::Application
+    Condition: MakeGpuQueues
+    Properties:
+      Location: bc_batch.yaml
+      Parameters:
+        AmiId: !Ref GpuAmiId
+        GpuEnabled: "True"
+        InstanceTypes: "g3,g4dn,g5,p3,p4d,p5"
+        MaxvCpus: !Ref MaxvCpus
+        MinvCpus: !Ref MinvCpus
+        QueueName: !Sub "${AWS::StackName}-spot-gpu-queue"
+        RequestType: "Spot"
         RootVolumeSize: !Ref RootVolumeSize
         ScratchVolumeSize: !Ref ScratchVolumeSize
         SecurityGroupIds:
@@ -859,10 +925,11 @@ Resources:
     Properties:
       RepositoryName: !Sub "${AWS::StackName}/runner"
       ImageTagMutability: IMMUTABLE
+      EmptyOnDelete: true
 
 Outputs:
   ECSTaskRoleArn:
-    Value: !GetAtt EcsTaskRole.Arn
+    Value: !GetAtt EcsTaskRoleStack.Outputs.EcsTaskRoleArn
 
   LauncherBucketName:
     Value: !Ref LauncherBucket

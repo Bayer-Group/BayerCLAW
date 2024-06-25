@@ -63,7 +63,8 @@ opt_inputs = {
 }
 
 
-def test_main(monkeypatch, tmp_path, mock_bucket):
+#@pytest.mark.skip(reason="temp")
+def test_main(monkeypatch, tmp_path, mock_bucket, mocker):
     monkeypatch.setenv("BC_STEP_NAME", "step1")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
     monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
@@ -76,13 +77,13 @@ def test_main(monkeypatch, tmp_path, mock_bucket):
         "input1": "file${job.key1}",
         "input2": "file${job.key2}",
         "input3?": "file3",
-        "input4?": "file99"
+        "input4?": "file99",
     }
 
     outputs = {
         "output1": "outfile${job.key1}",
         "output2": "outfile${job.key2}",
-        "output3": "outfile3"
+        "output3": "outfile3",
     }
 
     commands = [
@@ -92,17 +93,24 @@ def test_main(monkeypatch, tmp_path, mock_bucket):
         "echo ${job.key2} >> ${output3}",
         "echo ${parent.value} >> ${output3}",
         "echo ${scatter.value} >> ${output3}",
-        "echo '3' >> ${output3}"
-        "echo ${input4} >> ${output3}"
+        "echo '3' >> ${output3}",
+        "echo ${input4} >> ${output3}",
+    ]
+
+    qc = [
+        {"qc_result_file": "qc.out", "stop_early_if": ["x == 1"]},
     ]
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
+
+    mock_do_checks = mocker.patch("bclaw_runner.src.runner.runner_main.do_checks")
 
     response = main(image="fake_image:${job.img_tag}",
                     commands=commands,
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
+                    qc=qc,
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     shell="sh",
                     skip="true")
@@ -164,6 +172,8 @@ def test_main(monkeypatch, tmp_path, mock_bucket):
         contents = next(fp)
         assert contents == "reference"
 
+    mock_do_checks.assert_called_once_with(qc)
+
 
 def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "step2")
@@ -193,11 +203,12 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
+                    qc=[],
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     shell="sh",
                     skip="true")
 
-    assert response == 255
+    assert response == 199
     curr_bucket_contents = {o.key for o in mock_bucket.objects.all()}
     assert curr_bucket_contents == orig_bucket_contents
 
@@ -225,6 +236,7 @@ def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket):
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
+                    qc=[],
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     shell="sh",
                     skip="true")
@@ -255,6 +267,7 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
+                    qc=[],
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     shell="sh",
                     skip="true")
@@ -273,6 +286,7 @@ def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect):
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
     monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
 
+    # note: this only tests skip = output with empty outputs
     references = {}
     inputs = {}
     outputs = {}
@@ -283,6 +297,7 @@ def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect):
                     references=references,
                     inputs=inputs,
                     outputs=outputs,
+                    qc=[],
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     shell="sh",
                     skip=skip)
@@ -301,8 +316,8 @@ def fake_termination_checker_impl(*_):
 
 @moto.mock_aws
 @pytest.mark.parametrize("argv, expect", [
-    ("prog --cmd 2 --in 3 --out 4 --shell 5 --ref 6 --repo 7 --skip 8 --image 9",
-     [2, "9", 3, 4, 6, "7", "5", "8"])
+    ("prog --cmd 2 --in 3 --out 4 --shell 5 --ref 6 --repo 7 --skip 8 --image 9 --qc 10",
+     [2, "9", 3, 4, 10, 6, "7", "5", "8"])
 ])
 def test_cli(capsys, requests_mock, mock_ec2_instance, monkeypatch, argv, expect):
     requests_mock.get("http://169.254.169.254/latest/meta-data/instance-life-cycle", text="spot")

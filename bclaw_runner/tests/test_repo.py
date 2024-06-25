@@ -7,7 +7,7 @@ import jmespath
 import moto
 import pytest
 
-from ..src.runner.repo import _is_glob, _expand_s3_glob, Repository
+from ..src.runner.repo import _is_glob, _expand_s3_glob, Repository, SkipExecution
 
 TEST_BUCKET = "test-bucket"
 JOB_DATA = {"job": "data"}
@@ -132,17 +132,20 @@ def test_s3_file_exists(monkeypatch, key, expect, mock_buckets):
     assert result == expect
 
 
-@pytest.mark.parametrize("files, expect", [
+@pytest.mark.parametrize("files, expect_skip", [
     (["file1", "file2", "subdir/file3"], True),
     (["file1", "file99", "subdir/file3"], False),
     (["file1", "file*", "subdir/file3"], False),
     ([], True),
 ])
-def test_files_exist(monkeypatch, mock_buckets, files, expect):
+def test_check_files_exist(monkeypatch, mock_buckets, files, expect_skip):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
-    result = repo.files_exist(files)
-    assert result == expect
+    if expect_skip:
+        with pytest.raises(SkipExecution):
+            repo.check_files_exist(files)
+    else:
+        repo.check_files_exist(files)
 
 
 def test_inputerator(monkeypatch, mock_buckets):
@@ -440,15 +443,18 @@ def test_upload_outputs_empty_outputs(monkeypatch, mock_buckets):
     repo.upload_outputs(file_spec)
 
 
-@pytest.mark.parametrize("step_name, expect", [
+@pytest.mark.parametrize("step_name, expect_skip", [
     ("test_step", True),
     ("non_step", False),
 ])
-def test_check_for_previous_run(monkeypatch, mock_buckets, step_name, expect):
+def test_check_for_previous_run(monkeypatch, mock_buckets, step_name, expect_skip):
     monkeypatch.setenv("BC_STEP_NAME", step_name)
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
-    result = repo.check_for_previous_run()
-    assert result == expect
+    if expect_skip:
+        with pytest.raises(SkipExecution):
+            repo.check_for_previous_run()
+    else:
+        repo.check_for_previous_run()
 
 
 def failing_thing(*args, **kwargs):
@@ -459,21 +465,19 @@ def test_check_for_previous_run_fail(monkeypatch, mock_buckets, caplog):
     monkeypatch.setenv("BC_STEP_NAME", "nothing")
     repo = Repository("s3://non_bucket/repo/path")
     monkeypatch.setattr(repo, "_s3_file_exists", failing_thing)
-    result = repo.check_for_previous_run()
+    repo.check_for_previous_run()
     assert "unable to query previous run status" in caplog.text
-    assert result == False
 
 
-@pytest.mark.parametrize("step_name, expect", [
-    ("test_step", True),
-    ("un_step", False),
+@pytest.mark.parametrize("step_name", [
+    "test_step",
+    "un_step",
 ])
-def test_clear_run_status(monkeypatch, mock_buckets, step_name, expect):
+def test_clear_run_status(monkeypatch, mock_buckets, step_name):
     monkeypatch.setenv("BC_STEP_NAME", step_name)
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
-    assert repo.check_for_previous_run() == expect
     repo.clear_run_status()
-    assert repo.check_for_previous_run() is False
+    repo.check_for_previous_run()
 
 
 def test_clear_run_status_fail(monkeypatch, mock_buckets, caplog):
@@ -487,9 +491,10 @@ def test_clear_run_status_fail(monkeypatch, mock_buckets, caplog):
 def test_put_run_status(monkeypatch, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step_two")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
-    assert repo.check_for_previous_run() is False
+    repo.check_for_previous_run()
     repo.put_run_status()
-    assert repo.check_for_previous_run() is True
+    with pytest.raises(SkipExecution):
+        repo.check_for_previous_run()
 
 
 def test_put_run_status_fail(monkeypatch, mock_buckets, caplog):

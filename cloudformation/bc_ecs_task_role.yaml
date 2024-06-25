@@ -1,0 +1,96 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  RoleName:
+    Type: String
+    Default: "default"
+
+  PolicyName:
+    Type: String
+    Default: "default"
+
+Conditions:
+  UseDefaultRoleName: !Or [ !Equals [!Ref RoleName, "Default"],
+                            !Equals [!Ref RoleName, "default"] ]
+
+  UseDefaultPolicyName: !Or [ !Equals [!Ref PolicyName, "Default"],
+                              !Equals [!Ref PolicyName, "default"] ]
+
+Resources:
+  EcsTaskRole:
+    Type: AWS::IAM::Role
+    DeletionPolicy: Retain
+    Properties:
+      RoleName:
+        !If [UseDefaultRoleName, !Ref AWS::NoValue, !Ref RoleName]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "ecs-tasks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+
+  EcsTaskPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DeletionPolicy: Retain
+    Properties:
+      ManagedPolicyName:
+        !If [UseDefaultPolicyName, !Ref AWS::NoValue, !Ref PolicyName]
+      Roles:
+        - !Ref EcsTaskRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: "writeLogs"
+            Effect: "Allow"
+            Action:
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+          - Sid: "s3BucketAccess"
+            Effect: "Allow"
+            Action:
+              - "s3:ListBucket"
+            Resource: "arn:aws:s3:::*"
+          - Sid: "s3ObjectAccess"
+            Effect: "Allow"
+            Action:
+              - "s3:PutObject"
+              - "s3:GetObject"
+              - "s3:PutObjectAcl"
+              - "s3:AbortMultipartUpload"
+            Resource: "arn:aws:s3:::*/*"
+          - Sid: "deleteControlObjects"
+            Effect: "Allow"
+            Action:
+              - "s3:DeleteObject"
+            Resource: "arn:aws:s3:::*/_control_/*"
+          - Sid: "ecrAccess"
+            Effect: "Allow"
+            Action:
+              - "ecr:GetAuthorizationToken"
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+            Resource: "*"
+          - Sid: "ec2InstanceTagging"
+            Effect: "Allow"
+            Action:
+              - "ec2:CreateTags"
+              - "ec2:DeleteTags"
+            Resource: "*"
+          - Sid: "abortExecution"
+            Effect: "Allow"
+            Action:
+              - "states:StopExecution"
+            Resource: "*"
+
+Outputs:
+  EcsTaskRoleArn:
+    Value: !GetAtt EcsTaskRole.Arn
+
+  EcsTaskPolicyArn:
+    Value: !Ref EcsTaskPolicy

@@ -119,7 +119,7 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
 
     device_requests = get_gpu_requests()
 
-    ret = 255
+    exit_code = 255
     with closing(docker.client.from_env()) as docker_client:
         child_image = pull_image(docker_client, image_tag)
 
@@ -140,7 +140,6 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
                 with closing(container.logs(stream=True)) as fp:
                     for line in fp:
                         logger.user_cmd(line.decode("utf-8"))
-                        # logger.info(line.decode("utf-8"))
 
             except Exception:
                 logger.exception("----- error during subprocess logging: ")
@@ -152,5 +151,6 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
                 logger.info("---------- end of user command block ----------")
                 response = container.wait()
                 container.remove()
-                ret = response.get("StatusCode", 1)
-    return ret
+                exit_code = response.get("StatusCode", 1)
+                logger.info(f"{exit_code=}")
+    return exit_code

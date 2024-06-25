@@ -7,7 +7,6 @@ from typing import Generator, List, Union
 
 import humanfriendly
 
-from .qc_resources import handle_qc_check
 from .util import Step, Resource, State, make_logical_name, time_string_to_seconds
 
 SCRATCH_PATH = "/_bclaw_scratch"
@@ -26,12 +25,13 @@ def expand_image_uri(uri: str) -> Union[str, dict]:
 
 
 def get_job_queue(compute_spec: dict) -> str:
+    gpu_requested = str(compute_spec["gpu"]) != "0"
     if (queue_name := compute_spec.get("queue_name")) is not None:
         ret = f"arn:aws:batch:${{AWSRegion}}:${{AWSAccountId}}:job-queue/{queue_name}"
     elif compute_spec["spot"]:
-        ret = os.environ["SPOT_QUEUE_ARN"]
+        ret = os.environ["SPOT_GPU_QUEUE_ARN"] if gpu_requested else os.environ["SPOT_QUEUE_ARN"]
     else:
-        ret = os.environ["ON_DEMAND_QUEUE_ARN"]
+        ret = os.environ["ON_DEMAND_GPU_QUEUE_ARN"] if gpu_requested else os.environ["ON_DEMAND_QUEUE_ARN"]
     return ret
 
 
@@ -153,6 +153,21 @@ def get_timeout(step: Step) -> dict:
     return ret
 
 
+def handle_qc_check(spec: dict | list | None) -> list:
+    if spec is None:
+        return []
+    if isinstance(spec, dict):
+        ret = [spec]
+    else:
+        ret = spec
+
+    for item in ret:
+        if isinstance(item["stop_early_if"], str):
+            item.update({"stop_early_if": [item["stop_early_if"]]})
+
+    return ret
+
+
 def job_definition_rc(step: Step,
                       task_role: str,
                       shell_opt: str) -> Generator[Resource, None, str]:
@@ -165,8 +180,9 @@ def job_definition_rc(step: Step,
             "image": "mmm",
             "inputs": "iii",
             "references": "fff",
-            "command": json.dumps(step.spec["commands"]),
+            "command": json.dumps(step.spec["commands"], separators=(",", ":")),
             "outputs": "ooo",
+            "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
             "shell": shell_opt,
             "skip": "sss",
         },
@@ -180,6 +196,7 @@ def job_definition_rc(step: Step,
                 "--ref", "Ref::references",
                 "--cmd", "Ref::command",
                 "--out", "Ref::outputs",
+                "--qc", "Ref::qc",
                 "--shell", "Ref::shell",
                 "--skip", "Ref::skip",
             ],
@@ -320,18 +337,8 @@ def handle_batch(step: Step,
 
     job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt)
 
-    if step.spec["qc_check"] is not None:
-        qc_state = handle_qc_check(step)
-        ret0 = batch_step(step,
-                          job_def_logical_name,
-                          **step.spec["retry"],
-                          scattered=scattered,
-                          next_step_override=qc_state.name)
-        ret = [State(step.name, ret0), qc_state]
-
-    else:
-        ret = [State(step.name, batch_step(step,
-                                           job_def_logical_name,
-                                           **step.spec["retry"],
-                                           scattered=scattered))]
+    ret = [State(step.name, batch_step(step,
+                                       job_def_logical_name,
+                                       **step.spec["retry"],
+                                       scattered=scattered))]
     return ret

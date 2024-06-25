@@ -29,22 +29,21 @@ phases:
         sam deploy
         --template-file build/template.yaml
         --stack-name ${CORE_STACK_NAME}
-        --s3-bucket ${RESOURCE_BUCKET_NAME}
-        --s3-prefix lambda
-        --capabilities CAPABILITY_NAMED_IAM
+        --resolve-s3
+        --capabilities "CAPABILITY_NAMED_IAM" "CAPABILITY_AUTO_EXPAND"
         --no-fail-on-empty-changeset
         --tags "bclaw:version=${SOURCE_VERSION}"
         --parameter-overrides
         AmiId=${AMI_ID:-auto}
         CompilerMacroName=${COMPILER_MACRO_NAME}
         ExistingBatchSubscriptionFilter="${BATCH_FILTER:-none}"
+        GpuAmiId=${GPU_AMI_ID:-auto}
         InstallationName=${INSTALLATION_NAME}
         LauncherBucketName=${LAUNCHER_BUCKET_NAME}
         LogRetentionDays=${LOG_RETENTION_DAYS}
         LoggingDestinationArn=${LOGGING_DESTINATION}
         MaxvCpus=${MAX_VCPUS}
         MinvCpus=${MIN_VCPUS}
-        ResourceBucketName=${RESOURCE_BUCKET_NAME}
         RootVolumeSize=${ROOT_VOLUME_SIZE}
         ScratchVolumeSize=${SCRATCH_VOLUME_SIZE}
         SecurityGroups=${SECURITY_GROUPS}

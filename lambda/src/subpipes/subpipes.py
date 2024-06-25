@@ -44,28 +44,14 @@ def copy_file_impl(spec: str, src_repo_uri: str, dst_repo_uri: str) -> None:
     src_bucket, src_key = src_uri.split("/", 3)[2:]
     dst_bucket, dst_key = dst_uri.split("/", 3)[2:]
 
+    logger.info(f"copying s3://{src_bucket}/{src_key} to s3://{dst_bucket}/{dst_key}")
+
     copy_src = {
         "Bucket": src_bucket,
         "Key": src_key
     }
     dst_obj = boto3.resource("s3").Object(dst_bucket, dst_key)
     dst_obj.copy(copy_src)
-
-
-def copy_file_impl0(spec: str, bucket: str, src_path: str, dst_path: str) -> None:
-    try:
-        src_file, dst_file = re.split(r"\s*->\s*", spec)
-    except ValueError:
-        src_file = dst_file = spec
-
-    src_key = f"{src_path}/{src_file}"
-    dst_key = f"{dst_path}/{dst_file}"
-
-    logger.info(f"copying s3://{bucket}/{src_key} to s3://{bucket}/{dst_key}")
-    s3 = boto3.client("s3")
-    copy_source = {"Bucket": bucket, "Key": src_key}
-    s3.copy(copy_source, bucket, dst_key)
-    logger.info(f"finished copying s3://{bucket}/{src_key} to s3://{bucket}/{dst_key}")
 
 
 def lambda_handler(event: dict, context: object) -> dict:
@@ -146,6 +132,13 @@ def lambda_handler(event: dict, context: object) -> dict:
                 _ = list(executor.map(copy_file, subbed_specs))
 
         # return sub repo
-        ret = {"sub_repo": sub_repo}
+        sub_repo_bucket, sub_repo_prefix = sub_repo.split("/", 3)[2:]
+        ret = {
+            "sub_repo": {
+                "bucket": sub_repo_bucket,
+                "prefix": sub_repo_prefix,
+                "uri": sub_repo,
+            }
+        }
 
         return ret

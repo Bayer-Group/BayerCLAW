@@ -64,7 +64,7 @@ def file_retrieve_step(step: Step) -> dict:
             "repo.$": "$.repo.uri",
             "retrieve": json.dumps(step.spec["retrieve"]),
             "subpipe": {
-                "sub_repo.$": "$.subpipe.sub_repo",
+                "sub_repo.$": "$.subpipe.sub_repo.uri",
             },
             **lambda_logging_block(step.name)
         },

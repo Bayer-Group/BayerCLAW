@@ -9,6 +9,7 @@ Options:
     --image STRING       Docker image tag
     --in JSON_STRING     input files
     --out JSON_STRING    output files
+    --qc JSON_STRING     QC check spec
     --ref JSON_STRING    reference files
     --repo S3_PATH       repository path
     --shell SHELL        unix shell to run commands in (bash | sh | sh-pipefail) [default: sh]
@@ -28,11 +29,11 @@ from docopt import docopt
 from .cache import get_reference_inputs
 from .custom_logs import LOGGING_CONFIG
 from .string_subs import substitute, substitute_image_tag
-from .repo import Repository
+from .qc_check import do_checks, abort_execution, QCFailure
+from .repo import Repository, SkipExecution
 from .tagging import tag_this_instance
 from .termination import spot_termination_checker
-# from .version import VERSION
-from .workspace import workspace, write_job_data_file, run_commands
+from .workspace import workspace, write_job_data_file, run_commands, UserCommandsFailed
 
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -43,35 +44,32 @@ def main(commands: List[str],
          image: str,
          inputs: Dict[str, str],
          outputs: Dict[str, str],
+         qc: List[dict],
          references: Dict[str, str],
          repo_path: str,
          shell: str,
          skip: str) -> int:
+    exit_code = 0
+    try:
+        repo = Repository(repo_path)
 
-    repo = Repository(repo_path)
+        if skip == "rerun":
+            repo.check_for_previous_run()
+        elif skip == "output":
+            repo.check_files_exist(list(outputs.values()))
 
-    if skip == "rerun":
-        if repo.check_for_previous_run():
-            logger.info("found previous run; skipping")
-            return 0
-    elif skip == "output":
-        if repo.files_exist(list(outputs.values())):
-            logger.info("found output files; skipping")
-            return 0
+        repo.clear_run_status()
 
-    repo.clear_run_status()
+        job_data_obj = repo.read_job_data()
 
-    job_data_obj = repo.read_job_data()
+        jobby_commands   = substitute(commands,   job_data_obj)
+        jobby_inputs     = substitute(inputs,     job_data_obj)
+        jobby_outputs    = substitute(outputs,    job_data_obj)
+        jobby_references = substitute(references, job_data_obj)
 
-    jobby_commands   = substitute(commands,   job_data_obj)
-    jobby_inputs     = substitute(inputs,     job_data_obj)
-    jobby_outputs    = substitute(outputs,    job_data_obj)
-    jobby_references = substitute(references, job_data_obj)
+        jobby_image = substitute_image_tag(image, job_data_obj)
 
-    jobby_image = substitute_image_tag(image, job_data_obj)
-
-    with workspace() as wrk:
-        try:
+        with workspace() as wrk:
             # download references, link to workspace
             local_references = get_reference_inputs(jobby_references)
 
@@ -86,27 +84,34 @@ def main(commands: List[str],
 
             local_job_data = write_job_data_file(job_data_obj, wrk)
 
-            # run commands
-            status = run_commands(jobby_image, subbed_commands, wrk, local_job_data, shell)
-            if status == 0:
-                logger.info("command block succeeded")
-            else:
-                logger.error(f"command block failed with exit code {status}")
+            try:
+                run_commands(jobby_image, subbed_commands, wrk, local_job_data, shell)
+                do_checks(qc)
 
-            # upload outputs
-            repo.upload_outputs(jobby_outputs)
+            finally:
+                repo.upload_outputs(jobby_outputs)
 
-            # mark job complete on success
-            if status == 0:
-                repo.put_run_status()
+    except UserCommandsFailed as uce:
+        logger.error(str(uce))
+        exit_code = uce.exit_code
 
-        except Exception as e:
-            logger.exception("runner failed")
-            status = 255
+    except QCFailure as qcf:
+        logger.error(str(qcf))
+        abort_execution(qcf.failures)
 
-        else:
-            logger.info("runner finished")
-    return status
+    except SkipExecution as se:
+        logger.info(str(se))
+        pass
+
+    except Exception as e:
+        logger.exception("bclaw_runner error: ")
+        exit_code = 199
+
+    else:
+        repo.put_run_status()
+        logger.info("runner finished")
+
+    return exit_code
 
 
 def cli() -> int:
@@ -122,16 +127,17 @@ def cli() -> int:
     with spot_termination_checker():
         args = docopt(__doc__, version=os.environ["BC_VERSION"])
 
-        logger.info(f"{args = }")
+        logger.info(f"{args=}")
 
         commands = json.loads(args["--cmd"])
         image    = args["--image"]
         inputs   = json.loads(args["--in"])
         outputs  = json.loads(args["--out"])
+        qc       = json.loads(args["--qc"])
         refs     = json.loads(args["--ref"])
         repo     = args["--repo"]
         shell    = args["--shell"]
         skip     = args["--skip"]
 
-        ret = main(commands, image, inputs, outputs, refs, repo, shell, skip)
+        ret = main(commands, image, inputs, outputs, qc, refs, repo, shell, skip)
         return ret

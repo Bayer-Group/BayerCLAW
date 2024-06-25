@@ -10,6 +10,12 @@ from .dind import run_child_container
 logger = logging.getLogger(__name__)
 
 
+class UserCommandsFailed(Exception):
+    def __init__(self, message, exit_code):
+        super().__init__(message)
+        self.exit_code = exit_code
+
+
 @contextmanager
 def workspace() -> str:
     orig_path = os.getcwd()
@@ -22,8 +28,10 @@ def workspace() -> str:
         yield work_path
 
     finally:
+        logger.debug("cleaning up workspace")
         os.chdir(orig_path)
         shutil.rmtree(work_path, ignore_errors=True)
+        logger.debug("cleanup finished")
 
 
 def write_job_data_file(job_data: dict, dest_dir: str) -> str:
@@ -32,7 +40,7 @@ def write_job_data_file(job_data: dict, dest_dir: str) -> str:
     return fp.name
 
 
-def run_commands(image_tag: str, commands: list, work_dir: str, job_data_file: str, shell_opt: str) -> int:
+def run_commands(image_tag: str, commands: list, work_dir: str, job_data_file: str, shell_opt: str) -> None:
     script_file = "_commands.sh"
 
     with open(script_file, "w") as fp:
@@ -51,6 +59,8 @@ def run_commands(image_tag: str, commands: list, work_dir: str, job_data_file: s
     os.chmod(script_file, 0o700)
     command = f"{shell_cmd} {script_file}"
 
-    ret = run_child_container(image_tag, command, work_dir, job_data_file)
-
-    return ret
+    if (exit_code := run_child_container(image_tag, command, work_dir, job_data_file)) == 0:
+        logger.info("command block succeeded")
+    else:
+        logger.error("command block failed")
+        raise UserCommandsFailed(f"command block failed with exit code {exit_code}", exit_code)
