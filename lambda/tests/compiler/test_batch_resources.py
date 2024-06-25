@@ -320,28 +320,6 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         assert resource.spec == expected_rc_spec
 
 
-@pytest.mark.skip(reason="need this anymore?")
-def test_job_definition_rc_single_line_command(sample_batch_step, compiler_env):
-    command_str = textwrap.dedent("""\
-        commands: |
-            echo one > ${outfile1}
-            echo two > ${outfile2}
-            echo three > ${outfile3}
-    """)
-    command_spec = yaml.safe_load(command_str)
-    nu_sample_batch_step = sample_batch_step.copy()
-    nu_sample_batch_step.update(**command_spec)
-    step = Step("test_step", nu_sample_batch_step, "next_step")
-
-    def helper():
-        _ = yield from job_definition_rc(step, "arn:task:role", "sh")
-
-    for resource in helper():
-        result_spec = json.loads(resource.spec["Properties"]["spec"])
-        command = result_spec["parameters"]["command"]
-        assert command == '["echo one > ${outfile1}\\necho two > ${outfile2}\\necho three > ${outfile3}\\n"]'
-
-
 @pytest.mark.parametrize("spec, expect", [
     ({}, "none"),
     ({"skip_if_output_exists": True}, "output"),
