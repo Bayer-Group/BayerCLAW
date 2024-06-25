@@ -1,5 +1,43 @@
 # Changelog for BayerCLAW
 
+## [v1.2.4] 2024-06-25 Feature release
+
+**NOTE:** Because of new parameters in the installer stack, you will  need to
+update the [BayerCLAW installer stack](doc/installation.md#updating-bayerclaw) before upgrading to v1.2.4.
+
+**NOTE:** If you use a custom ECS task role in a workflow that uses the `qc_check` block, you will need to
+add the following to that role's policy document:
+```json
+{
+  "Sid": "abortExecution",
+  "Effect": "Allow",
+  "Action": [
+    "states:StopExecution"
+  ],
+  "Resource": "*"
+}
+```
+
+### Added/Changed
+- Built-in GPU-enabled Batch queues. Batch jobs that request GPU resources will be automaticall
+directed to either the GPU spot or GPU on-demand queue.
+- The ECS task role has been broken out into a separate cloudformation template, making it easier
+for users to create custom task roles. The default ECS task role also uses a managed IAM policy
+which can be attached to other task roles.
+- The `qc_check` functionality is now handled by the Batch job to which it is attached (formerly,
+it had been handled by a separate Lambda). This allows aborted workflow executions to be
+rerun using the Redrive capability of Step Functions. In addition, a single `qc_check` block can
+now test multiple conditions in multiple files.
+- The `image` field of a Batch step now defaults to a basic Ubuntu image.
+- The `commands` field of a Batch step can now contain a single multiline YAML string.
+- The `bclaw_runner` code has been refactored to clarify execution flow.
+- The compiler lambda now writes intermediate files to the `_tmp_` folder in the launcher bucket.
+
+### Fixed
+- Fixed repository handling in subpipe invocations.
+- The ECSTaskRoleArn output of workflow stacks has been removed, because it was erroneous when
+a custom task role was used, and the reasons for its existence no longer pertain.
+
 ## [v1.2.3.2] 2024-05-22 Bug fix
 ### Fixed
 - Existing batch job definitions (pre v1.2.3) could not be updated because their resource type changed.
