@@ -179,7 +179,7 @@ Steps:
   - ProcessScatteredFiles:
       image: scatter_processor
       inputs:
-          manifest: Scatterize_manifest.json
+          manifest: AssembleAndAnnotate_manifest.json
       commands:
           - do_processing.py ${manifest} > ${results}
       outputs:
