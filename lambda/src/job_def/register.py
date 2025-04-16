@@ -39,6 +39,7 @@ def respond(url: str, body: dict):
 @contextmanager
 def responder(event, context, no_echo=False) -> Generator[Response, None, None]:
     response = Response(
+        # todo: use None if no PhysicalResourceId
         PhysicalResourceId=event.get("PhysicalResourceId", context.log_stream_name),
         StackId=event["StackId"],
         RequestId=event["RequestId"],
@@ -51,6 +52,7 @@ def responder(event, context, no_echo=False) -> Generator[Response, None, None]:
         response.Status = "SUCCESS"
     except:
         logger.exception("failed: ")
+        # todo: add log group
         response.Reason = f"see log stream {context.log_stream_name}"
     finally:
         logger.info(f"{asdict(response)=}")
@@ -109,6 +111,8 @@ def lambda_handler(event: dict, context: object):
 
         else:
             try:
+                # todo: don't deregister if event["PhysicalResourceId"] is None
                 batch.deregister_job_definition(jobDefinition=event["PhysicalResourceId"])
             except:
+                # todo: reduce to warning
                 logger.exception("deregistration failed: ")

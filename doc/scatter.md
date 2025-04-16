@@ -145,36 +145,36 @@ Steps:
         refs_out: references.fa
 
   - AssembleAndAnnotate:
-    scatter:
-      sample_id: ${job.SAMPLE_IDS}
-    inputs:
-      references: references.fa
-    max_concurrency: 100
-    error_tolerance: 99%
-    steps:
-      - Assemble:
-          image: myAssembler
-          inputs:
-            reads1: s3://reads-bucket/${job.PROJECT_ID}/${scatter.sample_id}/reads1.fq
-            reads2: s3://reads-bucket/${job.PROJECT_ID}/${scatter.sample_id}/reads2.fq
-          commands:
-            - my_assembler --r1 ${reads1} --r2 ${reads2} --sample-id ${scatter.sample_id} > ${contigs_out}
-          outputs:
-            contigs_out: contigs.fa
-
-      - Annotate:
-          image: myAnnotator
-          inputs:
-            contigs_in: contigs.fa
-            # We must list parent.references as an input to have it downloaded into the workspace
-            refs_in: ${parent.references}
-          commands:
-            - my_annotator ${contigs_in} ${refs_in} > ${annots_out}
-          outputs:
-            annots_out: annots.gff
-    outputs:
-      contigs: contigs.fa
-      annots: annots.gff
+      scatter:
+          sample_id: ${job.SAMPLE_IDS}
+      inputs:
+          references: references.fa
+      max_concurrency: 100
+      error_tolerance: 99%
+      steps:
+          - Assemble:
+              image: myAssembler
+              inputs:
+                  reads1: s3://reads-bucket/${job.PROJECT_ID}/${scatter.sample_id}/reads1.fq
+                  reads2: s3://reads-bucket/${job.PROJECT_ID}/${scatter.sample_id}/reads2.fq
+              commands:
+                  - my_assembler --r1 ${reads1} --r2 ${reads2} --sample-id ${scatter.sample_id} > ${contigs_out}
+              outputs:
+                  contigs_out: contigs.fa
+  
+          - Annotate:
+              image: myAnnotator
+              inputs:
+                  contigs_in: contigs.fa
+                  # We must list parent.references as an input to have it downloaded into the workspace
+                  refs_in: ${parent.references}
+              commands:
+                  - my_annotator ${contigs_in} ${refs_in} > ${annots_out}
+              outputs:
+                  annots_out: annots.gff
+      outputs:
+          contigs: contigs.fa
+          annots: annots.gff
 
   - ProcessScatteredFiles:
       image: scatter_processor
