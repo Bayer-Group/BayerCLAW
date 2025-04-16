@@ -58,6 +58,13 @@ def no_substitutions(s):
     return s
 
 
+def outfile_name(value):
+    if not isinstance(value, str):
+        raise Invalid("output file name must be a string")
+    ret = {"name": value, "s3_tags": {}}
+    return ret
+
+
 skip_msg = "only one of 'skip_on_rerun' or 'skip_if_output_exists' is allowed"
 next_or_end_msg = "cannot specify both 'next' and 'end' in a step"
 
@@ -68,7 +75,6 @@ next_or_end = {
 
 qc_check_block = {
     Required("qc_result_file"): str,
-    # Required("stop_early_if"): Any(str, All([str], Length(min=1)))
     Required("stop_early_if"): Listified(str, min=1)
 }
 
@@ -91,7 +97,16 @@ batch_step_schema = Schema(All(
         Optional("inputs", default=None): Any(None, {str: str}),
         Optional("references", default={}): {str: Match(r"^s3://", msg="reference values must be s3 paths")},
         Required("commands", msg="commands list is required"): Listified(str, min=1),
-        Optional("outputs", default={}): {str: str},
+        Optional("s3_tags", default={}): {str: Coerce(str)},
+        Optional("outputs", default={}): {
+            str: Or(
+                {
+                    Required("name"): str,
+                    Optional("s3_tags", default={}): {str: Coerce(str)},
+                },
+                outfile_name
+            ),
+        },
         Exclusive("skip_if_output_exists", "skip_behavior", msg=skip_msg): bool,
         Exclusive("skip_on_rerun", "skip_behavior", msg=skip_msg): bool,
         Optional("compute", default={}): {
@@ -211,6 +226,8 @@ workflow_schema = Schema(
             Optional("shell", default="sh"): Any ("bash", "sh", "sh-pipefail",
                                                   msg="shell option must be bash, sh, or sh-pipefail"),
             Optional("task_role", default=None): Maybe(str),
+            Optional("s3_tags", default={}): {str: Coerce(str)},
+            # deprecated...
             Optional("versioned", default="false"): All(Lower, Coerce(str), Any("true", "false"))
         },
         Required("Steps", "Steps list not found"): Listified(wf_step, min=1),
