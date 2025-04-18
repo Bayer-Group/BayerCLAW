@@ -286,7 +286,7 @@ def test_handle_scatter_gather(sample_scatter_step, compiler_env):
     assert resources[0].name == "Step1JobDefx"
     assert resources[0].spec["Type"] == "Custom::BatchJobDefinition"
     subspec = json.loads(resources[0].spec["Properties"]["spec"])
-    tags = json.loads(subspec["parameters"]["tags"])
+    tags = json.loads(subspec["parameters"]["s3tags"])
     expected_tags = {
         "tag1": "global_value1",
         "tag2": "step_value2",

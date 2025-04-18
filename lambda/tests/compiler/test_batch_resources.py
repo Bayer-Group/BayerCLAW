@@ -269,7 +269,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
             "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
             "shell": "sh",
             "skip": "sss",
-            "tags": json.dumps(s3_tags, separators=(",", ":")),
+            "s3tags": json.dumps(s3_tags, separators=(",", ":")),
         },
         "containerProperties": {
             "image": "runner_repo_uri:1234567",
@@ -284,7 +284,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
                 "-q", "Ref::qc",
                 "-r", "Ref::repo",
                 "-s", "Ref::shell",
-                "-t", "Ref::tags",
+                "-t", "Ref::s3tags",
             ],
             "jobRoleArn": "arn:task:role",
             "environment": [
@@ -530,5 +530,5 @@ def test_handle_batch_s3_tags_opt(sample_batch_step, compiler_env):
     rc = dict(helper())
 
     spec = json.loads(rc["StepNameJobDefx"]["Properties"]["spec"])
-    tags = json.loads(spec["parameters"]["tags"])
+    tags = json.loads(spec["parameters"]["s3tags"])
     assert tags == expected_s3_tags
