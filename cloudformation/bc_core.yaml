@@ -295,6 +295,7 @@ Resources:
           ECS_TASK_ROLE_ARN: !GetAtt EcsTaskRoleStack.Outputs.EcsTaskRoleArn
           NOTIFICATIONS_LAMBDA_ARN: !GetAtt NotificationsLambda.Arn
           GATHER_LAMBDA_ARN: !Ref GatherLambda.Version
+          INITIALIZER_LAMBDA_ARN: !Ref InitializerLambda.Version
           JOB_DEF_LAMBDA_ARN: !GetAtt JobDefLambda.Arn
           LAUNCHER_BUCKET_NAME: !Ref LauncherBucket
           LOG_RETENTION_DAYS: !Ref LogRetentionDays
