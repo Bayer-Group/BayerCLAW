@@ -31,7 +31,8 @@ jobs:
       - name: getCreds
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: "arn:aws:iam::934778205429:role/jaxGithubActionsRole"
+#          role-to-assume: "arn:aws:iam::934778205429:role/jaxGithubActionsRole"
+          role-to-assume: "arn:aws:iam::934778205429:role/jax-github-role-2025"
           aws-region: us-east-2
 
       - name: runTests
