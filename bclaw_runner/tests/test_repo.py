@@ -303,6 +303,7 @@ def test_download_inputs_empty_inputs(monkeypatch, mock_buckets):
     assert len(result) == 0
 
 
+# todo: delete
 def test_outputerator(monkeypatch, tmp_path, caplog):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
@@ -321,6 +322,44 @@ def test_outputerator(monkeypatch, tmp_path, caplog):
     assert caplog.messages[0] == "no file matching 'non_thing*' found in workspace"
 
 
+def test_outputerator1(monkeypatch, tmp_path, caplog):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+
+    filenames = "output1 output2 output3 other_thing ignore_me".split()
+    for filename in filenames:
+        file = tmp_path / filename
+        file.open("w").close()
+
+    output_spec = {
+        "outputs": {
+            "name": "output*",
+            "s3_tags": {"tag1": "value1"},
+        },
+        "other_thing!": {
+            "name": "other_thing",
+            "s3_tags": {"tag2": "value2"},
+        },
+        "non_thing": {
+            "name": "non_thing*",
+            "s3_tags": {"tag3": "value3"},
+        },
+    }
+
+    expect = [
+        ("other_thing!", {"name": "other_thing", "s3_tags": {"tag2": "value2"}}),
+        ("outputs", {"name": "output1", "s3_tags": {"tag1": "value1"}}),
+        ("outputs", {"name": "output2", "s3_tags": {"tag1": "value1"}}),
+        ("outputs", {"name": "output3", "s3_tags": {"tag1": "value1"}}),
+    ]
+
+    os.chdir(tmp_path)
+    result = sorted(list(repo._outputerator1(output_spec)), key=lambda x: x[1]["name"])
+    assert result == expect
+    assert caplog.messages[0] == "no file matching 'non_thing*' found in workspace"
+
+
+# todo: delete
 def test_outputerator_recursive_glob(monkeypatch, tmp_path):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
@@ -340,6 +379,35 @@ def test_outputerator_recursive_glob(monkeypatch, tmp_path):
     assert result[1] == "dir4/dir5/file2.txt"
 
 
+def test_outputerator1_recursive_glob(monkeypatch, tmp_path):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+
+    targets = [
+        tmp_path / "dir1" / "dir2" / "dir3" / "file1.txt",
+        tmp_path / "dir4" / "dir5" / "file2.txt"
+    ]
+    for target in targets:
+        target.parent.mkdir(exist_ok=True, parents=True)
+        target.write_text("foo")
+
+    out_spec = {
+        "files": {
+            "name": "dir*/**/file*.txt",
+            "s3_tags": {"tag1": "value1"},
+        }
+    }
+
+    expect = [
+        ("files", {"name": "dir1/dir2/dir3/file1.txt", "s3_tags": {"tag1": "value1"}}),
+        ("files", {"name": "dir4/dir5/file2.txt", "s3_tags": {"tag1": "value1"}}),
+    ]
+
+    os.chdir(tmp_path)
+    result = sorted(repo._outputerator1(out_spec), key=lambda x: x[1]["name"])
+    assert result == expect
+
+# todo: delete
 def test_upload_that(monkeypatch, tmp_path, mock_buckets):
     monkeypatch.setenv("BC_EXECUTION_ID", "ELVISLIVES")
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
@@ -362,6 +430,45 @@ def test_upload_that(monkeypatch, tmp_path, mock_buckets):
         assert line == "target file\n".encode("utf-8")
 
 
+# todo: test keeper metadata
+def test_upload_that1(monkeypatch, tmp_path, mock_buckets):
+    monkeypatch.setenv("BC_EXECUTION_ID", "ELVISLIVES")
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+
+    target_file = tmp_path / "output1"
+    with target_file.open("w") as fp:
+        print("target file", file=fp)
+
+    global_tags = {"tag1": "valueX", "tag2": "valueY"}
+    file_spec = {
+        "name": str(target_file.absolute()),
+        "s3_tags": {"tag1": "value1", "tag3": "value3"},
+    }
+
+    repo._upload_that1("sym_name", file_spec, global_tags)
+
+    test_bucket, _ = mock_buckets
+    chek = test_bucket.Object("repo/path/output1").get()
+
+    expected_metadata = {"execution_id": "ELVISLIVES"}
+    assert chek["Metadata"] == expected_metadata
+
+    with closing(chek["Body"]) as fp:
+        line = next(fp)
+        assert line == "target file\n".encode("utf-8")
+
+    expected_tags = [
+        {"Key": "tag1", "Value": "value1"},
+        {"Key": "tag2", "Value": "valueY"},
+        {"Key": "tag3", "Value": "value3"},
+    ]
+    resp = test_bucket.meta.client.get_object_tagging(Bucket=TEST_BUCKET, Key="repo/path/output1")
+    tags = sorted(resp["TagSet"], key=lambda x: x["Key"])
+    assert tags == expected_tags
+
+
+# todo: delete
 def test_upload_that_missing_file(monkeypatch, tmp_path, caplog, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
@@ -372,6 +479,22 @@ def test_upload_that_missing_file(monkeypatch, tmp_path, caplog, mock_buckets):
         repo._upload_that(str(target_file.absolute()))
 
 
+def test_upload_that1_missing_file(monkeypatch, tmp_path, caplog, mock_buckets):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+
+    target_file = tmp_path / "missing"
+    output_spec = {
+        "name": str(target_file),
+        "s3_tags": {}
+    }
+    global_tags = {}
+
+    with pytest.raises(FileNotFoundError):
+        repo._upload_that1("sym_name", output_spec, global_tags)
+
+
+# todo: delete
 def test_upload_that_fail(monkeypatch, tmp_path, mock_buckets):
     monkeypatch.setenv("BC_EXECUTION_ID", "ELVISLIVES")
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
@@ -386,6 +509,27 @@ def test_upload_that_fail(monkeypatch, tmp_path, mock_buckets):
         repo._upload_that(str(target_file.absolute()))
 
 
+def test_upload_that1_fail(monkeypatch, tmp_path, mock_buckets):
+    monkeypatch.setenv("BC_EXECUTION_ID", "ELVISLIVES")
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://unbucket/repo/path")
+
+    target_file = tmp_path / "outputx"
+
+    with target_file.open("w") as fp:
+        print("target file", file=fp)
+
+    output_spec = {
+        "name": str(target_file),
+        "s3_tags": {}
+    }
+    global_tags = {}
+
+    with pytest.raises(boto3.exceptions.S3UploadFailedError):
+        repo._upload_that1("sym_name", output_spec, global_tags)
+
+
+# todo: delete
 def test_upload_outputs(monkeypatch, tmp_path, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo_two/path")
@@ -416,6 +560,47 @@ def test_upload_outputs(monkeypatch, tmp_path, mock_buckets):
     assert repo_contents == expect
 
 
+def test_upload_outputs1(monkeypatch, tmp_path, mock_buckets):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo_two/path")
+
+    for output_filename in "output1 output2 output3 other_output".split():
+        file = tmp_path / output_filename
+        with file.open("w") as fp:
+            print(output_filename, file=fp)
+
+    global_tags = {}
+    output_spec = {
+        "outputs": {
+            "name": "output*",
+            "s3_tags": {"tag1": "value1"},
+        },
+        "other_thing!": {
+            "name": "other_output",
+            "s3_tags": {"tag2": "value2"},
+        },
+        "non_thing": {
+            "name": "missing_file",
+            "s3_tags": {},
+        },
+    }
+
+    os.chdir(tmp_path)
+    repo.upload_outputs1(output_spec, global_tags)
+
+    repo_objects = boto3.client("s3", region_name="us-east-1").list_objects_v2(Bucket=TEST_BUCKET, Prefix="repo_two/path")
+    repo_contents = sorted(jmespath.search("Contents[].Key", repo_objects))
+    expect = sorted([
+        "repo_two/path/output1",
+        "repo_two/path/output2",
+        "repo_two/path/output3",
+        "repo_two/path/other_output",
+    ])
+
+    assert repo_contents == expect
+
+
+# todo: delete
 def test_upload_outputs_fail(monkeypatch, tmp_path, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://unbucket/repo_x/path")
@@ -434,6 +619,29 @@ def test_upload_outputs_fail(monkeypatch, tmp_path, mock_buckets):
         repo.upload_outputs(file_spec)
 
 
+def test_upload1_outputs_fail(monkeypatch, tmp_path, mock_buckets):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://unbucket/repo_x/path")
+
+    for output_filename in "output1 output2".split():
+        file = tmp_path / output_filename
+        with file.open("w") as fp:
+            print(output_filename, file=fp)
+
+    global_tags = {}
+    output_spec = {
+        "outputs": {
+            "name": "output*",
+            "s3_tags": {"tag1": "value1"}
+        }
+    }
+
+    os.chdir(tmp_path)
+    with pytest.raises(boto3.exceptions.S3UploadFailedError):
+        repo.upload_outputs1(output_spec, global_tags)
+
+
+# todo: delete
 def test_upload_outputs_empty_outputs(monkeypatch, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
@@ -441,6 +649,16 @@ def test_upload_outputs_empty_outputs(monkeypatch, mock_buckets):
     file_spec = {}
 
     repo.upload_outputs(file_spec)
+
+
+def test_upload_outputs1_empty_outputs(monkeypatch, mock_buckets):
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+
+    output_spec = {}
+    global_tags = {"tag1": "value1"}
+
+    repo.upload_outputs1(output_spec, global_tags)
 
 
 @pytest.mark.parametrize("step_name, expect_skip", [

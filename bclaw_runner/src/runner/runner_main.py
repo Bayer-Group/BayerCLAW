@@ -5,17 +5,18 @@ Usage:
     bclaw_runner.py [options]
 
 Options:
-    --cmd COMMAND        command
-    --image STRING       Docker image tag
-    --in JSON_STRING     input files
-    --out JSON_STRING    output files
-    --qc JSON_STRING     QC check spec
-    --ref JSON_STRING    reference files
-    --repo S3_PATH       repository path
-    --shell SHELL        unix shell to run commands in (bash | sh | sh-pipefail) [default: sh]
-    --skip STRING        step skip condition: output, rerun, none [default: none]
-    --help -h            show help
-    --version            show version
+    -c COMMANDS     command
+    -f JSON_STRING  reference files
+    -i JSON_STRING  input files
+    -k STRING       step skip condition: output, rerun, none [default: none]
+    -m STRING       Docker image tag
+    -o JSON_STRING  output files
+    -q JSON_STRING  QC check spec
+    -r S3_PATH      repository path
+    -s SHELL        unix shell to run commands in (bash | sh | sh-pipefail) [default: sh]
+    -t JSON_STRING  global s3 tags
+    -h              show help
+    --version       show version
 """
 
 from functools import partial, partialmethod
@@ -35,7 +36,6 @@ from .tagging import tag_this_instance
 from .termination import spot_termination_checker
 from .workspace import workspace, write_job_data_file, run_commands, UserCommandsFailed
 
-
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 
@@ -43,12 +43,13 @@ logger = logging.getLogger(__name__)
 def main(commands: List[str],
          image: str,
          inputs: Dict[str, str],
-         outputs: Dict[str, str],
+         outputs: Dict[str, str | Dict],
          qc: List[dict],
          references: Dict[str, str],
          repo_path: str,
          shell: str,
-         skip: str) -> int:
+         skip: str,
+         tags: Dict[str, str]) -> int:
     exit_code = 0
     try:
         repo = Repository(repo_path)
@@ -64,8 +65,9 @@ def main(commands: List[str],
 
         jobby_commands   = substitute(commands,   job_data_obj)
         jobby_inputs     = substitute(inputs,     job_data_obj)
-        jobby_outputs    = substitute(outputs,    job_data_obj)
+        jobby_outputs    = substitute(outputs,    job_data_obj)  # this will recurse down to s3_tags
         jobby_references = substitute(references, job_data_obj)
+        jobby_tags       = substitute(tags,       job_data_obj)
 
         jobby_image = substitute_image_tag(image, job_data_obj)
 
@@ -75,7 +77,7 @@ def main(commands: List[str],
 
             # download inputs -> returns local filenames
             local_inputs = repo.download_inputs(jobby_inputs)
-            local_outputs = jobby_outputs
+            local_outputs = {k.rstrip("!"): v["name"] for k, v in jobby_outputs.items()}
 
             subbed_commands = substitute(jobby_commands,
                                          local_inputs |
@@ -89,7 +91,7 @@ def main(commands: List[str],
                 do_checks(qc)
 
             finally:
-                repo.upload_outputs(jobby_outputs)
+                repo.upload_outputs1(jobby_outputs, jobby_tags)
 
     except UserCommandsFailed as uce:
         logger.error(str(uce))
@@ -129,15 +131,16 @@ def cli() -> int:
 
         logger.info(f"{args=}")
 
-        commands = json.loads(args["--cmd"])
-        image    = args["--image"]
-        inputs   = json.loads(args["--in"])
-        outputs  = json.loads(args["--out"])
-        qc       = json.loads(args["--qc"])
-        refs     = json.loads(args["--ref"])
-        repo     = args["--repo"]
-        shell    = args["--shell"]
-        skip     = args["--skip"]
+        commands = json.loads(args["-c"])
+        image    = args["-m"]
+        inputs   = json.loads(args["-i"])
+        outputs  = json.loads(args["-o"])
+        qc       = json.loads(args["-q"])
+        refs     = json.loads(args["-f"])
+        repo     = args["-r"]
+        shell    = args["-s"]
+        skip     = args["-k"]
+        tags     = json.loads(args["-t"])
 
-        ret = main(commands, image, inputs, outputs, qc, refs, repo, shell, skip)
+        ret = main(commands, image, inputs, outputs, qc, refs, repo, shell, skip, tags)
         return ret
