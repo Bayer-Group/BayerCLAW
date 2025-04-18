@@ -66,7 +66,7 @@ def test_handle_parallel_step_enhanced(next_step_name, next_or_end, compiler_env
         assert branch_1["StartAt"] == check_step_name_1
         assert set(branch_1["States"].keys()) == {check_step_name_1, skip_step_name_1, "do_this", "do_that"}
 
-        expected_inputs = json.dumps(step.spec["inputs"])
+        expected_inputs = json.dumps(step.spec["inputs"], separators=(",", ":"))
 
         # -- check step 1
         check_1 = branch_1["States"][check_step_name_1]

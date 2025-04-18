@@ -159,6 +159,7 @@ def test_handle_parallel_native_step(compiler_env):
                   - etc
                 outputs:
                   a: b
+                s3_tags: {}
                 compute:
                   cpus: 1
                   memory: 4
@@ -175,6 +176,7 @@ def test_handle_parallel_native_step(compiler_env):
                   - stuff
                 outputs:
                   z: t
+                s3_tags: {}
                 compute:
                   cpus: 1
                   memory: 4
@@ -192,7 +194,8 @@ def test_handle_parallel_native_step(compiler_env):
                 commands:
                   - woohoo
                 outputs:
-                  k: l   
+                  k: l
+                s3_tags: {}
                 compute:
                   cpus: 1
                   memory: 4
@@ -202,7 +205,7 @@ def test_handle_parallel_native_step(compiler_env):
     """)
     spec = yaml.safe_load(step_yaml)
     options = {"wf": "options",
-               "versioned": "true"}
+               "s3_tags": {}}
 
     def helper():
         test_step = Step("step_name", spec, "next_step")

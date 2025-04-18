@@ -29,7 +29,7 @@ class Step(NamedTuple):
         if self.spec["inputs"] is None:
             ret = {"inputs.$": "States.JsonToString($.prev_outputs)"}
         else:
-            ret = {"inputs": json.dumps(self.spec["inputs"])}
+            ret = {"inputs": json.dumps(self.spec["inputs"], separators=(",", ":"))}
         return ret
 
 

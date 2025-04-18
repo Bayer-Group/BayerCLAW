@@ -170,7 +170,8 @@ def handle_qc_check(spec: dict | list | None) -> list:
 
 def job_definition_rc(step: Step,
                       task_role: str,
-                      shell_opt: str) -> Generator[Resource, None, str]:
+                      shell_opt: str,
+                      s3_tags: dict) -> Generator[Resource, None, str]:
     logical_name = make_logical_name(f"{step.name}.job.defx")
 
     job_def_spec = {
@@ -185,20 +186,22 @@ def job_definition_rc(step: Step,
             "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
             "shell": shell_opt,
             "skip": "sss",
+            "tags": json.dumps(s3_tags, separators=(",", ":")),
         },
         "containerProperties": {
             "image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
             "command": [
                 "python", "/bclaw_runner/src/runner_cli.py",
-                "--repo", "Ref::repo",
-                "--image", "Ref::image",
-                "--in", "Ref::inputs",
-                "--ref", "Ref::references",
-                "--cmd", "Ref::command",
-                "--out", "Ref::outputs",
-                "--qc", "Ref::qc",
-                "--shell", "Ref::shell",
-                "--skip", "Ref::skip",
+                "-c", "Ref::command",
+                "-f", "Ref::references",
+                "-i", "Ref::inputs",
+                "-k", "Ref::skip",
+                "-m", "Ref::image",
+                "-o", "Ref::outputs",
+                "-q", "Ref::qc",
+                "-r", "Ref::repo",
+                "-s", "Ref::shell",
+                "-t", "Ref::tags",
             ],
             "jobRoleArn": task_role,
             **get_environment(),
@@ -282,8 +285,8 @@ def batch_step(step: Step,
             "Parameters": {
                 "repo.$": "$.repo.uri",
                 **step.input_field,
-                "references": json.dumps(step.spec["references"]),
-                "outputs": json.dumps(step.spec["outputs"]),
+                "references": json.dumps(step.spec["references"], separators=(",", ":")),
+                "outputs": json.dumps(step.spec["outputs"], separators=(",", ":")),
                 "skip": skip_behavior,
             },
             "ContainerOverrides": {
@@ -335,8 +338,9 @@ def handle_batch(step: Step,
 
     task_role = step.spec.get("task_role") or options.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
     shell_opt = step.spec["compute"]["shell"] or options.get("shell")
+    global_tags = options["s3_tags"] | step.spec["s3_tags"]
 
-    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt)
+    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt, global_tags)
 
     ret = [State(step.name, batch_step(step,
                                        job_def_logical_name,

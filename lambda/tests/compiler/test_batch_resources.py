@@ -204,13 +204,34 @@ def sample_batch_step():
             reads1: ${job.READ_PATH1}
             reads2: ${job.READ_PATH2}
           outputs: 
-            paired1: paired_trim_1.fq
-            paired2: paired_trim_2.fq
-            unpaired1: unpaired_trim_1.fq
-            unpaired2: unpaired_trim_2.fq
-            trim_log: ${job.SAMPLE_ID}-fastP.json
+            paired1:
+                name: paired_trim_1.fq
+                s3_tags:
+                    tag3: paired_trim_1_value3
+                    tag4: paired_trim_1_value4
+            paired2:
+                name: paired_trim_2.fq
+                s3_tags:
+                    tag3: paired_trim_2_value3
+                    tag4: paired_trim_2_value4
+            unpaired1:
+                name: unpaired_trim_1.fq
+                s3_tags:
+                    tag3: unpaired_trim1_value3
+                    tag4: unpaired_trim_1_value4
+            unpaired2:
+                name: unpaired_trim_2.fq
+                s3_tags:
+                    tag3: unpaired_trim2_value3
+                    tag4: unpaired_trim_2_value4
+            trim_log:
+                name: ${job.SAMPLE_ID}-fastP.json
+                s3_tags: {}
           references:
             reference1: s3://ref-bucket/path/to/reference.file
+          s3_tags:
+            "tag2": "step_value2"
+            "tag3": "step_value3"
           qc_check:
             -
                 qc_result_file: qc.out
@@ -231,6 +252,11 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
     expected_rc_name = "Skim3FastpJobDefx"
     step = Step(step_name, sample_batch_step, "next_step")
 
+    s3_tags = {
+        "tag1": "global_value1",
+        "tag2": "step_value2",
+    }
+
     expected_job_def_spec = {
         "type": "container",
         "parameters": {
@@ -243,20 +269,22 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
             "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
             "shell": "sh",
             "skip": "sss",
+            "tags": json.dumps(s3_tags, separators=(",", ":")),
         },
         "containerProperties": {
             "image": "runner_repo_uri:1234567",
             "command": [
                 "python", "/bclaw_runner/src/runner_cli.py",
-                "--repo", "Ref::repo",
-                "--image", "Ref::image",
-                "--in", "Ref::inputs",
-                "--ref", "Ref::references",
-                "--cmd", "Ref::command",
-                "--out", "Ref::outputs",
-                "--qc", "Ref::qc",
-                "--shell", "Ref::shell",
-                "--skip", "Ref::skip",
+                "-c", "Ref::command",
+                "-f", "Ref::references",
+                "-i", "Ref::inputs",
+                "-k", "Ref::skip",
+                "-m", "Ref::image",
+                "-o", "Ref::outputs",
+                "-q", "Ref::qc",
+                "-r", "Ref::repo",
+                "-s", "Ref::shell",
+                "-t", "Ref::tags",
             ],
             "jobRoleArn": "arn:task:role",
             "environment": [
@@ -311,7 +339,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
     }
 
     def helper():
-        rc_name1 = yield from job_definition_rc(step, "arn:task:role", "sh")
+        rc_name1 = yield from job_definition_rc(step, "arn:task:role", "sh", s3_tags)
         assert rc_name1 == expected_rc_name
 
     for resource in helper():
@@ -369,9 +397,9 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
                 "repo.$": "$.repo.uri",
-                "references": json.dumps(step.spec["references"]),
-                "inputs": json.dumps(step.spec["inputs"]),
-                "outputs": json.dumps(step.spec["outputs"]),
+                "references": json.dumps(step.spec["references"], separators=(",", ":")),
+                "inputs": json.dumps(step.spec["inputs"], separators=(",", ":")),
+                "outputs": json.dumps(step.spec["outputs"], separators=(",", ":")),
                 "skip": "none",
             },
             "ContainerOverrides": {
@@ -410,8 +438,8 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
 
 
 @pytest.mark.parametrize("options", [
-    {"no_task_role": "", "versioned": "true"},
-    {"task_role": "arn:from:workflow:params", "versioned": "true"}
+    {"no_task_role": "", "s3_tags": {}},
+    {"task_role": "arn:from:workflow:params", "s3_tags": {}}
 ])
 @pytest.mark.parametrize("step_task_role_request", [
     {},
@@ -436,6 +464,7 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
         assert states[0].spec["Parameters"]["JobDefinition"] == "${StepNameJobDefx}"
         assert states[0].spec["Next"] == "next_step_name"
 
+
         references = json.loads(states[0].spec["Parameters"]["Parameters"]["references"])
         assert references["reference1"] == "s3://ref-bucket/path/to/reference.file"
 
@@ -443,7 +472,7 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
         assert inputs["adapter"] == "s3://bayer-skim-sequence-processing-696164428135/adapters/${job.ADAPTER_FILE}"
 
         outputs = json.loads(states[0].spec["Parameters"]["Parameters"]["outputs"])
-        assert outputs["trim_log"] == "${job.SAMPLE_ID}-fastP.json"
+        assert outputs["trim_log"]["name"] == "${job.SAMPLE_ID}-fastP.json"
 
     for resource in helper():
         assert isinstance(resource, Resource)
@@ -458,7 +487,7 @@ def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):
     step.spec["inputs"] = None
 
     def helper():
-        states = yield from handle_batch(step, {"wf": "params", "versioned": "true"}, False)
+        states = yield from handle_batch(step, {"wf": "params", "versioned": "true", "s3_tags": {}}, False)
         assert states[0].spec["Parameters"]["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())
@@ -473,9 +502,33 @@ def test_handle_batch_shell_opt(sample_batch_step, step_shell, expect, compiler_
     step.spec["compute"]["shell"] = step_shell
 
     def helper():
-        _ = yield from handle_batch(step, {"shell": "sh", "versioned": "true"}, False)
+        _ = yield from handle_batch(step, {"shell": "sh", "versioned": "true", "s3_tags": {}}, False)
 
     rc = dict(helper())
 
     spec = json.loads(rc["StepNameJobDefx"]["Properties"]["spec"])
     assert spec["parameters"]["shell"] == expect
+
+
+def test_handle_batch_s3_tags_opt(sample_batch_step, compiler_env):
+    global_s3_tags = {
+        "tag1": "global_value1",
+        "tag2": "global_value2",
+    }
+
+    expected_s3_tags = {
+        "tag1": "global_value1",
+        "tag2": "step_value2",
+        "tag3": "step_value3",
+    }
+
+    step = Step("step_name", sample_batch_step, "next_step")
+
+    def helper():
+        _ = yield from handle_batch(step, {"wf": "params", "versioned": "true", "s3_tags": global_s3_tags}, False)
+
+    rc = dict(helper())
+
+    spec = json.loads(rc["StepNameJobDefx"]["Properties"]["spec"])
+    tags = json.loads(spec["parameters"]["tags"])
+    assert tags == expected_s3_tags
