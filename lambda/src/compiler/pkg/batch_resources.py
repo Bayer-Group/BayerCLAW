@@ -338,9 +338,9 @@ def handle_batch(step: Step,
 
     task_role = step.spec.get("task_role") or options.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
     shell_opt = step.spec["compute"]["shell"] or options.get("shell")
-    global_tags = options["s3_tags"] | step.spec["s3_tags"]
+    global_and_step_tags = options["s3_tags"] | step.spec["s3_tags"]
 
-    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt, global_tags)
+    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt, global_and_step_tags)
 
     ret = [State(step.name, batch_step(step,
                                        job_def_logical_name,
