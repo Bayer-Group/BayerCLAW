@@ -315,8 +315,8 @@ def batch_step(step: Step,
             },
         },
         "ResultSelector": {
-            # todo: strip ! from keys
-            **step.spec["outputs"],
+            **{k.rstrip("!"): v["name"] for k, v in step.spec["outputs"].items()}
+            # **step.spec["outputs"],
         },
         "ResultPath": "$.prev_outputs",
         "OutputPath": "$",

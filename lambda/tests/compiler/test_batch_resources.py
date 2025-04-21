@@ -1,6 +1,8 @@
 import json
 import textwrap
 
+import boto3
+import moto
 import pytest
 import yaml
 
@@ -347,6 +349,12 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         assert resource.name == expected_rc_name
         assert resource.spec == expected_rc_spec
 
+        job_def = json.loads(resource.spec["Properties"]["spec"])
+        with moto.mock_aws():
+            batch = boto3.client("batch")
+            # make sure the generated job definition is valid
+            _ = batch.register_job_definition(jobDefinitionName=expected_rc_name, **job_def)
+
 
 @pytest.mark.parametrize("spec, expect", [
     ({}, "none"),
@@ -427,7 +435,13 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
                 ],
             },
         },
-        "ResultSelector": step.spec["outputs"],
+        "ResultSelector": {
+            "paired1": "paired_trim_1.fq",
+            "paired2": "paired_trim_2.fq",
+            "unpaired1": "unpaired_trim_1.fq",
+            "unpaired2": "unpaired_trim_2.fq",
+            "trim_log": "${job.SAMPLE_ID}-fastP.json",
+        },
         "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
         **next_or_end
