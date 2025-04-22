@@ -67,9 +67,6 @@ def lambda_handler(event: dict, context: object) -> None:
         sfn = boto3.client("stepfunctions")
 
         try:
-            # (?<!/) is a negative lookbehind to make sure the s3 key doesn't end with a /
-            # m = re.fullmatch(r"([A-Za-z0-9-]+)/+(.+)(?<!/)", event["job_file_key"])
-
             # throws AttributeError if regex wasn't matched
             state_machine_name, state_machine_version, remainder = get_state_machine_name(event["job_file_key"])
 

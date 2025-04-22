@@ -211,12 +211,6 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
         job_data_copy = json.load(fp)
     assert job_data_copy == job_data
 
-    # execution record written to repo
-    execution_record_obj = conn.Object("repo-bucket", "path/to/repo/testJob/execution_info/test-execution-id").get()
-    with closing(execution_record_obj["Body"]) as fp:
-        execution_record = json.load(fp)
-    assert execution_record == event
-
 
 def test_lambda_handler_subpipe_execution(caplog):
     input_obj = {

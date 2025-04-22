@@ -73,13 +73,6 @@ def write_extended_job_data_object(raw_job_data: dict, dst_bucket: str, dst_pref
                   Body=json.dumps(job_data).encode("utf-8"))
 
 
-def write_execution_record(event: dict, dst_bucket: str, dst_prefix: str) -> None:
-    dst_key = f"{dst_prefix}/execution_info/{event['logging']['sfn_execution_id']}"
-    s3 = boto3.client("s3")
-    s3.put_object(Bucket=dst_bucket, Key=dst_key,
-                  Body=json.dumps(event, indent=4).encode("utf-8"))
-
-
 def handle_s3_launch(event: dict) -> dict:
     src_bucket = event["input_obj"]["job_file"]["bucket"]
     src_key = event["input_obj"]["job_file"]["key"]
@@ -95,7 +88,6 @@ def handle_s3_launch(event: dict) -> dict:
 
     copy_job_data_to_repo(src_bucket, src_key, src_version, repo_bucket, repo_prefix)
     write_extended_job_data_object(job_data, repo_bucket, repo_prefix)
-    write_execution_record(event, repo_bucket, repo_prefix)
 
     share_id = re.sub(r"[\W_]+", "", event["logging"]["workflow_name"])
 
