@@ -434,6 +434,12 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
                     },
                 ],
             },
+            "PropagateTags": True,
+            "Tags": {
+                "bclaw:workflow": "${WorkflowName}",
+                "bclaw:step.$": "$$.State.Name",
+                "bclaw:jobfile.$": "$.job_file.key"
+            }
         },
         "ResultSelector": {
             "paired1": "paired_trim_1.fq",
