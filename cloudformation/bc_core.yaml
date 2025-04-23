@@ -726,6 +726,7 @@ Resources:
               - "batch:SubmitJob"
               - "batch:DescribeJobs"
               - "batch:TerminateJob"
+              - "batch:TagResource"
             Resource: "*"
           - Effect: Allow
             Action:
