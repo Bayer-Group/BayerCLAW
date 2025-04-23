@@ -176,6 +176,15 @@ Resources:
               VolumeSize: !Ref ScratchVolumeSize
               VolumeType: gp3
         InstanceInitiatedShutdownBehavior: terminate
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub "${QueueName}-instance"
+          - ResourceType: volume
+            Tags:
+              - Key: Name
+                Value: !Sub "${QueueName}-volume"
         UserData:
           "Fn::Base64":
             "Fn::Sub": |

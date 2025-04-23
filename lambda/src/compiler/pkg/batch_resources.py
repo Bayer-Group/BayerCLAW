@@ -313,10 +313,15 @@ def batch_step(step: Step,
                     },
                 ],
             },
+            "PropagateTags": True,
+            "Tags": {
+                "bclaw:workflow": "${WorkflowName}",
+                "bclaw:step.$": "$$.State.Name",
+                "bclaw:jobfile.$": "$.job_file.key",
+            },
         },
         "ResultSelector": {
             **{k.rstrip("!"): v["name"] for k, v in step.spec["outputs"].items()}
-            # **step.spec["outputs"],
         },
         "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
