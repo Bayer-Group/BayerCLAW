@@ -112,5 +112,7 @@ def lambda_handler(event: dict, context: object):
             try:
                 if (job_def_id := event.get("PhysicalResourceId")) is not None:
                     batch.deregister_job_definition(jobDefinition=job_def_id)
+                else:
+                    logger.warning("no physical resource id found")
             except:
                 logger.warning("deregistration failed: ")

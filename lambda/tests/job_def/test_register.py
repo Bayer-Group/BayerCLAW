@@ -65,6 +65,7 @@ def event_factory(job_def_spec):
 
 class FakeContext:
     def __init__(self):
+        self.log_group_name = "fake-log-group"
         self.log_stream_name = "fake-log-stream"
 
 
@@ -198,6 +199,27 @@ def test_lambda_handler_delete(event_factory, batch_job_def_arn, mocker):
     assert job_defs[0]["status"] == "INACTIVE"
 
 
+def test_lambda_handler_no_physical_resource_id(event_factory, batch_job_def_arn, mocker):
+    mock_respond_fn = mocker.patch("lambda.src.job_def.register.respond")
+    event = event_factory("Delete", "wut")
+    event.pop("PhysicalResourceId")
+
+    _ = lambda_handler(event, FakeContext())
+
+    expect = {
+        "PhysicalResourceId": None,
+        "StackId": event["StackId"],
+        "RequestId": event["RequestId"],
+        "LogicalResourceId": event["LogicalResourceId"],
+        "Status": "SUCCESS",
+        "Reason": "",
+        "NoEcho": False,
+        "Data": {}
+    }
+
+    mock_respond_fn.assert_called_once_with(event["ResponseURL"], expect)
+
+
 @moto.mock_aws()
 def test_lambda_handler_fail(event_factory, mocker):
     mock_respond_fn = mocker.patch("lambda.src.job_def.register.respond")
@@ -213,7 +235,7 @@ def test_lambda_handler_fail(event_factory, mocker):
         "RequestId": event["RequestId"],
         "LogicalResourceId": event["LogicalResourceId"],
         "Status": "FAILED",
-        "Reason": f"see log stream {ctx.log_stream_name}",
+        "Reason": f"see log group {ctx.log_group_name} / log stream {ctx.log_stream_name}",
         "NoEcho": False,
         "Data": {}
     }
