@@ -152,6 +152,44 @@ Resources:
       TopicName: !Sub "${AWS::StackName}-notifications"
       KmsMasterKeyId: "alias/aws/sns"
 
+  NotificationsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref NotificationsTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: "NotifcationsTopicPolicy"
+        Statement:
+          -
+            Sid: OwnerAccessOnly
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - "SNS:AddPermission"
+              - "SNS:DeleteTopic"
+              - "SNS:GetTopicAttributes"
+              - "SNS:ListSubscriptionsByTopic"
+              - "SNS:Publish"
+              - "SNS:Receive"
+              - "SNS:RemovePermission"
+              - "SNS:SetTopicAttributes"
+              - "SNS:Subscribe"
+            Resource: !Ref NotificationsTopic
+            Condition:
+              StringEquals:
+                "AWS:SourceOwner": !Ref AWS::AccountId
+          -
+            Sid: SecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "sns:Publish"
+            Resource: !Ref NotificationsTopic
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
   # lambdas
   CommonLayer:
     Type: AWS::Serverless::LayerVersion
