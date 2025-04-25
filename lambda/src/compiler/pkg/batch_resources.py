@@ -214,7 +214,7 @@ def job_definition_rc(step: Step,
         "propagateTags": True,
         "tags": job_tags | {
             "bclaw:workflow": "",  # placeholder; will be filled in by register.py
-            "bclaw:step.$": step.name,
+            "bclaw:step": step.name,
             "bclaw:version": os.environ["SOURCE_VERSION"],
         },
     }
