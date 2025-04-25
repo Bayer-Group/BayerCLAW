@@ -39,8 +39,7 @@ def respond(url: str, body: dict):
 @contextmanager
 def responder(event, context, no_echo=False) -> Generator[Response, None, None]:
     response = Response(
-        # todo: use None if no PhysicalResourceId
-        PhysicalResourceId=event.get("PhysicalResourceId", context.log_stream_name),
+        PhysicalResourceId=event.get("PhysicalResourceId"),
         StackId=event["StackId"],
         RequestId=event["RequestId"],
         LogicalResourceId=event["LogicalResourceId"],
@@ -52,8 +51,7 @@ def responder(event, context, no_echo=False) -> Generator[Response, None, None]:
         response.Status = "SUCCESS"
     except:
         logger.exception("failed: ")
-        # todo: add log group
-        response.Reason = f"see log stream {context.log_stream_name}"
+        response.Reason = f"see log group {context.log_group_name} / log stream {context.log_stream_name}"
     finally:
         logger.info(f"{asdict(response)=}")
         respond(event["ResponseURL"], asdict(response))
@@ -112,8 +110,7 @@ def lambda_handler(event: dict, context: object):
 
         else:
             try:
-                # todo: don't deregister if event["PhysicalResourceId"] is None
-                batch.deregister_job_definition(jobDefinition=event["PhysicalResourceId"])
+                if (job_def_id := event.get("PhysicalResourceId")) is not None:
+                    batch.deregister_job_definition(jobDefinition=job_def_id)
             except:
-                # todo: reduce to warning
-                logger.exception("deregistration failed: ")
+                logger.warning("deregistration failed: ")
