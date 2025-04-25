@@ -196,8 +196,8 @@ def sample_batch_step():
             gpu: 2
             shell: bash
           job_tags:
-            job_tag1: job_tag_value1
-            job_tag2: job_tag_value2
+            job_tag2: step_job_value2
+            job_tag3: step_job_value3
           filesystems:
             -
               efs_id: fs-12345
@@ -235,8 +235,8 @@ def sample_batch_step():
           references:
             reference1: s3://ref-bucket/path/to/reference.file
           s3_tags:
-            "tag2": "step_value2"
-            "tag3": "step_value3"
+            "tag2": "step_s3_value2"
+            "tag3": "step_s3_value3"
           qc_check:
             -
                 qc_result_file: qc.out
@@ -252,15 +252,19 @@ def sample_batch_step():
     return ret
 
 
-@pytest.mark.skip(reason="temporarily disabled")
 def test_job_definition_rc(sample_batch_step, compiler_env):
     step_name = "skim3-fastp"
     expected_rc_name = "Skim3FastpJobDefx"
     step = Step(step_name, sample_batch_step, "next_step")
 
     s3_tags = {
-        "tag1": "global_value1",
-        "tag2": "step_value2",
+        "s3_tag1": "global_s3_value1",
+        "s3_tag2": "step_s3_value2",
+    }
+
+    job_tags = {
+        "job_tag1": "global_job_value1",
+        "job_tag2": "step_job_value2",
     }
 
     expected_job_def_spec = {
@@ -323,8 +327,13 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         "timeout": {
             "attemptDurationSeconds": 3600,
         },
+        "propagateTags": True,
         "tags": {
+            "job_tag1": "global_job_value1",
+            "job_tag2": "step_job_value2",
+            "bclaw:step": step_name,
             "bclaw:version": "1234567",
+            "bclaw:workflow": "",
         }
     }
 
@@ -345,7 +354,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
     }
 
     def helper():
-        rc_name1 = yield from job_definition_rc(step, "arn:task:role", "sh", s3_tags)
+        rc_name1 = yield from job_definition_rc(step, "arn:task:role", "sh", s3_tags, job_tags)
         assert rc_name1 == expected_rc_name
 
     for resource in helper():
@@ -372,7 +381,6 @@ def test_get_skip_behavior(spec, expect):
     assert result == expect
 
 
-@pytest.mark.skip(reason="temporarily disabled")
 @pytest.mark.parametrize("scattered, job_name", [
     (True, "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)"),
     (False, "States.Format('{}__{}', $$.Execution.Name, $$.State.Name)")
@@ -439,12 +447,7 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
                     },
                 ],
             },
-            "PropagateTags": True,
             "Tags": {
-                "test_tag1": "test_tag_value1",
-                "test_tag2": "test_tag_value2",
-                "bclaw:workflow": "${WorkflowName}",
-                "bclaw:step.$": "$$.State.Name",
                 "bclaw:jobfile.$": "$.job_file.key"
             }
         },
@@ -460,19 +463,13 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
         **next_or_end
     }
 
-    job_tags = {
-        "test_tag1": "test_tag_value1",
-        "test_tag2": "test_tag_value2",
-    }
-
-    result = batch_step(step, "TestJobDef", job_tags, scattered)
+    result = batch_step(step, "TestJobDef", scattered)
     assert result == expected_body
 
 
-@pytest.mark.skip(reason="temporarily disabled")
 @pytest.mark.parametrize("options", [
-    {"no_task_role": "", "s3_tags": {}},
-    {"task_role": "arn:from:workflow:params", "s3_tags": {}}
+    {"no_task_role": "", "s3_tags": {}, "job_tags": {}},
+    {"task_role": "arn:from:workflow:params", "s3_tags": {}, "job_tags": {}}
 ])
 @pytest.mark.parametrize("step_task_role_request", [
     {},
@@ -515,19 +512,18 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
         assert job_def_spec["containerProperties"]["jobRoleArn"] == expected_job_role_arn
 
 
-@pytest.mark.skip(reason="temporarily disabled")
 def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):
     step = Step("step_name", sample_batch_step, "next_step")
     step.spec["inputs"] = None
 
     def helper():
-        states = yield from handle_batch(step, {"wf": "params", "versioned": "true", "s3_tags": {}}, False)
+        options = {"wf": "params", "s3_tags": {}, "job_tags": {}}
+        states = yield from handle_batch(step, options, False)
         assert states[0].spec["Parameters"]["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())
 
 
-@pytest.mark.skip(reason="temporarily disabled")
 @pytest.mark.parametrize("step_shell, expect", [
     (None, "sh"),
     ("bash", "bash"),
@@ -537,7 +533,8 @@ def test_handle_batch_shell_opt(sample_batch_step, step_shell, expect, compiler_
     step.spec["compute"]["shell"] = step_shell
 
     def helper():
-        _ = yield from handle_batch(step, {"shell": "sh", "versioned": "true", "s3_tags": {}}, False)
+        options = {"shell": "sh", "s3_tags": {}, "job_tags": {}}
+        _ = yield from handle_batch(step, options, False)
 
     rc = dict(helper())
 
@@ -545,26 +542,54 @@ def test_handle_batch_shell_opt(sample_batch_step, step_shell, expect, compiler_
     assert spec["parameters"]["shell"] == expect
 
 
-@pytest.mark.skip(reason="temporarily disabled")
 def test_handle_batch_s3_tags_opt(sample_batch_step, compiler_env):
     global_s3_tags = {
-        "tag1": "global_value1",
-        "tag2": "global_value2",
+        "tag1": "global_s3_value1",
+        "tag2": "global_s3_value2",
     }
 
     expected_s3_tags = {
-        "tag1": "global_value1",
-        "tag2": "step_value2",
-        "tag3": "step_value3",
+        "tag1": "global_s3_value1",
+        "tag2": "step_s3_value2",
+        "tag3": "step_s3_value3",
     }
 
     step = Step("step_name", sample_batch_step, "next_step")
 
     def helper():
-        _ = yield from handle_batch(step, {"wf": "params", "versioned": "true", "s3_tags": global_s3_tags}, False)
+        options = {"wf": "params", "versioned": "true", "s3_tags": global_s3_tags, "job_tags": {}}
+        _ = yield from handle_batch(step, options, False)
 
     rc = dict(helper())
 
     spec = json.loads(rc["StepNameJobDefx"]["Properties"]["spec"])
     tags = json.loads(spec["parameters"]["s3tags"])
     assert tags == expected_s3_tags
+
+
+def test_handle_batch_job_tags_opt(sample_batch_step, compiler_env):
+    global_job_tags = {
+        "job_tag1": "global_job_value1",
+        "job_tag2": "global_job_value2",
+    }
+
+    expected_job_tags = {
+        "job_tag1": "global_job_value1",
+        "job_tag2": "step_job_value2",
+        "job_tag3": "step_job_value3",
+        "bclaw:step": "step_name",
+        "bclaw:version": "1234567",
+        "bclaw:workflow": "",
+    }
+
+    step = Step("step_name", sample_batch_step, "next_step")
+
+    def helper():
+        options = {"wf": "params", "versioned": "true", "s3_tags": {}, "job_tags": global_job_tags}
+        _ = yield from handle_batch(step, options, False)
+
+    rc = dict(helper())
+
+    spec = json.loads(rc["StepNameJobDefx"]["Properties"]["spec"])
+    tags = spec["tags"]
+    assert tags == expected_job_tags

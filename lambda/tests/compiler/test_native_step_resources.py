@@ -141,7 +141,6 @@ def test_handle_native_step_stet():
     assert len(resources) == 0
 
 
-@pytest.mark.skip(reason="temporarily disabled")
 def test_handle_parallel_native_step(compiler_env):
     step_yaml = textwrap.dedent("""
       Type: Parallel
@@ -161,6 +160,7 @@ def test_handle_parallel_native_step(compiler_env):
                 outputs:
                   a: b
                 s3_tags: {}
+                job_tags: {}
                 compute:
                   cpus: 1
                   memory: 4
@@ -178,6 +178,7 @@ def test_handle_parallel_native_step(compiler_env):
                 outputs:
                   z: t
                 s3_tags: {}
+                job_tags: {}
                 compute:
                   cpus: 1
                   memory: 4
@@ -197,6 +198,7 @@ def test_handle_parallel_native_step(compiler_env):
                 outputs:
                   k: l
                 s3_tags: {}
+                job_tags: {}
                 compute:
                   cpus: 1
                   memory: 4
@@ -206,7 +208,8 @@ def test_handle_parallel_native_step(compiler_env):
     """)
     spec = yaml.safe_load(step_yaml)
     options = {"wf": "options",
-               "s3_tags": {}}
+               "s3_tags": {},
+               "job_tags": {}}
 
     def helper():
         test_step = Step("step_name", spec, "next_step")

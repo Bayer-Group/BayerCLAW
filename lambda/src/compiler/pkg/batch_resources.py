@@ -175,6 +175,8 @@ def job_definition_rc(step: Step,
                       job_tags: dict) -> Generator[Resource, None, str]:
     logical_name = make_logical_name(f"{step.name}.job.defx")
 
+    # note: this is not a CloudFormation spec, it is meant to be submitted to
+    # the Batch API by register.py
     job_def_spec = {
         "type": "container",
         "parameters": {
@@ -248,7 +250,6 @@ def get_skip_behavior(spec: dict) -> str:
 
 def batch_step(step: Step,
                job_definition_logical_name: str,
-               # job_tags: dict,
                scattered: bool,
                next_step_override: str = None,
                attempts: int = 3,
@@ -318,10 +319,6 @@ def batch_step(step: Step,
                     },
                 ],
             },
-            # "PropagateTags": True,
-            # "Tags": job_tags | {
-                # "bclaw:workflow": "${WorkflowName}",
-                # "bclaw:step.$": "$$.State.Name",
             "Tags": {
                 "bclaw:jobfile.$": "$.job_file.key",
             },
@@ -360,7 +357,6 @@ def handle_batch(step: Step,
 
     ret = [State(step.name, batch_step(step,
                                        job_def_logical_name,
-                                       # job_tags=global_and_step_job_tags,
                                        scattered=scattered,
                                        **step.spec["retry"],
                                        ))]

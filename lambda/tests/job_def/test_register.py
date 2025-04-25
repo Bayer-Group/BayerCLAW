@@ -32,7 +32,11 @@ def job_def_spec() -> dict:
                 }
             ]
         },
-        "schedulingPriority": 1
+        "schedulingPriority": 1,
+        "propagateTags": True,
+        "tags": {
+            "bclaw:workflow": "",
+        }
     }
     return ret
 
@@ -73,7 +77,6 @@ def batch_job_def_arn(job_def_spec, monkeypatch):
         yield yld["jobDefinitionArn"]
 
 
-@pytest.mark.skip(reason="temporarily disabled")
 def test_edit_spec(job_def_spec, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
@@ -84,11 +87,11 @@ def test_edit_spec(job_def_spec, monkeypatch):
                                                      {"name": "AWS_DEFAULT_REGION", "value": "us-west-1"},
                                                      {"name": "AWS_ACCOUNT_ID", "value": "123456789012"},]
     expect["parameters"]["image"] = "test-image"
+    expect["tags"]["bclaw:workflow"] = "test-wf"
     result = edit_spec(job_def_spec, "test-wf", "test-step", "test-image")
     assert result == expect
 
 
-@pytest.mark.skip(reason="temporarily disabled")
 @moto.mock_aws()
 def test_lambda_handler_create(event_factory, mocker, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
@@ -127,9 +130,9 @@ def test_lambda_handler_create(event_factory, mocker, monkeypatch):
                                                                  {"name": "BC_STEP_NAME", "value": "test-step"},
                                                                  {"name": "AWS_DEFAULT_REGION", "value": "us-west-1"},
                                                                  {"name": "AWS_ACCOUNT_ID", "value": "123456789012"},]
+    assert job_defs[0]["tags"]["bclaw:workflow"] == "test-wf"
 
 
-@pytest.mark.skip(reason="temporarily disabled")
 def test_lambda_handler_update(event_factory, batch_job_def_arn, mocker, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")

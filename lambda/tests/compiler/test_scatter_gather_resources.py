@@ -213,11 +213,11 @@ def sample_scatter_step():
                 output3:
                     name: 2_outfile3.txt
                     s3_tags:
-                        tag3: file_value3
-                        tag4: file_value4
+                        s3_tag3: file_s3_value3
+                        s3_tag4: file_s3_value4
             s3_tags:
-              tag2: step_value2
-              tag3: step_value3
+              s3_tag2: step_s3_value2
+              s3_tag3: step_s3_value3
             compute:
                 cpus: 1
                 memory: 4
@@ -232,14 +232,17 @@ def sample_scatter_step():
     yield ret
 
 
-@pytest.mark.skip(reason="temporarily disabled")
 def test_handle_scatter_gather(sample_scatter_step, compiler_env):
     options = {
         "wf": "options",
         "s3_tags": {
-            "tag1": "global_value1",
-            "tag2": "global_value2",
+            "s3_tag1": "global_s3_value1",
+            "s3_tag2": "global_s3_value2",
         },
+        "job_tags": {
+            "job_tag1": "global_job_value1",
+            "job_tag2": "global_job_value2",
+        }
     }
 
     def helper():
@@ -261,7 +264,7 @@ def test_handle_scatter_gather(sample_scatter_step, compiler_env):
         refs1 = json.loads(states[1].spec["ItemProcessor"]["States"]["Step1"]["Parameters"]["Parameters"]["references"])
         assert refs1["ref1"] == "s3://ref-bucket/path/to/reference.file"
         outputs1 = json.loads(states[1].spec["ItemProcessor"]["States"]["Step1"]["Parameters"]["Parameters"]["outputs"])
-        assert outputs1["output3"] == {"name": "2_outfile3.txt", "s3_tags": {"tag3": "file_value3", "tag4": "file_value4"}}
+        assert outputs1["output3"] == {"name": "2_outfile3.txt", "s3_tags": {"s3_tag3": "file_s3_value3", "s3_tag4": "file_s3_value4"}}
 
         assert len(states[1].spec["ItemProcessor"]["States"]) == 2
         assert set(states[1].spec["ItemProcessor"]["States"]) == {"step_name.initialize", "Step1"}
@@ -287,13 +290,13 @@ def test_handle_scatter_gather(sample_scatter_step, compiler_env):
     assert resources[0].name == "Step1JobDefx"
     assert resources[0].spec["Type"] == "Custom::BatchJobDefinition"
     subspec = json.loads(resources[0].spec["Properties"]["spec"])
-    tags = json.loads(subspec["parameters"]["s3tags"])
-    expected_tags = {
-        "tag1": "global_value1",
-        "tag2": "step_value2",
-        "tag3": "step_value3",
+    s3_tags = json.loads(subspec["parameters"]["s3tags"])
+    expected_s3_tags = {
+        "s3_tag1": "global_s3_value1",
+        "s3_tag2": "step_s3_value2",
+        "s3_tag3": "step_s3_value3",
     }
-    assert tags == expected_tags
+    assert s3_tags == expected_s3_tags
 
     spec = json.loads(resources[0].spec["Properties"]["spec"])
     cmd = json.loads(spec["parameters"]["command"])
@@ -309,13 +312,13 @@ def test_handle_scatter_gather_too_deep():
     _ = list(helper())
 
 
-@pytest.mark.skip(reason="temporarily disabled")
 def test_handle_scatter_gather_auto_inputs(sample_scatter_step, compiler_env):
     sample_scatter_step["inputs"] = None
 
     def helper():
+        options = {"wf": "params", "s3_tags": {}, "job_tags": {}}
         test_step = Step("step_name", sample_scatter_step, "next_step_name")
-        states = yield from handle_scatter_gather(test_step, {"wf": "params", "s3_tags": {}}, 0)
+        states = yield from handle_scatter_gather(test_step, options, 0)
         assert states[0].spec["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())
