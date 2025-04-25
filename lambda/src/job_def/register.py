@@ -67,6 +67,7 @@ def edit_spec(spec: dict, wf_name: str, step_name: str, image: str) -> dict:
                                                   {"name": "AWS_DEFAULT_REGION", "value": os.environ["REGION"]},
                                                   {"name": "AWS_ACCOUNT_ID", "value": os.environ["ACCT_NUM"]}]
     ret["parameters"]["image"] = image
+    ret["tags"]["bclaw:workflow"] = wf_name
     return ret
 
 

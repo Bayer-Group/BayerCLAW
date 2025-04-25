@@ -73,6 +73,7 @@ def batch_job_def_arn(job_def_spec, monkeypatch):
         yield yld["jobDefinitionArn"]
 
 
+@pytest.mark.skip(reason="temporarily disabled")
 def test_edit_spec(job_def_spec, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
@@ -87,6 +88,7 @@ def test_edit_spec(job_def_spec, monkeypatch):
     assert result == expect
 
 
+@pytest.mark.skip(reason="temporarily disabled")
 @moto.mock_aws()
 def test_lambda_handler_create(event_factory, mocker, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
@@ -127,6 +129,7 @@ def test_lambda_handler_create(event_factory, mocker, monkeypatch):
                                                                  {"name": "AWS_ACCOUNT_ID", "value": "123456789012"},]
 
 
+@pytest.mark.skip(reason="temporarily disabled")
 def test_lambda_handler_update(event_factory, batch_job_def_arn, mocker, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")

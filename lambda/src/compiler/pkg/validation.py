@@ -98,6 +98,7 @@ batch_step_schema = Schema(All(
         Optional("references", default={}): {str: Match(r"^s3://", msg="reference values must be s3 paths")},
         Required("commands", msg="commands list is required"): Listified(str, min=1),
         Optional("s3_tags", default={}): {str: Coerce(str)},
+        Optional("job_tags", default={}): {str: Coerce(str)},
         Optional("outputs", default={}): {
             str: Or(
                 {
@@ -227,6 +228,7 @@ workflow_schema = Schema(
                                                   msg="shell option must be bash, sh, or sh-pipefail"),
             Optional("task_role", default=None): Maybe(str),
             Optional("s3_tags", default={}): {str: Coerce(str)},
+            Optional("job_tags", default={}): {str: Coerce(str)},
             # deprecated...
             Optional("versioned", default="false"): All(Lower, Coerce(str), Any("true", "false"))
         },

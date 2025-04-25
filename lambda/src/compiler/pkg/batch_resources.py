@@ -171,7 +171,8 @@ def handle_qc_check(spec: dict | list | None) -> list:
 def job_definition_rc(step: Step,
                       task_role: str,
                       shell_opt: str,
-                      s3_tags: dict) -> Generator[Resource, None, str]:
+                      s3_tags: dict,
+                      job_tags: dict) -> Generator[Resource, None, str]:
     logical_name = make_logical_name(f"{step.name}.job.defx")
 
     job_def_spec = {
@@ -210,7 +211,10 @@ def job_definition_rc(step: Step,
         },
         "schedulingPriority": 1,
         **get_timeout(step),
-        "tags": {
+        "propagateTags": True,
+        "tags": job_tags | {
+            "bclaw:workflow": "",  # placeholder; will be filled in by register.py
+            "bclaw:step.$": step.name,
             "bclaw:version": os.environ["SOURCE_VERSION"],
         },
     }
@@ -244,6 +248,7 @@ def get_skip_behavior(spec: dict) -> str:
 
 def batch_step(step: Step,
                job_definition_logical_name: str,
+               # job_tags: dict,
                scattered: bool,
                next_step_override: str = None,
                attempts: int = 3,
@@ -313,10 +318,11 @@ def batch_step(step: Step,
                     },
                 ],
             },
-            "PropagateTags": True,
+            # "PropagateTags": True,
+            # "Tags": job_tags | {
+                # "bclaw:workflow": "${WorkflowName}",
+                # "bclaw:step.$": "$$.State.Name",
             "Tags": {
-                "bclaw:workflow": "${WorkflowName}",
-                "bclaw:step.$": "$$.State.Name",
                 "bclaw:jobfile.$": "$.job_file.key",
             },
         },
@@ -343,12 +349,19 @@ def handle_batch(step: Step,
 
     task_role = step.spec.get("task_role") or options.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
     shell_opt = step.spec["compute"]["shell"] or options.get("shell")
-    global_and_step_tags = options["s3_tags"] | step.spec["s3_tags"]
+    global_and_step_s3_tags = options["s3_tags"] | step.spec["s3_tags"]
+    global_and_step_job_tags = options["job_tags"] | step.spec["job_tags"]
 
-    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt, global_and_step_tags)
+    job_def_logical_name = yield from job_definition_rc(step,
+                                                        task_role,
+                                                        shell_opt,
+                                                        global_and_step_s3_tags,
+                                                        global_and_step_job_tags)
 
     ret = [State(step.name, batch_step(step,
                                        job_def_logical_name,
+                                       # job_tags=global_and_step_job_tags,
+                                       scattered=scattered,
                                        **step.spec["retry"],
-                                       scattered=scattered))]
+                                       ))]
     return ret
