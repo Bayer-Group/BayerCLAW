@@ -36,7 +36,8 @@ from .tagging import tag_this_instance
 from .termination import spot_termination_checker
 from .workspace import workspace, write_job_data_file, run_commands, UserCommandsFailed
 
-logging.config.dictConfig(LOGGING_CONFIG)
+# logging.config.dictConfig(LOGGING_CONFIG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
