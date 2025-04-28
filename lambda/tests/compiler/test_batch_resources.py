@@ -8,7 +8,7 @@ import yaml
 
 from ...src.compiler.pkg.batch_resources import (expand_image_uri, get_job_queue, get_memory_in_mibs,
     get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout, handle_qc_check,
-    batch_step, job_definition_rc, handle_batch, SCRATCH_PATH)
+    get_consumable_resource_properties, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH)
 from ...src.compiler.pkg.util import Step, Resource, State
 
 
@@ -172,6 +172,23 @@ def test_handle_qc_check(qc_spec, expect):
     assert result == expect
 
 
+@pytest.mark.parametrize("spec, expect", [
+    ({"res1": 99, "res2": 98},
+     {
+         "consumableResourceProperties": {
+             "consumableResourceList": [
+                {"consumableResource": "res1", "quantity": 99},
+                {"consumableResource": "res2", "quantity": 98},
+             ],
+         },
+    }),
+    ({}, {}),
+])
+def test_get_consumable_resource_properties(spec, expect):
+    result = get_consumable_resource_properties(spec)
+    assert result == expect
+
+
 @pytest.fixture(scope="function")
 def sample_batch_step():
     ret = yaml.safe_load(textwrap.dedent("""
@@ -237,6 +254,9 @@ def sample_batch_step():
           s3_tags:
             "tag2": "step_s3_value2"
             "tag3": "step_s3_value3"
+          consumes:
+            "resource1": 99
+            "resource2": 88
           qc_check:
             -
                 qc_result_file: qc.out
@@ -321,6 +341,18 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
                      "rootDirectory": "/path/to/my/data",
                      "transitEncryption": "ENABLED",
                  }}
+            ],
+        },
+        "consumableResourceProperties": {
+            "consumableResourceList": [
+                {
+                    "consumableResource": "resource1",
+                    "quantity": 99,
+                },
+                {
+                    "consumableResource": "resource2",
+                    "quantity": 88,
+                },
             ],
         },
         "schedulingPriority": 1,

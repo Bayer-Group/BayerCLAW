@@ -168,6 +168,14 @@ def handle_qc_check(spec: dict | list | None) -> list:
     return ret
 
 
+def get_consumable_resource_properties(spec: dict) -> dict:
+    if spec:
+        ret = [{"consumableResource": k, "quantity": v } for k, v in spec.items()]
+        return {"consumableResourceProperties": {"consumableResourceList": ret}}
+    else:
+        return {}
+
+
 def job_definition_rc(step: Step,
                       task_role: str,
                       shell_opt: str,
@@ -211,6 +219,7 @@ def job_definition_rc(step: Step,
             **get_resource_requirements(step),
             **get_volume_info(step),
         },
+        **get_consumable_resource_properties(step.spec["consumes"]),
         "schedulingPriority": 1,
         **get_timeout(step),
         "propagateTags": True,

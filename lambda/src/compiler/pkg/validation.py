@@ -123,6 +123,7 @@ batch_step_schema = Schema(All(
             Optional("shell", default=None): Any(None, "bash", "sh", "sh-pipefail",
                                                  msg="shell option must be bash, sh, or sh-pipefail"),
         },
+        Optional("consumes", default={}): {str: All(int, Range(min=1))},
         Optional("filesystems", default=[]): Listified(filesystem_block),
         Optional("qc_check", default=[]): Listified(qc_check_block),
         Optional("retry", default={}): {
