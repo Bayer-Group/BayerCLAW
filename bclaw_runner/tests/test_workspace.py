@@ -1,11 +1,14 @@
 import os
 import json
+import logging
 import subprocess
 
 import pytest
 
 from ..src import runner
 from ..src.runner.workspace import workspace, write_job_data_file, run_commands, run_commands, UserCommandsFailed
+
+logging.basicConfig(level=logging.INFO)
 
 
 def test_workspace(monkeypatch, tmp_path):
@@ -44,6 +47,7 @@ def fake_container(image_tag: str, command: str, work_dir: str, job_data_file) -
 
 
 def test_run_commands(tmp_path, monkeypatch, caplog):
+    caplog.set_level(logging.INFO)
     monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
     f = tmp_path / "test_success.out"
 

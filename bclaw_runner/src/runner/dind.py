@@ -102,7 +102,7 @@ def pull_image(docker_client: docker.DockerClient, tag: str) -> Image:
 
     ret = docker_client.images.pull(tag, auth_config=auth_config)
 
-    repo_id = ret.attrs["RepoDigests"][0].split["@"][-1][:19]
+    repo_id = ret.attrs["RepoDigests"][0].split("@")[-1][:19]
     logger.info(f"got image {ret.tags[0]} ({repo_id})")
 
     return ret

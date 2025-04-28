@@ -12,6 +12,9 @@ class MockImage:
         self.tags = [tag]
         self.source = source
         self.auth = auth
+        self.attrs = {
+            "RepoDigests": [f"{tag}@sha256:1234567890abcdef"],
+        }
 
 
 class MockImages:
