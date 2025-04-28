@@ -47,6 +47,8 @@ def run_commands(image_tag: str, commands: list, work_dir: str, job_data_file: s
         for command in commands:
             print(command, file=fp)
 
+    logger.info(f"shell option: {shell_opt}")
+
     if shell_opt == "sh":
         shell_cmd = "sh -veu"
     elif shell_opt == "bash":

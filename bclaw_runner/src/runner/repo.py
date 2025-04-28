@@ -49,6 +49,7 @@ def _expand_s3_glob(glob: str) -> Generator[str, None, None]:
 
 class Repository(object):
     def __init__(self, s3_uri: str):
+        logger.info(f"repository: {s3_uri}")
         self.s3_uri = s3_uri
         self.bucket, self.prefix = s3_uri.split("/", 3)[2:]
         self.run_status_obj = f"_control_/{os.environ['BC_STEP_NAME']}.complete"
@@ -89,6 +90,8 @@ class Repository(object):
         """
         Raises SkipExecution if this step has been run before
         """
+        logger.info("checking for existing output files")
+
         # this is for backward compatibility. Note that if you have a step that produces
         # no outputs (i.e. being run for side effects only), it will always be skipped
         # if run with skip_if_files_exist
@@ -104,6 +107,8 @@ class Repository(object):
         keys = (self.qualify(os.path.basename(f)) for f in filenames)
         if all(self._s3_file_exists(k) for k in keys):
             raise SkipExecution("found output files; skipping")
+
+        logger.info("output files missing; continuing")
 
 
     def _inputerator(self, input_spec: Dict[str, str]) -> Generator[str, None, None]:
@@ -226,6 +231,7 @@ class Repository(object):
         """
         Raises SkipExecution if this step has been run before
         """
+        logger.info("checking for previous run`")
         try:
             result = self._s3_file_exists(self.qualify(self.run_status_obj))
         except Exception:
@@ -233,6 +239,8 @@ class Repository(object):
         else:
             if result:
                 raise SkipExecution("found previous run; skipping")
+
+        logger.info("no previous run found; continuing")
 
     def clear_run_status(self) -> None:
         try:

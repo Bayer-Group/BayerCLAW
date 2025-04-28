@@ -41,6 +41,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def log_preamble():
+    logger.info("bclaw_runner starting")
+    logger.info(f"workflow_name: {os.environ['BC_WORKFLOW_NAME']}")
+    logger.info(f"step_name: {os.environ['BC_STEP_NAME']}")
+    logger.info(f"job_file: s3://{os.environ['BC_LAUNCH_BUCKET']}/{os.environ['BC_LAUNCH_KEY']}:{os.environ['BC_LAUNCH_VERSION']}")
+    logger.info(f"sfn_execution_id: {os.environ['BC_EXECUTION_ID']}")
+    logger.info(f"branch: {os.environ['BC_BRANCH_IDX']}")
+    logger.info(f"batch_job_id: {os.environ['AWS_BATCH_JOB_ID']}")
+    logger.info(f"bclaw_version: {os.environ['BC_VERSION']}")
+
+
 def main(commands: List[str],
          image: str,
          inputs: Dict[str, str],
@@ -118,6 +129,7 @@ def main(commands: List[str],
 
 
 def cli() -> int:
+    log_preamble()
     tag_this_instance()
 
     # create custom log level for user commands
@@ -130,7 +142,7 @@ def cli() -> int:
     with spot_termination_checker():
         args = docopt(__doc__, version=os.environ["BC_VERSION"])
 
-        logger.info(f"{args=}")
+        # logger.info(f"{args=}")
 
         commands = json.loads(args["-c"])
         image    = args["-m"]
