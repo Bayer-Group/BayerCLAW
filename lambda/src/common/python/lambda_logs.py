@@ -2,6 +2,7 @@ from contextlib import contextmanager
 import json
 import logging
 import os
+from textwrap import dedent
 
 
 class JSONFormatter(logging.Formatter):
@@ -66,9 +67,18 @@ def log_preamble(logger: logging.Logger,
                  sfn_execution_id: str = "N/A",
                  step_name: str = "N/A",
                  workflow_name: str = "N/A") -> None:
-    logger.info(f"{workflow_name=}")
-    logger.info(f"{step_name=}")
-    logger.info(f"job_file=s3://{job_file_bucket}/{job_file_key}:{job_file_version}")
-    logger.info(f"{sfn_execution_id=}")
-    logger.info(f"{branch=}")
-    logger.info(f"bclaw_version={os.environ['BCLAW_VERSION']}")
+    logger.info(dedent(f"""\
+        {workflow_name=}
+        {step_name=}
+        job_file=s3://{job_file_bucket}/{job_file_key}:{job_file_version}
+        {sfn_execution_id=}
+        {branch=}
+        bclaw_version={os.environ.get("BCLAW_VERSION", "N/A")}
+    """))
+    # logger.info(f"{workflow_name=}")
+    # logger.info(f"{step_name=}")
+    # logger.info(f"job_file=s3://{job_file_bucket}/{job_file_key}:{job_file_version}")
+    # logger.info(f"{sfn_execution_id=}")
+    # logger.info(f"{branch=}")
+    # logger.info(f"bclaw_version={os.environ['BCLAW_VERSION']}")
+    # logger.info("---------- starting ----------")

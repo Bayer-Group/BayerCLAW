@@ -5,7 +5,7 @@ import re
 
 import boto3
 
-from lambda_logs import JSONFormatter, custom_lambda_logs
+from lambda_logs import log_preamble, JSONFormatter, custom_lambda_logs
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -59,45 +59,46 @@ def lambda_handler(event: dict, context: object) -> None:
     #   job_file_version: str  # empty string if launcher bucket versioning is suspended
     # }
 
-    with custom_lambda_logs(**event):
-        logger.info(f"{event=}")
+    # with custom_lambda_logs(**event):
+    log_preamble(**event, logger=logger)
+    logger.info(f"{event=}")
 
-        assert "_DIE_DIE_DIE_" not in event["job_file_key"]
+    assert "_DIE_DIE_DIE_" not in event["job_file_key"]
 
-        sfn = boto3.client("stepfunctions")
+    sfn = boto3.client("stepfunctions")
 
-        try:
-            # throws AttributeError if regex wasn't matched
-            state_machine_name, state_machine_version, remainder = get_state_machine_name(event["job_file_key"])
+    try:
+        # throws AttributeError if regex wasn't matched
+        state_machine_name, state_machine_version, remainder = get_state_machine_name(event["job_file_key"])
 
-            exec_name = make_execution_name(remainder, event["job_file_version"])
-            logger.info(f"{exec_name=}")
+        exec_name = make_execution_name(remainder, event["job_file_version"])
+        logger.info(f"{exec_name=}")
 
-            input_obj = {
-                "job_file": {
-                    "bucket": event["job_file_bucket"],
-                    "key": event["job_file_key"],
-                    "version": event["job_file_version"],
-                },
-                "index": event["branch"],
-            }
+        input_obj = {
+            "job_file": {
+                "bucket": event["job_file_bucket"],
+                "key": event["job_file_key"],
+                "version": event["job_file_version"],
+            },
+            "index": event["branch"],
+        }
 
-            state_machine_arn = get_state_machine_arn(state_machine_name, state_machine_version)
+        state_machine_arn = get_state_machine_arn(state_machine_name, state_machine_version)
 
-            if "dry_run" not in event:
-                response = sfn.start_execution(
-                    stateMachineArn=state_machine_arn,
-                    name=exec_name,
-                    input=json.dumps(input_obj)
-                )
-                logger.info(f"{response=}")
+        if "dry_run" not in event:
+            response = sfn.start_execution(
+                stateMachineArn=state_machine_arn,
+                name=exec_name,
+                input=json.dumps(input_obj)
+            )
+            logger.info(f"{response=}")
 
-        except AttributeError:
-            logger.info("no workflow name found")
+    except AttributeError:
+        logger.info("no workflow name found")
 
-        except sfn.exceptions.ExecutionAlreadyExists:
-            # duplicated s3 events are way more likely than bona fide name collisions
-            logger.info(f"duplicate event: {exec_name}")
+    except sfn.exceptions.ExecutionAlreadyExists:
+        # duplicated s3 events are way more likely than bona fide name collisions
+        logger.info(f"duplicate event: {exec_name}")
 
-        # throws AccessDeniedException if state machine is not a bclaw workflow from this installation
-        # throws StateMachineDoesNotExist if alias "current" does not exist on state machine
+    # throws AccessDeniedException if state machine is not a bclaw workflow from this installation
+    # throws StateMachineDoesNotExist if alias "current" does not exist on state machine

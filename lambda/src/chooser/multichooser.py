@@ -8,7 +8,7 @@ from typing import Generator, Tuple, Any
 import boto3
 from box import Box, BoxList
 
-from lambda_logs import JSONFormatter, custom_lambda_logs
+from lambda_logs import log_preamble, JSONFormatter, custom_lambda_logs
 from substitutions import substitute_job_data
 
 logger = logging.getLogger()
@@ -76,17 +76,18 @@ def lambda_handler(event: dict, context: object):
     #   expressions[] | expression
     #   logging{}
     # }
-    with custom_lambda_logs(**event["logging"]):
-        logger.info(f"event: {str(event)}")
+    # with custom_lambda_logs(**event["logging"]):
+    log_preamble(**event.pop("logging"), logger=logger)
+    logger.info(f"event: {str(event)}")
 
-        vals = Box(load_vals(event["inputs"], event["repo"]))
+    vals = Box(load_vals(event["inputs"], event["repo"]))
 
-        if "expressions" in event:
-            ret = run_exprs(event["expressions"], vals)
-            return ret
+    if "expressions" in event:
+        ret = run_exprs(event["expressions"], vals)
+        return ret
 
-        elif "expression" in event:
-            result = eval_this(event["expression"], vals)
-            if not result:
-                raise ConditionFailed
-            return event["expression"]
+    elif "expression" in event:
+        result = eval_this(event["expression"], vals)
+        if not result:
+            raise ConditionFailed
+        return event["expression"]
