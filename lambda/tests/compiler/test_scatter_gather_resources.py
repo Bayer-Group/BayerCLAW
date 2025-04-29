@@ -34,6 +34,7 @@ def test_scatter_step(compiler_env):
             "scatter": json.dumps(spec["scatter"]),
             "inputs": json.dumps(spec["inputs"], separators=(",", ":")),
             "outputs": json.dumps(spec["outputs"]),
+            "step_name": "test_step",
             "logging": {
                 "branch.$": "$.index",
                 "job_file_bucket.$": "$.job_file.bucket",
@@ -172,6 +173,7 @@ def test_gather_step(next_step_name, next_or_end, compiler_env):
         "Parameters": {
             "repo.$": "$.repo.uri",
             "outputs": json.dumps(spec["outputs"]),
+            "step_name": "test_step",
             "logging": {
                 "branch.$": "$.index",
                 "job_file_bucket.$": "$.job_file.bucket",

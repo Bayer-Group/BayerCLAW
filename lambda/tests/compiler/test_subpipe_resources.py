@@ -39,6 +39,7 @@ def test_file_submit_step(sample_subpipe_spec, compiler_env):
             "repo.$": "$.repo.uri",
             "job_data": "test_job_data.json",
             "submit": json.dumps(SUBMIT_BLOCK["submit"]),
+            "step_name": "step_name",
             "logging": {
                 "branch.$": "$.index",
                 "job_file_bucket.$": "$.job_file.bucket",

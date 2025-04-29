@@ -77,6 +77,7 @@ def test_lambda_handler_submit(repo_bucket, sub_job_data, expect):
         "repo": f"s3://{repo_bucket.name}/repo",
         "job_data": sub_job_data,
         "submit": json.dumps(submit),
+        "step_name": "subpipe",
         "logging": {
             "step_name": "subpipe",
         },
@@ -136,6 +137,7 @@ def test_lambda_handler_submit_no_files(repo_bucket):
     event = {
         "repo": f"s3://{repo_bucket.name}/repo",
         "submit": "[]",
+        "step_name": "subpipe",
         "logging": {
             "step_name": "subpipe",
         },

@@ -7,12 +7,10 @@ import re
 import boto3
 import jmespath
 
-# from lambda_logs import JSONFormatter, custom_lambda_logs
-from lambda_logs import log_preamble
+from lambda_logs import log_preamble, log_event
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-# logger.handlers[0].setFormatter(JSONFormatter())
 
 EXTENDED_JOB_DATA_FILE_NAME = "_JOB_DATA_"
 
@@ -127,11 +125,8 @@ def lambda_handler(event: dict, context: object) -> dict:
     #   }
     # }
 
-    # with custom_lambda_logs(**event["logging"]):
-    # logger.info(f"event: {str(event)}")
     log_preamble(**event.pop("logging"), logger=logger)
-    # logger.info(f"{event=}")
-    logger.info("---------- event ----------" + json.dumps(event, indent=2))
+    log_event(logger, event)
 
     if "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID" in event["input_obj"]:
         # this is a subpipe execution...nothing to do but pass along the input object

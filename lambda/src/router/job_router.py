@@ -5,11 +5,10 @@ import re
 
 import boto3
 
-from lambda_logs import log_preamble, JSONFormatter, custom_lambda_logs
+from lambda_logs import log_preamble, log_event
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-# logger.handlers[0].setFormatter(JSONFormatter())
 
 
 def get_state_machine_name(s3_key: str) -> (str, str, str):
@@ -59,9 +58,8 @@ def lambda_handler(event: dict, context: object) -> None:
     #   job_file_version: str  # empty string if launcher bucket versioning is suspended
     # }
 
-    # with custom_lambda_logs(**event):
     log_preamble(**event, logger=logger)
-    logger.info(f"{event=}")
+    log_event(logger, event)
 
     assert "_DIE_DIE_DIE_" not in event["job_file_key"]
 

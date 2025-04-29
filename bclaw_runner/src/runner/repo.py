@@ -157,15 +157,6 @@ class Repository(object):
         ret = {k.rstrip("?"): os.path.basename(v) for k, v in input_spec.items()}
         return ret
 
-    # todo: remove
-    # @staticmethod
-    # def _outputerator(output_files: Iterable[str]) -> Generator[str, None, None]:
-    #     for file in output_files:
-    #         expanded = g.glob(file, recursive=True)
-    #         if not expanded:
-    #             logger.warning(f"no file matching '{file}' found in workspace")
-    #         yield from expanded
-
     @staticmethod
     def _outputerator(output_spec: dict) -> Generator[Tuple[str, dict], None, None]:
         for sym_name, file_spec in output_spec.items():
@@ -176,22 +167,6 @@ class Repository(object):
                 yld = file_spec.copy()
                 yld["name"] = filename
                 yield sym_name, yld
-
-    # todo: remove
-    # def _upload_that(self, local_file: str) -> str:
-    #     local_size = os.path.getsize(local_file)
-    #     key = self.qualify(os.path.basename(local_file))
-    #     dest = self.to_uri(os.path.basename(local_file))
-    #     logger.info(f"starting upload: {local_file} ({local_size} bytes) -> {dest}")
-    #     session = boto3.Session()
-    #     s3 = session.resource("s3")
-    #     s3_obj = s3.Object(self.bucket, key)
-    #     s3_obj.upload_file(local_file,
-    #                        ExtraArgs={"ServerSideEncryption": "AES256",
-    #                                   "Metadata": _file_metadata()})
-    #     s3_size = s3_obj.content_length
-    #     logger.info(f"finished upload: {local_file} ({local_size} bytes) -> {dest} ({s3_size} bytes)")
-    #     return dest
 
     # https://jcoenraadts.medium.com/how-to-write-tags-when-a-file-is-uploaded-to-s3-with-boto3-and-python-690f92224e2b
     def _upload_that(self, symbolic_name: str, file_spec: dict, global_tags: dict) -> str:
@@ -215,12 +190,6 @@ class Repository(object):
         s3_size = s3_obj.content_length
         logger.info(f"finished upload: {local_file} ({local_size} bytes) -> {dest} ({s3_size} bytes)")
         return dest
-
-    # todo: remove
-    # def upload_outputs(self, output_spec: Dict[str, str]) -> None:
-    #     with ThreadPoolExecutor(max_workers=256) as executor:
-    #         result = list(executor.map(self._upload_that, self._outputerator(output_spec.values())))
-    #     logger.info(f"{len(result)} files uploaded")
 
     def upload_outputs(self, output_spec: Dict[str, dict], global_tags: dict) -> None:
         uploader = lambda sn, fs: self._upload_that(sn, fs, global_tags)

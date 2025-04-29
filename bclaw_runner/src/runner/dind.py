@@ -149,7 +149,7 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
             try:
                 with closing(container.logs(stream=True)) as fp:
                     for line in fp:
-                        user_cmd_logger.info(line.decode("utf-8"))
+                        user_cmd_logger.user_cmd(line.decode("utf-8"))
 
             except Exception:
                 logger.exception("----- error during subprocess logging: ")
