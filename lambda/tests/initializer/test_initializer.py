@@ -138,7 +138,7 @@ def test_check_recursive_launch(repo_bucket, repo_path, expect_fail):
 
 def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
-    monkeypatch.setenv("BC_VERSION", "test-version")
+    monkeypatch.setenv("BCLAW_VERSION", "test-version")
 
     job_data_key = "test/job.json"
     job_data = {
@@ -215,7 +215,7 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
 
 
 def test_lambda_handler_subpipe_execution(caplog, monkeypatch):
-    monkeypatch.setenv("BC_VERSION", "test-version")
+    monkeypatch.setenv("BCLAW_VERSION", "test-version")
 
     input_obj = {
         "index": "main",
