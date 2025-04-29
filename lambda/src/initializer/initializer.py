@@ -130,7 +130,8 @@ def lambda_handler(event: dict, context: object) -> dict:
     # with custom_lambda_logs(**event["logging"]):
     # logger.info(f"event: {str(event)}")
     log_preamble(**event.pop("logging"), logger=logger)
-    logger.info(f"{event=}")
+    # logger.info(f"{event=}")
+    logger.info("---------- event ----------" + json.dumps(event, indent=2))
 
     if "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID" in event["input_obj"]:
         # this is a subpipe execution...nothing to do but pass along the input object

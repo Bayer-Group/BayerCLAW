@@ -15,6 +15,13 @@ from .signal_trapper import signal_trapper
 
 logger = logging.getLogger(__name__)
 
+user_handler = logging.StreamHandler()
+user_formatter = logging.Formatter("%(levelname)s: %(message)s")
+user_handler.setFormatter(user_formatter)
+user_cmd_logger = logging.getLogger("user_cmd")
+user_cmd_logger.addHandler(user_handler)
+user_cmd_logger.propagate = False
+
 # https://docker-py.readthedocs.io/en/stable/index.html
 
 
@@ -142,7 +149,7 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
             try:
                 with closing(container.logs(stream=True)) as fp:
                     for line in fp:
-                        logger.user_cmd(line.decode("utf-8"))
+                        user_cmd_logger.info(line.decode("utf-8"))
 
             except Exception:
                 logger.exception("----- error during subprocess logging: ")

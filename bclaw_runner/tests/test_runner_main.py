@@ -306,7 +306,7 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "step4")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
     monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
-    monkeypatch.setattr("bclaw_runner.src.runner.repo.Repository._upload_that1", failing_uploader)
+    monkeypatch.setattr("bclaw_runner.src.runner.repo.Repository._upload_that", failing_uploader)
 
     references = {}
     inputs = {}

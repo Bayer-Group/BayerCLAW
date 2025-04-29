@@ -102,7 +102,7 @@ def main(commands: List[str],
                 do_checks(qc)
 
             finally:
-                repo.upload_outputs1(jobby_outputs, jobby_tags)
+                repo.upload_outputs(jobby_outputs, jobby_tags)
 
     except UserCommandsFailed as uce:
         logger.error(str(uce))
