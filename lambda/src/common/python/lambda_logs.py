@@ -71,4 +71,4 @@ def log_preamble(logger: logging.Logger,
     logger.info(f"job_file=s3://{job_file_bucket}/{job_file_key}:{job_file_version}")
     logger.info(f"{sfn_execution_id=}")
     logger.info(f"{branch=}")
-    logger.info(f"bclaw_version={os.environ['BC_VERSION']}")
+    logger.info(f"bclaw_version={os.environ['BCLAW_VERSION']}")
