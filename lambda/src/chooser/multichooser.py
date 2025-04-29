@@ -13,7 +13,7 @@ from substitutions import substitute_job_data
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-logger.handlers[0].setFormatter(JSONFormatter())
+# logger.handlers[0].setFormatter(JSONFormatter())
 
 
 class ConditionFailed(Exception):

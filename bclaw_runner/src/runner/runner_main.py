@@ -23,6 +23,7 @@ from functools import partial, partialmethod
 import json
 import logging.config
 import os
+from textwrap import dedent
 from typing import Dict, List
 
 from docopt import docopt
@@ -40,14 +41,20 @@ logger = logging.getLogger(__name__)
 
 
 def log_preamble():
-    logger.info(f"workflow_name={os.environ['BC_WORKFLOW_NAME']}")
-    logger.info(f"step_name={os.environ['BC_STEP_NAME']}")
-    logger.info(f"job_file=s3://{os.environ['BC_LAUNCH_BUCKET']}/{os.environ['BC_LAUNCH_KEY']}:{os.environ['BC_LAUNCH_VERSION']}")
-    logger.info(f"sfn_execution_id={os.environ['BC_EXECUTION_ID']}")
-    logger.info(f"branch={os.environ['BC_BRANCH_IDX']}")
-    logger.info(f"batch_job_id={os.environ['AWS_BATCH_JOB_ID']}")
-    logger.info(f"bclaw_version={os.environ['BC_VERSION']}")
-    logger.info("---------- bclaw_runner starting ----------")
+    logger.info(dedent(f"""---------- preamble ----------
+        workflow_name={os.environ['BC_WORKFLOW_NAME']}
+        step_name={os.environ['BC_STEP_NAME']}
+        job_file=s3://{os.environ['BC_LAUNCH_BUCKET']}/{os.environ['BC_LAUNCH_KEY']}:{os.environ['BC_LAUNCH_VERSION']}
+        sfn_execution_id={os.environ['BC_EXECUTION_ID']}
+        branch={os.environ['BC_BRANCH_IDX']}
+        batch_job_id={os.environ['AWS_BATCH_JOB_ID']}
+        bclaw_version={os.environ['BC_VERSION']}
+    """))
+
+
+def log_args(args: dict):
+    msg = "---------- args ----------\n" + "\n".join([f"{k}={v}" for k, v in args.items()])
+    logger.info(msg)
 
 
 def main(commands: List[str],
@@ -141,6 +148,7 @@ def cli() -> int:
         args = docopt(__doc__, version=os.environ["BC_VERSION"])
 
         # logger.info(f"{args=}")
+        log_args(args)
 
         commands = json.loads(args["-c"])
         image    = args["-m"]

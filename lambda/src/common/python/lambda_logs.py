@@ -67,7 +67,7 @@ def log_preamble(logger: logging.Logger,
                  sfn_execution_id: str = "N/A",
                  step_name: str = "N/A",
                  workflow_name: str = "N/A") -> None:
-    logger.info(dedent(f"""\
+    logger.info(dedent(f"""---------- preamble ----------
         {workflow_name=}
         {step_name=}
         job_file=s3://{job_file_bucket}/{job_file_key}:{job_file_version}

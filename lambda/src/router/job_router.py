@@ -9,7 +9,7 @@ from lambda_logs import log_preamble, JSONFormatter, custom_lambda_logs
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-logger.handlers[0].setFormatter(JSONFormatter())
+# logger.handlers[0].setFormatter(JSONFormatter())
 
 
 def get_state_machine_name(s3_key: str) -> (str, str, str):
