@@ -56,3 +56,19 @@ def custom_lambda_logs(branch: str = "unknown",
 
     finally:
         logging.setLogRecordFactory(old_factory)
+
+
+def log_preamble(logger: logging.Logger,
+                 branch: str = "N/A",
+                 job_file_bucket: str = "N/A",
+                 job_file_key: str = "N/A",
+                 job_file_version: str = "N/A",
+                 sfn_execution_id: str = "N/A",
+                 step_name: str = "N/A",
+                 workflow_name: str = "N/A") -> None:
+    logger.info(f"{workflow_name=}")
+    logger.info(f"{step_name=}")
+    logger.info(f"job_file=s3://{job_file_bucket}/{job_file_key}:{job_file_version}")
+    logger.info(f"{sfn_execution_id=}")
+    logger.info(f"{branch=}")
+    logger.info(f"bclaw_version={os.environ['BC_VERSION']}")

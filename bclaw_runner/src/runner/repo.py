@@ -49,7 +49,7 @@ def _expand_s3_glob(glob: str) -> Generator[str, None, None]:
 
 class Repository(object):
     def __init__(self, s3_uri: str):
-        logger.info(f"repository: {s3_uri}")
+        logger.info(f"repository={s3_uri}")
         self.s3_uri = s3_uri
         self.bucket, self.prefix = s3_uri.split("/", 3)[2:]
         self.run_status_obj = f"_control_/{os.environ['BC_STEP_NAME']}.complete"

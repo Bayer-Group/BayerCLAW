@@ -138,6 +138,7 @@ def test_check_recursive_launch(repo_bucket, repo_path, expect_fail):
 
 def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    monkeypatch.setenv("BC_VERSION", "test-version")
 
     job_data_key = "test/job.json"
     job_data = {
@@ -153,6 +154,7 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
     conn.create_bucket(Bucket="repo-bucket")
 
     event = {
+        "workflow_name": "test-workflow",
         "repo_template": "s3://repo-bucket/path/to/repo/${job.name}",
         "input_obj": {
             "job_file": {
@@ -212,7 +214,9 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
     assert job_data_copy == job_data
 
 
-def test_lambda_handler_subpipe_execution(caplog):
+def test_lambda_handler_subpipe_execution(caplog, monkeypatch):
+    monkeypatch.setenv("BC_VERSION", "test-version")
+
     input_obj = {
         "index": "main",
         "job_file": {
@@ -225,6 +229,7 @@ def test_lambda_handler_subpipe_execution(caplog):
     }
 
     event = {
+        "workflow_name": "test-workflow",
         "input_obj": input_obj,
         "logging": {
             "branch": "main",

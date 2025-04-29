@@ -28,7 +28,6 @@ from typing import Dict, List
 from docopt import docopt
 
 from .cache import get_reference_inputs
-from .custom_logs import LOGGING_CONFIG
 from .string_subs import substitute, substitute_image_tag
 from .qc_check import do_checks, abort_execution, QCFailure
 from .repo import Repository, SkipExecution
@@ -36,20 +35,19 @@ from .tagging import tag_this_instance
 from .termination import spot_termination_checker
 from .workspace import workspace, write_job_data_file, run_commands, UserCommandsFailed
 
-# logging.config.dictConfig(LOGGING_CONFIG)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def log_preamble():
-    logger.info("bclaw_runner starting")
-    logger.info(f"workflow_name: {os.environ['BC_WORKFLOW_NAME']}")
-    logger.info(f"step_name: {os.environ['BC_STEP_NAME']}")
-    logger.info(f"job_file: s3://{os.environ['BC_LAUNCH_BUCKET']}/{os.environ['BC_LAUNCH_KEY']}:{os.environ['BC_LAUNCH_VERSION']}")
-    logger.info(f"sfn_execution_id: {os.environ['BC_EXECUTION_ID']}")
-    logger.info(f"branch: {os.environ['BC_BRANCH_IDX']}")
-    logger.info(f"batch_job_id: {os.environ['AWS_BATCH_JOB_ID']}")
-    logger.info(f"bclaw_version: {os.environ['BC_VERSION']}")
+    logger.info(f"workflow_name={os.environ['BC_WORKFLOW_NAME']}")
+    logger.info(f"step_name={os.environ['BC_STEP_NAME']}")
+    logger.info(f"job_file=s3://{os.environ['BC_LAUNCH_BUCKET']}/{os.environ['BC_LAUNCH_KEY']}:{os.environ['BC_LAUNCH_VERSION']}")
+    logger.info(f"sfn_execution_id={os.environ['BC_EXECUTION_ID']}")
+    logger.info(f"branch={os.environ['BC_BRANCH_IDX']}")
+    logger.info(f"batch_job_id={os.environ['AWS_BATCH_JOB_ID']}")
+    logger.info(f"bclaw_version={os.environ['BC_VERSION']}")
+    logger.info("---------- bclaw_runner starting ----------")
 
 
 def main(commands: List[str],

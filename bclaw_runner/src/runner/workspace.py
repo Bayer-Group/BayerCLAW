@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 from tempfile import mkdtemp, NamedTemporaryFile
+from typing import Generator
 
 from .dind import run_child_container
 
@@ -17,11 +18,11 @@ class UserCommandsFailed(Exception):
 
 
 @contextmanager
-def workspace() -> str:
+def workspace() -> Generator[str, None, None]:
     orig_path = os.getcwd()
     work_path = mkdtemp(dir=os.environ["BC_SCRATCH_PATH"])
 
-    logger.debug(f"workspace: {work_path}")
+    logger.debug(f"workspace={work_path}")
 
     try:
         os.chdir(work_path)
@@ -47,7 +48,7 @@ def run_commands(image_tag: str, commands: list, work_dir: str, job_data_file: s
         for command in commands:
             print(command, file=fp)
 
-    logger.info(f"shell option: {shell_opt}")
+    logger.info(f"shell option={shell_opt}")
 
     if shell_opt == "sh":
         shell_cmd = "sh -veu"

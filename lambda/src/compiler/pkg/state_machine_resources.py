@@ -29,6 +29,7 @@ def make_initializer_step(repository: str) -> dict:
             "Type": "Task",
             "Resource": os.environ["INITIALIZER_LAMBDA_ARN"],
             "Parameters": {
+                "workflow_name": "${WorkflowName}",
                 "repo_template": repository,
                 "input_obj.$": "$",
                 **lambda_logging_block(initialize_step_name),

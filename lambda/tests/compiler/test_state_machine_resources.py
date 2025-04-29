@@ -17,6 +17,7 @@ def test_make_initializer_step(compiler_env):
             "Type": "Task",
             "Resource": "initializer_lambda_arn",
             "Parameters": {
+                "workflow_name": "${WorkflowName}",
                 "repo_template": repository,
                 "input_obj.$": "$",
                 **lambda_logging_block("Initialize"),
