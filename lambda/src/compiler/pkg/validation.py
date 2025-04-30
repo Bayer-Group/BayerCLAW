@@ -103,6 +103,7 @@ batch_step_schema = Schema(All(
             str: Or(
                 {
                     Required("name"): str,
+                    Optional("dest"): All(str, Match(r"^s3://", msg="output dest must be an s3 path")),
                     Optional("s3_tags", default={}): {str: Coerce(str)},
                 },
                 outfile_name

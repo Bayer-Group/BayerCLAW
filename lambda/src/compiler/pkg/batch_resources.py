@@ -257,6 +257,19 @@ def get_skip_behavior(spec: dict) -> str:
     return ret
 
 
+def get_output_uris(output_specs: dict) -> dict:
+    ret = {}
+    for k, v in output_specs.items():
+        if "dest" in v:
+            if v["dest"].endswith("/"):
+                ret[k] = f"{v['dest']}{v['name']}"
+            else:
+                ret[k] = v["dest"]
+        else:
+            ret[k] = v["name"]
+    return ret
+
+
 def batch_step(step: Step,
                job_definition_logical_name: str,
                scattered: bool,
@@ -333,7 +346,8 @@ def batch_step(step: Step,
             },
         },
         "ResultSelector": {
-            **{k.rstrip("!"): v["name"] for k, v in step.spec["outputs"].items()}
+            **get_output_uris(step.spec["outputs"])
+            # **{k.rstrip("!"): v["name"] for k, v in step.spec["outputs"].items()}
         },
         "ResultPath": "$.prev_outputs",
         "OutputPath": "$",

@@ -168,28 +168,41 @@ class Repository(object):
                 yld["name"] = filename
                 yield sym_name, yld
 
-    # https://jcoenraadts.medium.com/how-to-write-tags-when-a-file-is-uploaded-to-s3-with-boto3-and-python-690f92224e2b
     def _upload_that(self, symbolic_name: str, file_spec: dict, global_tags: dict) -> str:
         local_file = file_spec["name"]
         local_tags = file_spec["s3_tags"]
         local_size = os.path.getsize(local_file)
 
-        key = self.qualify(os.path.basename(local_file))
-        dest = self.to_uri(os.path.basename(local_file))
+        s3_filename = os.path.basename(local_file)
+
+        if "dest" in file_spec:
+            if file_spec["dest"].endswith("/"):
+                dest_uri = f"{file_spec['dest']}{s3_filename}"
+
+            else:
+                dest_uri = file_spec["dest"]
+            bucket, key = dest_uri.split("/", 3)[2:]
+        else:
+            bucket = self.bucket
+            key = self.qualify(s3_filename)
+            dest_uri = f"s3://{bucket}/{key}"
+
+        # https://jcoenraadts.medium.com/how-to-write-tags-when-a-file-is-uploaded-to-s3-with-boto3-and-python-690f92224e2b
         tagging_str = "&".join(f"{k}={v}" for k, v in (global_tags | local_tags).items())
 
-        logger.info(f"starting upload: {local_file} ({local_size} bytes) -> {dest}")
+        logger.info(f"starting upload: {local_file} ({local_size} bytes) -> {dest_uri}")
         session = boto3.Session()
         s3 = session.resource("s3")
-        s3_obj = s3.Object(self.bucket, key)
+        s3_obj = s3.Object(bucket, key)
         s3_obj.upload_file(local_file,
                            ExtraArgs={"ServerSideEncryption": "AES256",
                                       "Metadata": _file_metadata(),
                                       "Tagging": tagging_str}
                            )
         s3_size = s3_obj.content_length
-        logger.info(f"finished upload: {local_file} ({local_size} bytes) -> {dest} ({s3_size} bytes)")
-        return dest
+
+        logger.info(f"finished upload: {local_file} ({local_size} bytes) -> {dest_uri} ({s3_size} bytes)")
+        return dest_uri
 
     def upload_outputs(self, output_spec: Dict[str, dict], global_tags: dict) -> None:
         uploader = lambda sn, fs: self._upload_that(sn, fs, global_tags)

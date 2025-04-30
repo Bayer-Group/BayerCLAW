@@ -8,7 +8,7 @@ import yaml
 
 from ...src.compiler.pkg.batch_resources import (expand_image_uri, get_job_queue, get_memory_in_mibs,
     get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout, handle_qc_check,
-    get_consumable_resource_properties, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH)
+    get_consumable_resource_properties, get_output_uris, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH)
 from ...src.compiler.pkg.util import Step, Resource, State
 
 
@@ -238,16 +238,19 @@ def sample_batch_step():
                     tag4: paired_trim_2_value4
             unpaired1:
                 name: unpaired_trim_1.fq
+                dest: s3://bucket/path/to/unpaired_trim_1.fq
                 s3_tags:
                     tag3: unpaired_trim1_value3
                     tag4: unpaired_trim_1_value4
             unpaired2:
                 name: unpaired_trim_2.fq
+                dest: s3://bucket/path/to/unpaired_trim_2.fq
                 s3_tags:
                     tag3: unpaired_trim2_value3
                     tag4: unpaired_trim_2_value4
             trim_log:
                 name: ${job.SAMPLE_ID}-fastP.json
+                dest: s3://bucket/path/to/
                 s3_tags: {}
           references:
             reference1: s3://ref-bucket/path/to/reference.file
@@ -413,6 +416,31 @@ def test_get_skip_behavior(spec, expect):
     assert result == expect
 
 
+def test_get_output_uris():
+    out_spec = {
+        "one": {
+            "name": "one.txt"
+        },
+        "two": {
+            "name": "two.txt",
+            "dest": "s3://bucket/path/to/two.txt",
+        },
+        "three": {
+            "name": "three.txt",
+            "dest": "s3://bucket/path/to/",
+        },
+    }
+
+    expect = {
+        "one": "one.txt",
+        "two": "s3://bucket/path/to/two.txt",
+        "three": "s3://bucket/path/to/three.txt",
+    }
+
+    result = get_output_uris(out_spec)
+    assert result == expect
+
+
 @pytest.mark.parametrize("scattered, job_name", [
     (True, "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)"),
     (False, "States.Format('{}__{}', $$.Execution.Name, $$.State.Name)")
@@ -486,9 +514,9 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
         "ResultSelector": {
             "paired1": "paired_trim_1.fq",
             "paired2": "paired_trim_2.fq",
-            "unpaired1": "unpaired_trim_1.fq",
-            "unpaired2": "unpaired_trim_2.fq",
-            "trim_log": "${job.SAMPLE_ID}-fastP.json",
+            "unpaired1": "s3://bucket/path/to/unpaired_trim_1.fq",
+            "unpaired2": "s3://bucket/path/to/unpaired_trim_2.fq",
+            "trim_log": "s3://bucket/path/to/${job.SAMPLE_ID}-fastP.json",
         },
         "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
@@ -525,7 +553,6 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
         assert states[0].spec["Resource"] == "arn:aws:states:::batch:submitJob.sync"
         assert states[0].spec["Parameters"]["JobDefinition"] == "${StepNameJobDefx}"
         assert states[0].spec["Next"] == "next_step_name"
-
 
         references = json.loads(states[0].spec["Parameters"]["Parameters"]["references"])
         assert references["reference1"] == "s3://ref-bucket/path/to/reference.file"
