@@ -8,6 +8,7 @@ import boto3
 import jmespath
 
 from lambda_logs import log_preamble, log_event
+from repo_utils import SYSTEM_FILE_TAG
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -57,7 +58,8 @@ def copy_job_data_to_repo(src_bucket: str, src_key: str, src_version: str, dst_b
     dst_key = f"{dst_prefix}/{filename}"
     s3 = boto3.client("s3")
     s3.copy_object(CopySource={"Bucket": src_bucket, "Key": src_key, "VersionId": src_version},
-                   Bucket=dst_bucket, Key=dst_key)
+                   Bucket=dst_bucket, Key=dst_key,
+                   Tagging=SYSTEM_FILE_TAG)
 
 
 def write_extended_job_data_object(raw_job_data: dict, dst_bucket: str, dst_prefix: str) -> None:
@@ -69,7 +71,8 @@ def write_extended_job_data_object(raw_job_data: dict, dst_bucket: str, dst_pref
     dst_key = f"{dst_prefix}/{EXTENDED_JOB_DATA_FILE_NAME}"
     s3 = boto3.client("s3")
     s3.put_object(Bucket=dst_bucket, Key=dst_key,
-                  Body=json.dumps(job_data).encode("utf-8"))
+                  Body=json.dumps(job_data).encode("utf-8"),
+                  Tagging=SYSTEM_FILE_TAG)
 
 
 def handle_s3_launch(event: dict) -> dict:

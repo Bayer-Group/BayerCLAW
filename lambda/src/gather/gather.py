@@ -7,6 +7,7 @@ from os.path import basename
 import boto3
 
 from lambda_logs import log_preamble, log_event
+from repo_utils import SYSTEM_FILE_TAG
 from substitutions import substitute_job_data
 
 logger = logging.getLogger()
@@ -65,7 +66,8 @@ def lambda_handler(event: dict, context: object):
         manifest_path = f"{parent_repo}/{manifest_filename}"
         manifest_bucket, manifest_key = manifest_path.split("/", 3)[2:]
         manifest_obj = boto3.resource("s3").Object(manifest_bucket, manifest_key)
-        manifest_obj.put(Body=json.dumps(manifest).encode("utf-8"))
+        manifest_obj.put(Body=json.dumps(manifest).encode("utf-8"),
+                         Tagging=SYSTEM_FILE_TAG)
 
         ret = {"manifest": manifest_filename}
     else:

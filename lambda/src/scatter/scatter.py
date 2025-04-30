@@ -12,7 +12,7 @@ import jmespath
 
 from file_select import select_file_contents
 from lambda_logs import log_preamble, log_event
-from repo_utils import Repo, S3File
+from repo_utils import SYSTEM_FILE_TAG, Repo, S3File
 from substitutions import substitute_job_data
 
 logger = logging.getLogger()
@@ -125,7 +125,8 @@ def write_job_data_template(parent_job_data: dict,
     template_file = scatter_repo.qualify("_JOB_DATA_")
     template_obj = boto3.resource("s3").Object(template_file.bucket, template_file.key)
     template_obj.put(Body=json.dumps(job_data_template).encode("utf-8"),
-                     ServerSideEncryption="AES256")
+                     ServerSideEncryption="AES256",
+                     Tagging=SYSTEM_FILE_TAG)
     return template_file
 
 
@@ -177,7 +178,7 @@ def lambda_handler(event: dict, context: object):
 
     items_file = scatter_repo.qualify("items.csv")
     items_obj = boto3.resource("s3").Object(items_file.bucket, items_file.key)
-    items_obj.upload_file("/tmp/items.csv")
+    items_obj.upload_file("/tmp/items.csv", ExtraArgs={"Tagging": SYSTEM_FILE_TAG})
 
     ret = {
         "items": {

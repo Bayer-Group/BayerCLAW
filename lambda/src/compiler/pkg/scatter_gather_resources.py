@@ -78,6 +78,7 @@ def map_step(step: Step, sub_branch: dict, gather_step_name: str) -> dict:
             "Parameters": {
                 "Bucket.$": "$.scatter.repo.bucket",
                 "Prefix.$": "$.scatter.repo.prefix",
+                "Tagging": "bclaw.system=true",
             },
         },
         "ResultPath": None,

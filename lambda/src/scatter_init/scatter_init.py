@@ -5,7 +5,7 @@ import logging
 import boto3
 
 from lambda_logs import log_preamble, log_event
-from repo_utils import Repo
+from repo_utils import SYSTEM_FILE_TAG, Repo
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -56,7 +56,8 @@ def lambda_handler(event: dict, context: object):
     job_data_file = branch_repo.qualify("_JOB_DATA_")
     job_data_obj = s3.Object(job_data_file.bucket, job_data_file.key)
     job_data_obj.put(Body=json.dumps(job_data).encode("utf-8"),
-                     ServerSideEncryption="AES256")
+                     ServerSideEncryption="AES256",
+                     Tagging=SYSTEM_FILE_TAG)
 
     # return repo uri
     return dict(branch_repo)

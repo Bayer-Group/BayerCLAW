@@ -2,6 +2,8 @@ from dataclasses import dataclass
 import json
 
 
+SYSTEM_FILE_TAG = "bclaw.system=true"
+
 # @dataclass
 # class S3File:
 #     bucket: str
