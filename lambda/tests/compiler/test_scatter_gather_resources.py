@@ -118,6 +118,7 @@ def test_map_step(err_tol, expect_err_tol):
             "Parameters": {
                 "Bucket.$": "$.scatter.repo.bucket",
                 "Prefix.$": "$.scatter.repo.prefix",
+                "Tagging": "bclaw.system=true",
             },
         },
         "ResultPath": None,
