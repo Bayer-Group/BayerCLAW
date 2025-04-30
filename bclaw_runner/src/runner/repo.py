@@ -238,6 +238,8 @@ class Repository(object):
         try:
             s3 = boto3.resource("s3")
             status_obj = s3.Object(self.bucket, self.qualify(self.run_status_obj))
-            status_obj.put(Body=b"", Metadata=_file_metadata())
+            status_obj.put(Body=b"",
+                           Metadata=_file_metadata(),
+                           Tagging="bclaw.system=true")
         except Exception:
             logger.warning("failed to upload run status")

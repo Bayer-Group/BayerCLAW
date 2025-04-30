@@ -1,5 +1,22 @@
 # Changelog for BayerCLAW
 
+## [v1.2.5] 2025-xx-xx Feature release
+
+### Added/Changed
+- S3 tagging
+- Job tagging
+- Resource aware Batch job scheduling
+- Log Docker image sha digest
+- Restore SNS topic policy
+- Simplify log output
+- Job definition registrar improvements
+- Send batch job outputs to other S3 locations
+
+### Removed
+- Execution record outputs
+- QC checker lambda (todo)
+- ECS task role from core stack (todo)
+
 ## [v1.2.4] 2024-06-25 Feature release
 
 **NOTE:** Because of new parameters in the installer stack, you will  need to
