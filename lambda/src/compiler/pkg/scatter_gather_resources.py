@@ -73,14 +73,6 @@ def map_step(step: Step, sub_branch: dict, gather_step_name: str) -> dict:
             },
             **sub_branch
         },
-        "ResultWriter": {
-            "Resource": "arn:aws:states:::s3:putObject",
-            "Parameters": {
-                "Bucket.$": "$.scatter.repo.bucket",
-                "Prefix.$": "$.scatter.repo.prefix",
-                "Tagging": "bclaw.system=true",
-            },
-        },
         "ResultPath": None,
         "Next": gather_step_name,
     }

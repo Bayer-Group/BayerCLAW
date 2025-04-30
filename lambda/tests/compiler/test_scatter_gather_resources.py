@@ -113,14 +113,6 @@ def test_map_step(err_tol, expect_err_tol):
                 {"fake": "branch"},
             ],
         },
-        "ResultWriter": {
-            "Resource": "arn:aws:states:::s3:putObject",
-            "Parameters": {
-                "Bucket.$": "$.scatter.repo.bucket",
-                "Prefix.$": "$.scatter.repo.prefix",
-                "Tagging": "bclaw.system=true",
-            },
-        },
         "ResultPath": None,
         "Next": "gather_step_name",
     }
