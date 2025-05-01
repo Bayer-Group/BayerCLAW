@@ -59,7 +59,8 @@ def copy_job_data_to_repo(src_bucket: str, src_key: str, src_version: str, dst_b
     s3 = boto3.client("s3")
     s3.copy_object(CopySource={"Bucket": src_bucket, "Key": src_key, "VersionId": src_version},
                    Bucket=dst_bucket, Key=dst_key,
-                   Tagging=SYSTEM_FILE_TAG)
+                   Tagging=SYSTEM_FILE_TAG,
+                   TaggingDirective="REPLACE")
 
 
 def write_extended_job_data_object(raw_job_data: dict, dst_bucket: str, dst_prefix: str) -> None:
@@ -72,8 +73,7 @@ def write_extended_job_data_object(raw_job_data: dict, dst_bucket: str, dst_pref
     s3 = boto3.client("s3")
     s3.put_object(Bucket=dst_bucket, Key=dst_key,
                   Body=json.dumps(job_data).encode("utf-8"),
-                  Tagging=SYSTEM_FILE_TAG,
-                  TaggingDirective="REPLACE")
+                  Tagging=SYSTEM_FILE_TAG)
 
 
 def handle_s3_launch(event: dict) -> dict:
