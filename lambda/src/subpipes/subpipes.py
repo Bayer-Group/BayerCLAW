@@ -8,6 +8,7 @@ import re
 import boto3
 
 from lambda_logs import log_preamble, log_event
+from repo_utils import SYSTEM_FILE_TAG
 from substitutions import substitute_job_data
 
 logger = logging.getLogger()
@@ -24,11 +25,12 @@ def get_s3_object(s3_uri: str) -> dict:
     return ret
 
 
+# this is only used to write the _JOB_DATA_ object in the subpipe repo
 def put_s3_object(s3_uri: str, body: bytes) -> None:
     logger.info(f"writing {s3_uri}")
     bucket, key = s3_uri.split("/", 3)[2:]
     obj = boto3.resource("s3").Object(bucket, key)
-    obj.put(Body=body)
+    obj.put(Body=body, Tagging=SYSTEM_FILE_TAG)
 
 
 def copy_file_impl(spec: str, src_repo_uri: str, dst_repo_uri: str) -> None:
