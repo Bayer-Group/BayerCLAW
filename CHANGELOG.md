@@ -10,12 +10,12 @@
 - Restore SNS topic policy
 - Simplify log output
 - Job definition registrar improvements
+  - error messaging
+  - deletion handling
 - Send batch job outputs to other S3 locations
 
 ### Removed
 - Execution record outputs
-- QC checker lambda (todo)
-- ECS task role from core stack (todo)
 
 ## [v1.2.4] 2024-06-25 Feature release
 

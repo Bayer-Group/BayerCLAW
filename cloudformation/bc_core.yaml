@@ -197,16 +197,16 @@ Resources:
       LayerName: !Sub ${AWS::StackName}-bclaw-common
       ContentUri: ../lambda/src/common
       CompatibleRuntimes:
-        - python3.7
-        - python3.8
         - python3.9
         - python3.10
+        - python3.11
+        - python3.12
 
   RouterLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: job_router.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/router
       Environment:
         Variables:
@@ -281,7 +281,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: multichooser.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/chooser
       AutoPublishAlias: current
       Environment:
@@ -322,7 +322,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/compiler
       AutoPublishAlias: current
       Environment:
@@ -378,7 +378,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: initializer.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/initializer
       AutoPublishAlias: current
       Environment:
@@ -422,7 +422,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: register.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/job_def
       # do not enable AutoPublishAlias for custom resource lambdas
       # https://advancedweb.hu/custom-resources-in-cloudformation-templates-lessons-learned/#cant-change-the-servicetoken
@@ -464,7 +464,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: scatter.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/scatter
       AutoPublishAlias: current
       Environment:
@@ -508,7 +508,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: scatter_init.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/scatter_init
       AutoPublishAlias: current
       Environment:
@@ -552,7 +552,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: gather.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/gather
       AutoPublishAlias: current
       Environment:
@@ -598,7 +598,7 @@ Resources:
     DeletionPolicy: "Retain"
     Properties:
       Handler: qc_checker.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/qc_checker
       AutoPublishAlias: current
       Environment:
@@ -646,7 +646,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: subpipes.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/subpipes
       AutoPublishAlias: current
       Environment:
@@ -690,7 +690,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: notifications.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/notifications
       Environment:
         Variables:
