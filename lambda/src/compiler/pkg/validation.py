@@ -58,10 +58,28 @@ def no_substitutions(s):
     return s
 
 
-def outfile_name(value):
-    if not isinstance(value, str):
-        raise Invalid("output file name must be a string")
-    ret = {"name": value, "s3_tags": {}}
+r1 = re.compile(r"^(\S+?)(?:\s+->\s+(s3://\S+))?$")  # matches filename and optional s3 path
+r2 = re.compile(r"^\s*\+(.+?):\s+(.+)$")  # matches tags
+
+def output_spec(spec: str) -> dict:
+    ret = {}
+    line1, *linz = spec.splitlines()
+
+    if m := r1.fullmatch(line1):
+        name, dest = m.groups()
+        ret["name"] = name
+        if dest is not None:
+            ret["dest"] = dest
+        ret["s3_tags"] = {}
+        for line in linz:
+            if m := r2.fullmatch(line):
+                k, v = m.groups()
+                ret["s3_tags"].update([(k, v)])
+            else:
+                raise Invalid(f"invalid tag: '{line}'")
+    else:
+        raise Invalid(f"invalid filename spec: '{line1}'")
+
     return ret
 
 
@@ -101,12 +119,12 @@ batch_step_schema = Schema(All(
         Optional("job_tags", default={}): {str: Coerce(str)},
         Optional("outputs", default={}): {
             str: Or(
+                And(str, output_spec),
                 {
                     Required("name"): str,
-                    Optional("dest"): All(str, Match(r"^s3://", msg="output dest must be an s3 path")),
+                    Optional("dest"): All(str, Match(r"^s3://", msg="output destination must be an s3 path")),
                     Optional("s3_tags", default={}): {str: Coerce(str)},
                 },
-                outfile_name
             ),
         },
         Exclusive("skip_if_output_exists", "skip_behavior", msg=skip_msg): bool,

@@ -4,6 +4,7 @@ import os
 
 # from .version import VERSION
 
+# todo: remove these
 
 class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord):
