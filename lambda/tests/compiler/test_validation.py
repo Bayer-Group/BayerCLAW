@@ -33,20 +33,21 @@ def test_no_shared_keys_fail(no_shared_keys_func):
         no_shared_keys_func(record)
 
 
+# note: value2 below has trailing spaces
 ospec1 = dedent("""\
     file1 -> s3://bucket/yada/yada/
         +tag1: value1
-        +tag2: value2
+        + tag2 :  value2    
 """)
 
 ospec2 = dedent("""\
-    file2 -> s3://bucket/yada/yada/file_dos
+    ${job.file2}  ->   s3://bucket/${job.yadayada}/file_dos
 """)
 
 ospec3 = dedent("""\
     dirname/file3
         +tag3:with_colon: value3
-        +tag4 with spaces: value4 with spaces
+        + tag4 with spaces  :  value4 with spaces
 """)
 
 ospec4 = dedent("""\
@@ -55,7 +56,7 @@ ospec4 = dedent("""\
 
 @pytest.mark.parametrize("ospec, expect", [
     (ospec1, {"name": "file1", "dest": "s3://bucket/yada/yada/", "s3_tags": {"tag1": "value1", "tag2": "value2"}}),
-    (ospec2, {"name": "file2", "dest": "s3://bucket/yada/yada/file_dos", "s3_tags": {}}),
+    (ospec2, {"name": "${job.file2}", "dest": "s3://bucket/${job.yadayada}/file_dos", "s3_tags": {}}),
     (ospec3, {"name": "dirname/file3", "s3_tags": {"tag3:with_colon": "value3", "tag4 with spaces": "value4 with spaces"}}),
     (ospec4, {"name": "file4*", "s3_tags": {}}),
 ])
@@ -69,12 +70,14 @@ def test_output_spec(ospec, expect):
     "file2 -> /bucket/yada/yada/",  # not an s3 uri
     "file3-> s3:/bucket/yada/yada",  # no space before arrow
     "file4 ->s3:/bucket/yada/yada",  # no space after arrow
-    "file5 -> ",  # no destination
+    "file5 -> ",  # no destination after arrow
     "-> s3://bucket/yada/yada",  # no filename
+    "filename with spaces",
 ])
 def test_output_spec_bad_filename(badspec):
     with pytest.raises(Invalid, match="invalid filename spec"):
         output_spec(badspec)
+
 
 @pytest.mark.parametrize("badspec", [
     "file1:\n-tag1: value1",  # tag line does not start with +

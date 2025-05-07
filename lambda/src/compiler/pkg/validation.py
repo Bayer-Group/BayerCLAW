@@ -59,7 +59,7 @@ def no_substitutions(s):
 
 
 r1 = re.compile(r"^(\S+?)(?:\s+->\s+(s3://\S+))?$")  # matches filename and optional s3 path
-r2 = re.compile(r"^\s*\+(.+?):\s+(.+)$")  # matches tags
+r2 = re.compile(r"^\s*\+\s*(.+?):\s+(.+)$")  # matches tags
 
 def output_spec(spec: str) -> dict:
     ret = {}
@@ -67,14 +67,14 @@ def output_spec(spec: str) -> dict:
 
     if m := r1.fullmatch(line1):
         name, dest = m.groups()
-        ret["name"] = name
+        ret["name"] = name.strip()
         if dest is not None:
-            ret["dest"] = dest
+            ret["dest"] = dest.strip()
         ret["s3_tags"] = {}
         for line in linz:
             if m := r2.fullmatch(line):
                 k, v = m.groups()
-                ret["s3_tags"].update([(k, v)])
+                ret["s3_tags"].update([(k.strip(), v.strip())])
             else:
                 raise Invalid(f"invalid tag: '{line}'")
     else:
