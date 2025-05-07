@@ -130,6 +130,7 @@ batch_step_schema = Schema(All(
         Exclusive("skip_if_output_exists", "skip_behavior", msg=skip_msg): bool,
         Exclusive("skip_on_rerun", "skip_behavior", msg=skip_msg): bool,
         Optional("compute", default={}): {
+            Optional("consumes", default={}): {str: All(int, Range(min=1))},
             Optional("cpus", default=1): All(int, Range(min=1)),
             Optional("gpu", default=0): Or(
                 All(int, Range(min=0)),
@@ -137,20 +138,19 @@ batch_step_schema = Schema(All(
                 msg="gpu spec must be a nonnegative integer or 'all'"
             ),
             Optional("memory", default="1 Gb"): Any(float, int, str, msg="memory must be a number or string"),
-            Optional("spot", default=True): bool,
             Optional("queue_name", default=None): Maybe(str),
             Optional("shell", default=None): Any(None, "bash", "sh", "sh-pipefail",
                                                  msg="shell option must be bash, sh, or sh-pipefail"),
+            Optional("spot", default=True): bool,
         },
-        Optional("consumes", default={}): {str: All(int, Range(min=1))},
         Optional("filesystems", default=[]): Listified(filesystem_block),
         Optional("qc_check", default=[]): Listified(qc_check_block),
         Optional("retry", default={}): {
             Optional("attempts", default=3): int,
-            Optional("interval", default="3s"): Match(r"^\d+\s?[smhdw]$",
-                                                      msg="incorrect retry interval time string"),
             Optional("backoff_rate", default=1.5): All(Any(float, int),
                                                        Clamp(min=1.0, msg="backoff rate must be at least 1.0")),
+            Optional("interval", default="3s"): Match(r"^\d+\s?[smhdw]$",
+                                                      msg="incorrect retry interval time string"),
         },
         Optional("timeout", default=None): Any(None, Match(r"^\d+\s?[smhdw]$",
                                                            msg="incorrect timeout time string")),

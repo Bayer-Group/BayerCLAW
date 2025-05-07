@@ -212,6 +212,10 @@ def sample_batch_step():
             type: memory
             gpu: 2
             shell: bash
+            consumes:
+              "resource1": 99
+              "resource2": 88
+
           job_tags:
             job_tag2: step_job_value2
             job_tag3: step_job_value3
@@ -257,9 +261,6 @@ def sample_batch_step():
           s3_tags:
             "tag2": "step_s3_value2"
             "tag3": "step_s3_value3"
-          consumes:
-            "resource1": 99
-            "resource2": 88
           qc_check:
             -
                 qc_result_file: qc.out
