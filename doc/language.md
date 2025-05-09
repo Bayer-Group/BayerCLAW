@@ -85,8 +85,9 @@ The `Options` block contains settings that affect the operation of BayerCLAW:
     If this field is not specified, the steps will use a generic role created by BayerCLAW, which is fine for most uses.
     You can use the [bc_ecs_task_role.yaml](../cloudformation/bc_ecs_task_role.yaml) CloudFormation template to create a
     task role with the necessary permissions.
-* `versioned` (optional): ‼️ **DEPRECATED** This option is no longer functional, since BayerCLAW workflows are always
-  versioned now.
+* `s3_tags` (optional): 🆕 A list of tags to apply to all S3 objects created by this workflow. Tags are specified as a
+  list of key-value pairs, e.g. `s3_tags: [key1: value1, key2: value2]`. Note that the tags are applied to the
+  S3 objects in the repository, not to the repository itself.
 
 ## The Steps block
 The `Steps` section consists of a single JSON or YAML list containing processing step specifications.
@@ -119,8 +120,9 @@ The fields of the step specification objects are:
 
 * `inputs` (optional): A set of key-value pairs indicating files to be downloaded from S3 for processing.
 
-  The value can be either an absolute S3 path (`s3://example-bucket/myfile.txt`) or a relative path (`myfile.txt`).
-  Relative paths are assumed to be relative to the workflow's [repository](#the-repository-line) in S3. In either case, the downloaded
+  The keys are symbolic names that can be used in the `commands` block of the step. 
+  The values can be either absolute S3 paths (e.g. `s3://example-bucket/myfile.txt`) or an S3 object specification (`myfile.txt`).
+  located in the workflow's [S3 repository](#the-repository-line). In either case, the downloaded
   file will be placed in the working directory with the same base name as the S3 path (`myfile.txt` in the examples above).
 
   During parameter substitution, references to the input will resolve to this unqualified local file name.
@@ -137,7 +139,7 @@ The fields of the step specification objects are:
   `references` section must be full S3 paths. Shell-style wildcards are not allowed.
 
 * `commands` (required): The commands to run in this step. This may be provided either as a list of strings or as a
-  [multi-line YAML string](https://yaml-multiline.info/).
+  [YAML multi-line block scalar](https://yaml-multiline.info/).
 
   All commands are run in the same shell, so communication between
   commands is possible, e.g. assigning a computed value to a variable with one command and then using that variable in
@@ -147,6 +149,37 @@ The fields of the step specification objects are:
   Failed jobs may be retried, but if the error persists it will eventually cause the workflow execution to fail.
   If all commands return success (exit code 0), the step will be considered a success and the workflow execution will continue.
 
+* `outputs` (optional): A set of key-value pairs indicating files to be uploaded to S3. Keys are symbolic names
+  that can be used in the `commands` block of the step. The values specify the local path to the file relative to
+  the job's working directory inside the Docker container. By default, files are uploaded to the workflow's repository.
+  The name of the uploaded file will be the base name of the local file; directory names will be stripped. Shell-style
+  wildcards may be used, and will expand to all matching local files (e.g. `outdir[0-9]/*.txt`). In addition, you can use the  
+  pattern `**` to search for files recursively through a directory structure.
+
+  🆕 Optionally, the value may also specify a full S3 path to copy the file to, and tags to apply to the S3 object.
+  The full syntax is:
+    ```yaml
+    <symbolic name>: 
+      name: <local path>  # required
+      dest: <s3 path>     # optional; must start with s3://
+      s3_tags:            # optional
+        <tag1>: <value1>
+        <tag2>: <value2>
+        #etc...
+    ```
+  something something
+
+    ```yaml
+    <symbolic name>: |
+      <local path> -> <full s3 path>
+        + <tag1>: <value2>
+        + <tag2>: <value2>
+        # etc...  
+    ```
+  Note that the tags specified here will be applied only to the specified file, and override any overlapping tags  
+  specified at the global or step level.
+
+<!--
 * `outputs` (optional): Output files to save to S3.
   The value specifies the local path to the file relative to the working directory inside the Docker container.
   Even if the local path contains several directory names, only the base name of the file will be appended to the workflow
@@ -154,6 +187,11 @@ The fields of the step specification objects are:
   file names, and will expand to all matching local files (e.g. `outdir[0-9]/*.txt`). In addition, you can use the
   pattern `**` to search for files recursively through a directory structure. Note, however, that the directory structure
   will *not* be preserved in the S3 repository.
+-->
+
+* `s3_tags` (optional): 🆕 A list of tags to apply to the S3 objects created by this step. Tags are specified as a
+  list of key-value pairs, e.g. `s3_tags: [key1: value1, key2: value2]`. Tags specified here will override any overlapping
+  tags specified in the global `Options` block.
 
 * `skip_on_rerun` (optional, default = `false`): When rerunning a job, set this to `true` to bypass a step if has already been run successfully.
 
@@ -187,8 +225,16 @@ The fields of the step specification objects are:
 
   * `shell` (optional, default = `sh`): Overrides the global `shell` option from the [Options](#the-options-block) block. Choices are
        `sh`, `bash`, and `sh-pipefail`.
-
-* `filesystems` (optional): A list of objects describing EFS filesystems that will be mounted for this job. Note that you may
+  
+  * `consumes` (optional): 🆕 An object specifying the number of [consumable resources](https://docs.aws.amazon.com/batch/latest/userguide/resource-aware-scheduling.html),
+    such as software licenses or database connections, that will be used by this step. This is useful for limiting the
+    number of concurrent jobs that can run in a workflow so as not to overwhelm a limited resource. The `consumes` object
+    contains a list of key-value pairs, where the key is the name of a Batch consumable resource and
+    the value is the number of units of that resource that will be used by this step. Refer to the
+    [documentation](https://docs.aws.amazon.com/batch/latest/userguide/resource-aware-scheduling-how-to-create.html)
+    for information on creating consumable resources.
+  
+  * `filesystems` (optional): A list of objects describing EFS filesystems that will be mounted for this job. Note that you may
   have several entries in this list, but each `efs_id` must be unique.
   * `efs_id` (required): An EFS filesystem ID. Should be something like `fs-1234abcd`.
   * `host_path` (required): A fully qualified path where the EFS filesystem will be mounted in your Docker container.

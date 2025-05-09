@@ -242,13 +242,13 @@ def sample_batch_step():
                     tag4: paired_trim_2_value4
             unpaired1:
                 name: unpaired_trim_1.fq
-                dest: s3://bucket/path/to/unpaired_trim_1.fq
+                dest: s3://bucket/path/to/
                 s3_tags:
                     tag3: unpaired_trim1_value3
                     tag4: unpaired_trim_1_value4
             unpaired2:
                 name: unpaired_trim_2.fq
-                dest: s3://bucket/path/to/unpaired_trim_2.fq
+                dest: s3://bucket/path/to/
                 s3_tags:
                     tag3: unpaired_trim2_value3
                     tag4: unpaired_trim_2_value4
@@ -424,10 +424,6 @@ def test_get_output_uris():
         },
         "two": {
             "name": "two.txt",
-            "dest": "s3://bucket/path/to/two.txt",
-        },
-        "three": {
-            "name": "three.txt",
             "dest": "s3://bucket/path/to/",
         },
     }
@@ -435,7 +431,6 @@ def test_get_output_uris():
     expect = {
         "one": "one.txt",
         "two": "s3://bucket/path/to/two.txt",
-        "three": "s3://bucket/path/to/three.txt",
     }
 
     result = get_output_uris(out_spec)

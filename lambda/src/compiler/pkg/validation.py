@@ -57,8 +57,7 @@ def no_substitutions(s):
         raise Invalid("string substitutions are not allowed")
     return s
 
-
-r1 = re.compile(r"^(\S+?)(?:\s+->\s+(s3://\S+))?$")  # matches filename and optional s3 path
+r1 = re.compile(r"^(\S+?(?<![>/])) (?:\s+->\s+ (s3://.+/))?$", flags=re.X)  # matches filename and optional s3 path
 r2 = re.compile(r"^\s*\+\s*(.+?):\s+(.+)$")  # matches tags
 
 def output_spec(spec: str) -> dict:

@@ -261,10 +261,7 @@ def get_output_uris(output_specs: dict) -> dict:
     ret = {}
     for k, v in output_specs.items():
         if "dest" in v:
-            if v["dest"].endswith("/"):
-                ret[k] = f"{v['dest']}{v['name']}"
-            else:
-                ret[k] = v["dest"]
+            ret[k] = f"{v['dest']}{v['name']}"
         else:
             ret[k] = v["name"]
     return ret

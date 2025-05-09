@@ -406,11 +406,7 @@ def test_upload_that(monkeypatch, tmp_path, mock_buckets):
     assert tags == expected_tags
 
 
-@pytest.mark.parametrize("dest, expect", [
-    ("alternate/path/alternate_filename", "alternate/path/alternate_filename"),
-    ("alternate/path/", "alternate/path/output1"),
-])
-def test_upload_that_with_destination(dest, expect, monkeypatch, tmp_path, mock_buckets):
+def test_upload_that_with_destination(monkeypatch, tmp_path, mock_buckets):
     monkeypatch.setenv("BC_EXECUTION_ID", "ELVISLIVES")
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
@@ -421,14 +417,14 @@ def test_upload_that_with_destination(dest, expect, monkeypatch, tmp_path, mock_
 
     file_spec = {
         "name": str(target_file.absolute()),
-        "dest": f"s3://{DIFFERENT_BUCKET}/{dest}",
+        "dest": f"s3://{DIFFERENT_BUCKET}/alternate/path/",
         "s3_tags": {}
     }
 
     repo._upload_that("sym_name", file_spec, {})
 
     _, other_bucket = mock_buckets
-    chek = other_bucket.Object(expect).get()
+    chek = other_bucket.Object("alternate/path/output1").get()
 
     with closing(chek["Body"]) as fp:
         line = next(fp)

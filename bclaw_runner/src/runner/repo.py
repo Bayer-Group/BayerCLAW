@@ -176,11 +176,7 @@ class Repository(object):
         s3_filename = os.path.basename(local_file)
 
         if "dest" in file_spec:
-            if file_spec["dest"].endswith("/"):
-                dest_uri = f"{file_spec['dest']}{s3_filename}"
-
-            else:
-                dest_uri = file_spec["dest"]
+            dest_uri = f"{file_spec['dest']}{s3_filename}"
             bucket, key = dest_uri.split("/", 3)[2:]
         else:
             bucket = self.bucket

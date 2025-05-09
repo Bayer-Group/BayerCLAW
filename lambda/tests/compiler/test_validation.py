@@ -41,7 +41,7 @@ ospec1 = dedent("""\
 """)
 
 ospec2 = dedent("""\
-    ${job.file2}  ->   s3://bucket/${job.yadayada}/file_dos
+    ${job.file2}  ->   s3://bucket/${job.yadayada}/
 """)
 
 ospec3 = dedent("""\
@@ -56,7 +56,7 @@ ospec4 = dedent("""\
 
 @pytest.mark.parametrize("ospec, expect", [
     (ospec1, {"name": "file1", "dest": "s3://bucket/yada/yada/", "s3_tags": {"tag1": "value1", "tag2": "value2"}}),
-    (ospec2, {"name": "${job.file2}", "dest": "s3://bucket/${job.yadayada}/file_dos", "s3_tags": {}}),
+    (ospec2, {"name": "${job.file2}", "dest": "s3://bucket/${job.yadayada}/", "s3_tags": {}}),
     (ospec3, {"name": "dirname/file3", "s3_tags": {"tag3:with_colon": "value3", "tag4 with spaces": "value4 with spaces"}}),
     (ospec4, {"name": "file4*", "s3_tags": {}}),
 ])
@@ -66,13 +66,14 @@ def test_output_spec(ospec, expect):
 
 
 @pytest.mark.parametrize("badspec", [
-    "file1 => s3://bucket/yada/yada",  # bad arrow
+    "file1 => s3://bucket/yada/yada/",  # bad arrow
     "file2 -> /bucket/yada/yada/",  # not an s3 uri
-    "file3-> s3:/bucket/yada/yada",  # no space before arrow
-    "file4 ->s3:/bucket/yada/yada",  # no space after arrow
+    "file3-> s3:/bucket/yada/yada/",  # no space before arrow
+    "file4 ->s3://bucket/yada/yada/",  # no space after arrow
     "file5 -> ",  # no destination after arrow
-    "-> s3://bucket/yada/yada",  # no filename
+    "-> s3://bucket/yada/yada/",  # no filename
     "filename with spaces",
+    "file6 -> s3://bucket/yada/yada.txt",  # destination is not a folder
 ])
 def test_output_spec_bad_filename(badspec):
     with pytest.raises(Invalid, match="invalid filename spec"):
