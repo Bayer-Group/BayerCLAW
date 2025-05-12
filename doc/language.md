@@ -156,40 +156,16 @@ The fields of the step specification objects are:
   wildcards may be used, and will expand to all matching local files (e.g. `outdir[0-9]/*.txt`). In addition, you can use the  
   pattern `**` to search for files recursively through a directory structure.
 
-  🆕 Optionally, the value may also specify a full S3 path to copy the file to, and tags to apply to the S3 object.
-  The full syntax is:
-    ```yaml
-    <symbolic name>: 
-      name: <local path>  # required
-      dest: <s3 path>     # optional; must start with s3://
-      s3_tags:            # optional
-        <tag1>: <value1>
-        <tag2>: <value2>
-        #etc...
-    ```
-  something something
+  🆕 Optionally, you can specify an S3 folder to upload the file to, and tags to apply to the S3 object. To specify a folder,
+  use the syntax `<local path> -> s3://<bucket>/.../<destination folder>/`. The destination folder must be followed by a
+  trailing `/` character. To apply tags, use the syntax `+<key1>: <value1> +<key2>: <value2>...`. These tags will only
+  be applied to this file, and will override any S3 tags specified at the global or step level. Tags must follow the
+  destination folder, if present.
 
-    ```yaml
-    <symbolic name>: |
-      <local path> -> <full s3 path>
-        + <tag1>: <value2>
-        + <tag2>: <value2>
-        # etc...  
-    ```
-  Note that the tags specified here will be applied only to the specified file, and override any overlapping tags  
-  specified at the global or step level.
+  See the [More about output fields](#more-about-output-fields) section below for important information about 
+  item formatting in the outputs block.
 
-<!--
-* `outputs` (optional): Output files to save to S3.
-  The value specifies the local path to the file relative to the working directory inside the Docker container.
-  Even if the local path contains several directory names, only the base name of the file will be appended to the workflow
-  `repository` path to determine its destination in S3. Shell-style wildcards (globs) are accepted in place of single
-  file names, and will expand to all matching local files (e.g. `outdir[0-9]/*.txt`). In addition, you can use the
-  pattern `**` to search for files recursively through a directory structure. Note, however, that the directory structure
-  will *not* be preserved in the S3 repository.
--->
-
-* `s3_tags` (optional): 🆕 A list of tags to apply to the S3 objects created by this step. Tags are specified as a
+* `s3_tags` (optional): 🆕 A list of tags to apply to all of the S3 objects created by this step. Tags are specified as a
   list of key-value pairs, e.g. `s3_tags: [key1: value1, key2: value2]`. Tags specified here will override any overlapping
   tags specified in the global `Options` block.
 
@@ -341,9 +317,47 @@ Steps:
       commands: |
         blastp -query ${inputs} -db /ref_data/${blastDb} -out raw_output.txt -evalue 1e-10
         parse_blast.py raw_output.txt > ${blast_out}
+      compute:
+        consumes:
+          blast_db: 1
       outputs:
-        blast_out: prots_v_uniprot.txt
+        blast_out: |
+          prots_v_uniprot.txt -> s3://output_bucket/blast_results/
+            +date: 2025-05-01
       skip_on_rerun: false
+```
+
+### More about output fields
+
+The full specification for a single output file, including alternate destination folder and tags, would look like this:
+
+```yaml
+my_symbolic_name: "my_local_file.txt -> s3://my_bucket/my_folder/ +tag1: value1 +tag2: value2"
+```
+
+Note that the right hand side must be quoted to avoid confusing the YAML parser. It is also not very readable. A more
+pleasing alternative is to use a [YAML block scalar](https://yaml-multiline.info/):
+
+```yaml
+my_symbolic_name: |
+  my_local_file.txt -> s3://my_bucket/my_folder/
+    +tag1: value1
+    +tag2: value2
+```
+
+This is equivalent to the previous example, but much easier to read.
+
+Whether you use the quoted or block scalar syntax, there are restrictions on the names you can use for various things,
+principally, no spaces in the local file name or S3 path; and tag keys are limited to alphanumerics, dash, and underscore.
+If for some reason you need to work around these limits, use the longhand version of the output spec:
+
+```yaml
+my_symbolic_name:
+  name: my_local_file.txt
+  dest: s3://my_bucket/my_folder/
+  s3_tags:
+    tag1: value1
+    tag2: value2
 ```
 
 ## Scatter-gather steps
