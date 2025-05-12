@@ -57,27 +57,25 @@ def no_substitutions(s):
         raise Invalid("string substitutions are not allowed")
     return s
 
-r1 = re.compile(r"^(\S+?(?<![>/])) (?:\s+->\s+ (s3://.+/))?$", flags=re.X)  # matches filename and optional s3 path
-r2 = re.compile(r"^\s*\+\s*(.+?):\s+(.+)$")  # matches tags
+
+splitter = re.compile(r"(?<=\s)\+(\w+):\s+")
+src_dest = re.compile(r"^(\S+?(?<![>/])) (?:\s+->\s+ (s3://.+/))?$", flags=re.X)
 
 def output_spec(spec: str) -> dict:
     ret = {}
-    line1, *linz = spec.splitlines()
+    file, *tags = splitter.split(spec)
 
-    if m := r1.fullmatch(line1):
-        name, dest = m.groups()
-        ret["name"] = name.strip()
+    if m := src_dest.fullmatch(file.strip()):
+        src, dest = m.groups()
+        ret["name"] = src.strip()
         if dest is not None:
             ret["dest"] = dest.strip()
-        ret["s3_tags"] = {}
-        for line in linz:
-            if m := r2.fullmatch(line):
-                k, v = m.groups()
-                ret["s3_tags"].update([(k.strip(), v.strip())])
-            else:
-                raise Invalid(f"invalid tag: '{line}'")
     else:
-        raise Invalid(f"invalid filename spec: '{line1}'")
+        raise Invalid(f"invalid filename spec: '{file}'")
+
+    ret["s3_tags"] = {}
+    for k, v in itertools.batched(tags, 2):
+        ret["s3_tags"][k.strip()] = v.strip()
 
     return ret
 
