@@ -6,4 +6,4 @@ jmespath
 more_itertools
 pytest
 pytest-mock
-requests<2.32.0
+requests

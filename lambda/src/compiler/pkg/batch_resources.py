@@ -168,11 +168,23 @@ def handle_qc_check(spec: dict | list | None) -> list:
     return ret
 
 
+def get_consumable_resource_properties(spec: dict) -> dict:
+    if spec:
+        ret = [{"consumableResource": k, "quantity": v } for k, v in spec.items()]
+        return {"consumableResourceProperties": {"consumableResourceList": ret}}
+    else:
+        return {}
+
+
 def job_definition_rc(step: Step,
                       task_role: str,
-                      shell_opt: str) -> Generator[Resource, None, str]:
+                      shell_opt: str,
+                      s3_tags: dict,
+                      job_tags: dict) -> Generator[Resource, None, str]:
     logical_name = make_logical_name(f"{step.name}.job.defx")
 
+    # note: this is not a CloudFormation spec, it is meant to be submitted to
+    # the Batch API by register.py
     job_def_spec = {
         "type": "container",
         "parameters": {
@@ -185,29 +197,35 @@ def job_definition_rc(step: Step,
             "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
             "shell": shell_opt,
             "skip": "sss",
+            "s3tags": json.dumps(s3_tags, separators=(",", ":")),
         },
         "containerProperties": {
             "image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
             "command": [
                 "python", "/bclaw_runner/src/runner_cli.py",
-                "--repo", "Ref::repo",
-                "--image", "Ref::image",
-                "--in", "Ref::inputs",
-                "--ref", "Ref::references",
-                "--cmd", "Ref::command",
-                "--out", "Ref::outputs",
-                "--qc", "Ref::qc",
-                "--shell", "Ref::shell",
-                "--skip", "Ref::skip",
+                "-c", "Ref::command",
+                "-f", "Ref::references",
+                "-i", "Ref::inputs",
+                "-k", "Ref::skip",
+                "-m", "Ref::image",
+                "-o", "Ref::outputs",
+                "-q", "Ref::qc",
+                "-r", "Ref::repo",
+                "-s", "Ref::shell",
+                "-t", "Ref::s3tags",
             ],
             "jobRoleArn": task_role,
             **get_environment(),
             **get_resource_requirements(step),
             **get_volume_info(step),
         },
+        **get_consumable_resource_properties(step.spec["compute"]["consumes"]),
         "schedulingPriority": 1,
         **get_timeout(step),
-        "tags": {
+        "propagateTags": True,
+        "tags": job_tags | {
+            "bclaw:workflow": "",  # placeholder; will be filled in by register.py
+            "bclaw:step": step.name,
             "bclaw:version": os.environ["SOURCE_VERSION"],
         },
     }
@@ -236,6 +254,16 @@ def get_skip_behavior(spec: dict) -> str:
     else:
         ret = "none"
 
+    return ret
+
+
+def get_output_uris(output_specs: dict) -> dict:
+    ret = {}
+    for k, v in output_specs.items():
+        if "dest" in v:
+            ret[k] = f"{v['dest']}{v['name']}"
+        else:
+            ret[k] = v["name"]
     return ret
 
 
@@ -282,8 +310,8 @@ def batch_step(step: Step,
             "Parameters": {
                 "repo.$": "$.repo.uri",
                 **step.input_field,
-                "references": json.dumps(step.spec["references"]),
-                "outputs": json.dumps(step.spec["outputs"]),
+                "references": json.dumps(step.spec["references"], separators=(",", ":")),
+                "outputs": json.dumps(step.spec["outputs"], separators=(",", ":")),
                 "skip": skip_behavior,
             },
             "ContainerOverrides": {
@@ -310,9 +338,13 @@ def batch_step(step: Step,
                     },
                 ],
             },
+            "Tags": {
+                "bclaw:jobfile.$": "$.job_file.key",
+            },
         },
         "ResultSelector": {
-            **step.spec["outputs"],
+            **get_output_uris(step.spec["outputs"])
+            # **{k.rstrip("!"): v["name"] for k, v in step.spec["outputs"].items()}
         },
         "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
@@ -334,11 +366,18 @@ def handle_batch(step: Step,
 
     task_role = step.spec.get("task_role") or options.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
     shell_opt = step.spec["compute"]["shell"] or options.get("shell")
+    global_and_step_s3_tags = options["s3_tags"] | step.spec["s3_tags"]
+    global_and_step_job_tags = options["job_tags"] | step.spec["job_tags"]
 
-    job_def_logical_name = yield from job_definition_rc(step, task_role, shell_opt)
+    job_def_logical_name = yield from job_definition_rc(step,
+                                                        task_role,
+                                                        shell_opt,
+                                                        global_and_step_s3_tags,
+                                                        global_and_step_job_tags)
 
     ret = [State(step.name, batch_step(step,
                                        job_def_logical_name,
+                                       scattered=scattered,
                                        **step.spec["retry"],
-                                       scattered=scattered))]
+                                       ))]
     return ret

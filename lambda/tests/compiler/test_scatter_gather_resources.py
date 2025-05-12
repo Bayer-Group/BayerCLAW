@@ -32,8 +32,9 @@ def test_scatter_step(compiler_env):
         "Parameters": {
             "repo.$": "$.repo",
             "scatter": json.dumps(spec["scatter"]),
-            "inputs": json.dumps(spec["inputs"]),
+            "inputs": json.dumps(spec["inputs"], separators=(",", ":")),
             "outputs": json.dumps(spec["outputs"]),
+            "step_name": "test_step",
             "logging": {
                 "branch.$": "$.index",
                 "job_file_bucket.$": "$.job_file.bucket",
@@ -112,13 +113,6 @@ def test_map_step(err_tol, expect_err_tol):
                 {"fake": "branch"},
             ],
         },
-        "ResultWriter": {
-            "Resource": "arn:aws:states:::s3:putObject",
-            "Parameters": {
-                "Bucket.$": "$.scatter.repo.bucket",
-                "Prefix.$": "$.scatter.repo.prefix",
-            },
-        },
         "ResultPath": None,
         "Next": "gather_step_name",
     }
@@ -172,6 +166,7 @@ def test_gather_step(next_step_name, next_or_end, compiler_env):
         "Parameters": {
             "repo.$": "$.repo.uri",
             "outputs": json.dumps(spec["outputs"]),
+            "step_name": "test_step",
             "logging": {
                 "branch.$": "$.index",
                 "job_file_bucket.$": "$.job_file.bucket",
@@ -210,7 +205,14 @@ def sample_scatter_step():
             commands:
               - ls -l ${scatter.stuff} > ${output3}
             outputs:
-                output3: 2_outfile3.txt
+                output3:
+                    name: 2_outfile3.txt
+                    s3_tags:
+                        s3_tag3: file_s3_value3
+                        s3_tag4: file_s3_value4
+            s3_tags:
+              s3_tag2: step_s3_value2
+              s3_tag3: step_s3_value3
             compute:
                 cpus: 1
                 memory: 4
@@ -226,8 +228,17 @@ def sample_scatter_step():
 
 
 def test_handle_scatter_gather(sample_scatter_step, compiler_env):
-    options = {"wf": "options",
-               "versioned": "true"}
+    options = {
+        "wf": "options",
+        "s3_tags": {
+            "s3_tag1": "global_s3_value1",
+            "s3_tag2": "global_s3_value2",
+        },
+        "job_tags": {
+            "job_tag1": "global_job_value1",
+            "job_tag2": "global_job_value2",
+        }
+    }
 
     def helper():
         step = Step("step_name", sample_scatter_step, "next_step_name")
@@ -248,7 +259,7 @@ def test_handle_scatter_gather(sample_scatter_step, compiler_env):
         refs1 = json.loads(states[1].spec["ItemProcessor"]["States"]["Step1"]["Parameters"]["Parameters"]["references"])
         assert refs1["ref1"] == "s3://ref-bucket/path/to/reference.file"
         outputs1 = json.loads(states[1].spec["ItemProcessor"]["States"]["Step1"]["Parameters"]["Parameters"]["outputs"])
-        assert outputs1["output3"] == "2_outfile3.txt"
+        assert outputs1["output3"] == {"name": "2_outfile3.txt", "s3_tags": {"s3_tag3": "file_s3_value3", "s3_tag4": "file_s3_value4"}}
 
         assert len(states[1].spec["ItemProcessor"]["States"]) == 2
         assert set(states[1].spec["ItemProcessor"]["States"]) == {"step_name.initialize", "Step1"}
@@ -273,6 +284,14 @@ def test_handle_scatter_gather(sample_scatter_step, compiler_env):
     assert len(resources) == 1
     assert resources[0].name == "Step1JobDefx"
     assert resources[0].spec["Type"] == "Custom::BatchJobDefinition"
+    subspec = json.loads(resources[0].spec["Properties"]["spec"])
+    s3_tags = json.loads(subspec["parameters"]["s3tags"])
+    expected_s3_tags = {
+        "s3_tag1": "global_s3_value1",
+        "s3_tag2": "step_s3_value2",
+        "s3_tag3": "step_s3_value3",
+    }
+    assert s3_tags == expected_s3_tags
 
     spec = json.loads(resources[0].spec["Properties"]["spec"])
     cmd = json.loads(spec["parameters"]["command"])
@@ -292,8 +311,9 @@ def test_handle_scatter_gather_auto_inputs(sample_scatter_step, compiler_env):
     sample_scatter_step["inputs"] = None
 
     def helper():
+        options = {"wf": "params", "s3_tags": {}, "job_tags": {}}
         test_step = Step("step_name", sample_scatter_step, "next_step_name")
-        states = yield from handle_scatter_gather(test_step, {"wf": "params", "versioned": "true"}, 0)
+        states = yield from handle_scatter_gather(test_step, options, 0)
         assert states[0].spec["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
 
     _ = dict(helper())

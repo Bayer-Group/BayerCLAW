@@ -1,7 +1,9 @@
+from textwrap import dedent
+
 import pytest
 from voluptuous import Invalid
 
-from ...src.compiler.pkg.validation import no_shared_keys
+from ...src.compiler.pkg.validation import no_shared_keys, output_spec
 
 
 @pytest.fixture(scope="module")
@@ -29,3 +31,70 @@ def test_no_shared_keys_fail(no_shared_keys_func):
 
     with pytest.raises(Invalid, match="duplicated keys: a, b, d, x"):
         no_shared_keys_func(record)
+
+
+# note: value2 below has trailing spaces
+ospec1 = dedent("""\
+    file1 -> s3://bucket/yada/yada/
+        +tag1: value1
+        +tag2:  value2    
+""")
+
+ospec2 = dedent("""\
+    ${job.file2}  ->   s3://bucket/${job.yadayada}/
+""")
+
+ospec3 = dedent("""\
+    dirname/file3
+        +tag3: colon:and+plus
+        +tag4:  value4 with spaces
+""")
+
+ospec4 = dedent("""\
+    file4*
+""")
+
+@pytest.mark.parametrize("ospec, expect", [
+    (ospec1, {"name": "file1", "dest": "s3://bucket/yada/yada/", "s3_tags": {"tag1": "value1", "tag2": "value2"}}),
+    (ospec2, {"name": "${job.file2}", "dest": "s3://bucket/${job.yadayada}/", "s3_tags": {}}),
+    (ospec3, {"name": "dirname/file3", "s3_tags": {"tag3": "colon:and+plus", "tag4": "value4 with spaces"}}),
+    (ospec4, {"name": "file4*", "s3_tags": {}}),
+])
+def test_output_spec(ospec, expect):
+    result = output_spec(ospec)
+    assert result == expect
+
+
+@pytest.mark.parametrize("ospec, expect", [
+    (ospec1, {"name": "file1", "dest": "s3://bucket/yada/yada/", "s3_tags": {"tag1": "value1", "tag2": "value2"}}),
+    (ospec2, {"name": "${job.file2}", "dest": "s3://bucket/${job.yadayada}/", "s3_tags": {}}),
+    (ospec3, {"name": "dirname/file3", "s3_tags": {"tag3": "colon:and+plus", "tag4": "value4 with spaces"}}),
+])
+def test_output_spec_one_line(ospec, expect):
+    one_liner = ospec.replace("\n", " ")
+    result = output_spec(one_liner)
+    assert result == expect
+
+
+@pytest.mark.parametrize("badspec", [
+    "file1 => s3://bucket/yada/yada/",  # bad arrow
+    "file2 -> /bucket/yada/yada/",  # not an s3 uri
+    "file3-> s3:/bucket/yada/yada/",  # no space before arrow
+    "file4 ->s3://bucket/yada/yada/",  # no space after arrow
+    "file5 -> ",  # no destination after arrow
+    "-> s3://bucket/yada/yada/",  # no filename
+    "filename with spaces",
+    "file6 -> s3://bucket/yada/yada.txt",  # destination is not a folder
+])
+def test_output_spec_bad_filename(badspec):
+    with pytest.raises(Invalid, match="invalid filename spec"):
+        output_spec(badspec)
+
+
+@pytest.mark.parametrize("badspec", [
+    "file1:\n-tag1: value1",  # tag line does not start with +
+    "file2:\n+tag2:value2",  # no space after tag name
+])
+def test_output_spec_bad_tag(badspec):
+    with pytest.raises(Invalid, match="invalid filename spec"):
+        output_spec(badspec)

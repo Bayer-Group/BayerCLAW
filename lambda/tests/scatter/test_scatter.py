@@ -214,6 +214,7 @@ def test_lambda_handler(repo_bucket):
         "scatter": json.dumps({"scatter_files": "file*", "list": [1, 2]}),
         "inputs": json.dumps({"other_file": "other_file.json"}),
         "outputs": json.dumps({"output_file": "output.txt"}),
+        "step_name": "test_step",
         "logging": {
             "step_name": "test_step",
         },
@@ -259,6 +260,7 @@ def test_lambda_handler_scatter_sub(repo_bucket):
         "scatter": json.dumps({"scatter_glob": "${job.glob}"}),
         "inputs": "{}",
         "outputs": "{}",
+        "step_name": "test_step",
         "logging": {
             "step_name": "test_step",
         },

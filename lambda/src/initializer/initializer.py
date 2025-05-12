@@ -7,11 +7,11 @@ import re
 import boto3
 import jmespath
 
-from lambda_logs import JSONFormatter, custom_lambda_logs
+from lambda_logs import log_preamble, log_event
+from repo_utils import SYSTEM_FILE_TAG
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-logger.handlers[0].setFormatter(JSONFormatter())
 
 EXTENDED_JOB_DATA_FILE_NAME = "_JOB_DATA_"
 
@@ -58,7 +58,9 @@ def copy_job_data_to_repo(src_bucket: str, src_key: str, src_version: str, dst_b
     dst_key = f"{dst_prefix}/{filename}"
     s3 = boto3.client("s3")
     s3.copy_object(CopySource={"Bucket": src_bucket, "Key": src_key, "VersionId": src_version},
-                   Bucket=dst_bucket, Key=dst_key)
+                   Bucket=dst_bucket, Key=dst_key,
+                   Tagging=SYSTEM_FILE_TAG,
+                   TaggingDirective="REPLACE")
 
 
 def write_extended_job_data_object(raw_job_data: dict, dst_bucket: str, dst_prefix: str) -> None:
@@ -70,14 +72,8 @@ def write_extended_job_data_object(raw_job_data: dict, dst_bucket: str, dst_pref
     dst_key = f"{dst_prefix}/{EXTENDED_JOB_DATA_FILE_NAME}"
     s3 = boto3.client("s3")
     s3.put_object(Bucket=dst_bucket, Key=dst_key,
-                  Body=json.dumps(job_data).encode("utf-8"))
-
-
-def write_execution_record(event: dict, dst_bucket: str, dst_prefix: str) -> None:
-    dst_key = f"{dst_prefix}/execution_info/{event['logging']['sfn_execution_id']}"
-    s3 = boto3.client("s3")
-    s3.put_object(Bucket=dst_bucket, Key=dst_key,
-                  Body=json.dumps(event, indent=4).encode("utf-8"))
+                  Body=json.dumps(job_data).encode("utf-8"),
+                  Tagging=SYSTEM_FILE_TAG)
 
 
 def handle_s3_launch(event: dict) -> dict:
@@ -95,9 +91,8 @@ def handle_s3_launch(event: dict) -> dict:
 
     copy_job_data_to_repo(src_bucket, src_key, src_version, repo_bucket, repo_prefix)
     write_extended_job_data_object(job_data, repo_bucket, repo_prefix)
-    write_execution_record(event, repo_bucket, repo_prefix)
 
-    share_id = re.sub(r"[\W_]+", "", event["logging"]["workflow_name"])
+    share_id = re.sub(r"[\W_]+", "", event["workflow_name"])
 
     ret = {
         "index": event["input_obj"]["index"],
@@ -115,46 +110,36 @@ def handle_s3_launch(event: dict) -> dict:
         "share_id": share_id,
     }
 
-    # ret = {
-    #     "index": event["input_obj"]["index"],
-    #     "job_file": {
-    #         "bucket": src_bucket,
-    #         "key": src_key,
-    #         "version": src_version,
-    #     },
-    #     "prev_outputs": {},
-    #     "repo": repo,
-    #     "share_id": share_id,
-    # }
-
     return ret
 
 
 def lambda_handler(event: dict, context: object) -> dict:
     # event = {
-    #   repo_template: ...
+    #   workflow_name: str
+    #   repo_template: str
     #   input_obj: {}
     #   logging: {
-    #     branch: ...
-    #     job_file_bucket: ...
-    #     job_file_key: ...
-    #     job_file_version: ...
-    #     sfn_execution_id: ...
-    #     step_name: ...
-    #     workflow_name: ...
+    #     branch: str
+    #     job_file_bucket: str
+    #     job_file_key: str
+    #     job_file_version: str
+    #     sfn_execution_id: str
+    #     step_name: str
+    #     workflow_name: str
     #   }
     # }
-    with custom_lambda_logs(**event["logging"]):
-        logger.info(f"event: {str(event)}")
 
-        if "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID" in event["input_obj"]:
-            # this is a subpipe execution...nothing to do but pass along the input object
-            logger.info("subpipe launch detected")
-            ret = event["input_obj"]
+    log_preamble(**event.pop("logging"), logger=logger)
+    log_event(logger, event)
 
-        else:
-            logger.info(f"s3 launch detected")
-            ret = handle_s3_launch(event)
+    if "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID" in event["input_obj"]:
+        # this is a subpipe execution...nothing to do but pass along the input object
+        logger.info("subpipe launch detected")
+        ret = event["input_obj"]
 
-        logger.info(f"return: {str(ret)}")
-        return ret
+    else:
+        logger.info(f"s3 launch detected")
+        ret = handle_s3_launch(event)
+
+    logger.info(f"returning {str(ret)}")
+    return ret

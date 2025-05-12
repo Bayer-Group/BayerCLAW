@@ -146,3 +146,29 @@ def test_substitute_image_tag(original, expect):
     }
     result = substitute_image_tag(original, spec)
     assert result == expect
+
+
+def test_substitute_tagged_output():
+    output_spec = {
+        "name": "fake_${a}_filename",
+        "s3_tags": {
+            "tag1": "value_${a}",
+            "tag2": "value_${b}",
+        }
+    }
+
+    subs = {
+        "a": 99,
+        "b": "two",
+    }
+
+    expect = {
+        "name": "fake_99_filename",
+        "s3_tags": {
+            "tag1": "value_99",
+            "tag2": "value_two",
+        }
+    }
+
+    result = substitute(output_spec, subs)
+    assert result == expect

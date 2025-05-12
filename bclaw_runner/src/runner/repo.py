@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import re
-from typing import Dict, Generator, Iterable, List
+from typing import Dict, Generator, Iterable, List, Tuple
 
 import boto3
 import botocore.exceptions
@@ -49,6 +49,7 @@ def _expand_s3_glob(glob: str) -> Generator[str, None, None]:
 
 class Repository(object):
     def __init__(self, s3_uri: str):
+        logger.info(f"repository={s3_uri}")
         self.s3_uri = s3_uri
         self.bucket, self.prefix = s3_uri.split("/", 3)[2:]
         self.run_status_obj = f"_control_/{os.environ['BC_STEP_NAME']}.complete"
@@ -89,6 +90,8 @@ class Repository(object):
         """
         Raises SkipExecution if this step has been run before
         """
+        logger.info("checking for existing output files")
+
         # this is for backward compatibility. Note that if you have a step that produces
         # no outputs (i.e. being run for side effects only), it will always be skipped
         # if run with skip_if_files_exist
@@ -104,6 +107,8 @@ class Repository(object):
         keys = (self.qualify(os.path.basename(f)) for f in filenames)
         if all(self._s3_file_exists(k) for k in keys):
             raise SkipExecution("found output files; skipping")
+
+        logger.info("output files missing; continuing")
 
 
     def _inputerator(self, input_spec: Dict[str, str]) -> Generator[str, None, None]:
@@ -153,37 +158,60 @@ class Repository(object):
         return ret
 
     @staticmethod
-    def _outputerator(output_files: Iterable[str]) -> Generator[str, None, None]:
-        for file in output_files:
-            expanded = g.glob(file, recursive=True)
+    def _outputerator(output_spec: dict) -> Generator[Tuple[str, dict], None, None]:
+        for sym_name, file_spec in output_spec.items():
+            expanded = g.glob(file_spec["name"], recursive=True)
             if not expanded:
-                logger.warning(f"no file matching '{file}' found in workspace")
-            yield from expanded
+                logger.warning(f"no file matching '{file_spec['name']}' found in workspace")
+            for filename in expanded:
+                yld = file_spec.copy()
+                yld["name"] = filename
+                yield sym_name, yld
 
-    def _upload_that(self, local_file: str) -> str:
+    def _upload_that(self, symbolic_name: str, file_spec: dict, global_tags: dict) -> str:
+        local_file = file_spec["name"]
+        local_tags = file_spec["s3_tags"]
         local_size = os.path.getsize(local_file)
-        key = self.qualify(os.path.basename(local_file))
-        dest = self.to_uri(os.path.basename(local_file))
-        logger.info(f"starting upload: {local_file} ({local_size} bytes) -> {dest}")
+
+        s3_filename = os.path.basename(local_file)
+
+        if "dest" in file_spec:
+            dest_uri = f"{file_spec['dest']}{s3_filename}"
+            bucket, key = dest_uri.split("/", 3)[2:]
+        else:
+            bucket = self.bucket
+            key = self.qualify(s3_filename)
+            dest_uri = f"s3://{bucket}/{key}"
+
+        # https://jcoenraadts.medium.com/how-to-write-tags-when-a-file-is-uploaded-to-s3-with-boto3-and-python-690f92224e2b
+        tagging_str = "&".join(f"{k}={v}" for k, v in (global_tags | local_tags).items())
+
+        logger.info(f"starting upload: {local_file} ({local_size} bytes) -> {dest_uri}")
         session = boto3.Session()
         s3 = session.resource("s3")
-        s3_obj = s3.Object(self.bucket, key)
+        s3_obj = s3.Object(bucket, key)
         s3_obj.upload_file(local_file,
                            ExtraArgs={"ServerSideEncryption": "AES256",
-                                      "Metadata": _file_metadata()})
+                                      "Metadata": _file_metadata(),
+                                      "Tagging": tagging_str}
+                           )
         s3_size = s3_obj.content_length
-        logger.info(f"finished upload: {local_file} ({local_size} bytes) -> {dest} ({s3_size} bytes)")
-        return dest
 
-    def upload_outputs(self, output_spec: Dict[str, str]) -> None:
+        logger.info(f"finished upload: {local_file} ({local_size} bytes) -> {dest_uri} ({s3_size} bytes)")
+        return dest_uri
+
+    def upload_outputs(self, output_spec: Dict[str, dict], global_tags: dict) -> None:
+        uploader = lambda sn, fs: self._upload_that(sn, fs, global_tags)
+
         with ThreadPoolExecutor(max_workers=256) as executor:
-            result = list(executor.map(self._upload_that, self._outputerator(output_spec.values())))
+            result = list(executor.map(uploader, *zip(*self._outputerator(output_spec))))  # kudos to copilot
         logger.info(f"{len(result)} files uploaded")
 
     def check_for_previous_run(self) -> None:
         """
         Raises SkipExecution if this step has been run before
         """
+        logger.info("checking for previous run`")
         try:
             result = self._s3_file_exists(self.qualify(self.run_status_obj))
         except Exception:
@@ -191,6 +219,8 @@ class Repository(object):
         else:
             if result:
                 raise SkipExecution("found previous run; skipping")
+
+        logger.info("no previous run found; continuing")
 
     def clear_run_status(self) -> None:
         try:
@@ -204,6 +234,8 @@ class Repository(object):
         try:
             s3 = boto3.resource("s3")
             status_obj = s3.Object(self.bucket, self.qualify(self.run_status_obj))
-            status_obj.put(Body=b"", Metadata=_file_metadata())
+            status_obj.put(Body=b"",
+                           Metadata=_file_metadata(),
+                           Tagging="bclaw.system=true")
         except Exception:
             logger.warning("failed to upload run status")

@@ -11,13 +11,12 @@ import boto3
 import jmespath
 
 from file_select import select_file_contents
-from lambda_logs import JSONFormatter, custom_lambda_logs
-from repo_utils import Repo, S3File
+from lambda_logs import log_preamble, log_event
+from repo_utils import SYSTEM_FILE_TAG, Repo, S3File
 from substitutions import substitute_job_data
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-logger.handlers[0].setFormatter(JSONFormatter())
 
 
 def get_job_data(repo: Repo) -> dict:
@@ -126,7 +125,8 @@ def write_job_data_template(parent_job_data: dict,
     template_file = scatter_repo.qualify("_JOB_DATA_")
     template_obj = boto3.resource("s3").Object(template_file.bucket, template_file.key)
     template_obj.put(Body=json.dumps(job_data_template).encode("utf-8"),
-                     ServerSideEncryption="AES256")
+                     ServerSideEncryption="AES256",
+                     Tagging=SYSTEM_FILE_TAG)
     return template_file
 
 
@@ -136,46 +136,55 @@ def lambda_handler(event: dict, context: object):
     #       bucket: str
     #       prefix: str
     #   }
-    #   inputs: "{...}"
-    #   outputs: "{...}"
-    #   scatter: "{...}"
-    #   logging: {}
+    #   inputs: str
+    #   outputs: str
+    #   scatter: str
+    #   step_name: str
+    #   logging: {
+    #     branch: str
+    #     job_file_bucket: str
+    #     job_file_key: str
+    #     job_file_version: str
+    #     sfn_execution_id: str
+    #     step_name: str
+    #     workflow_name: str
+    #   }
     # }
 
-    with custom_lambda_logs(**event["logging"]):
-        logger.info(f"{event=}")
+    log_preamble(**event.pop("logging"), logger=logger)
+    log_event(logger, event)
 
-        parent_repo = Repo(event["repo"])
-        parent_job_data = get_job_data(parent_repo)
+    parent_repo = Repo(event["repo"])
+    parent_job_data = get_job_data(parent_repo)
 
-        parent_inputs = json.loads(event["inputs"])
-        parent_outputs = json.loads(event["outputs"])
-        scatter_data = json.loads(event["scatter"])
-        step_name = event["logging"]["step_name"]
+    parent_inputs = json.loads(event["inputs"])
+    parent_outputs = json.loads(event["outputs"])
+    scatter_data = json.loads(event["scatter"])
+    step_name = event["step_name"]
 
-        scatter_repo = parent_repo.sub_repo(step_name)
+    scatter_repo = parent_repo.sub_repo(step_name)
 
-        jobby_inputs = substitute_job_data(parent_inputs, parent_job_data)
-        jobby_outputs = substitute_job_data(parent_outputs, parent_job_data)
-        repoized_inputs = {k: parent_repo.qualify(v) for k, v in jobby_inputs.items()}
-        _ = write_job_data_template(parent_job_data, repoized_inputs, jobby_outputs, scatter_repo)
+    jobby_inputs = substitute_job_data(parent_inputs, parent_job_data)
+    jobby_outputs = substitute_job_data(parent_outputs, parent_job_data)
+    repoized_inputs = {k: parent_repo.qualify(v) for k, v in jobby_inputs.items()}
+    _ = write_job_data_template(parent_job_data, repoized_inputs, jobby_outputs, scatter_repo)
 
-        expanded_scatter_data = dict(expand_scatter_data(scatter_data, parent_repo, parent_job_data))
+    expanded_scatter_data = dict(expand_scatter_data(scatter_data, parent_repo, parent_job_data))
 
-        with open("/tmp/items.csv", "w") as fp:
-            writer = csv.DictWriter(fp, fieldnames=expanded_scatter_data.keys(), dialect="unix")
-            writer.writeheader()
-            writer.writerows(scatterator(expanded_scatter_data))
+    with open("/tmp/items.csv", "w") as fp:
+        writer = csv.DictWriter(fp, fieldnames=expanded_scatter_data.keys(), dialect="unix")
+        writer.writeheader()
+        writer.writerows(scatterator(expanded_scatter_data))
 
-        items_file = scatter_repo.qualify("items.csv")
-        items_obj = boto3.resource("s3").Object(items_file.bucket, items_file.key)
-        items_obj.upload_file("/tmp/items.csv")
+    items_file = scatter_repo.qualify("items.csv")
+    items_obj = boto3.resource("s3").Object(items_file.bucket, items_file.key)
+    items_obj.upload_file("/tmp/items.csv", ExtraArgs={"Tagging": SYSTEM_FILE_TAG})
 
-        ret = {
-            "items": {
-                "bucket": items_file.bucket,
-                "key": items_file.key
-            },
-            "repo": dict(scatter_repo),
-        }
-        return ret
+    ret = {
+        "items": {
+            "bucket": items_file.bucket,
+            "key": items_file.key
+        },
+        "repo": dict(scatter_repo),
+    }
+    return ret

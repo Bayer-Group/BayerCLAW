@@ -15,6 +15,13 @@ from .signal_trapper import signal_trapper
 
 logger = logging.getLogger(__name__)
 
+user_handler = logging.StreamHandler()
+user_formatter = logging.Formatter("%(levelname)s: %(message)s")
+user_handler.setFormatter(user_formatter)
+user_cmd_logger = logging.getLogger("user_cmd")
+user_cmd_logger.addHandler(user_handler)
+user_cmd_logger.propagate = False
+
 # https://docker-py.readthedocs.io/en/stable/index.html
 
 
@@ -102,6 +109,9 @@ def pull_image(docker_client: docker.DockerClient, tag: str) -> Image:
 
     ret = docker_client.images.pull(tag, auth_config=auth_config)
 
+    repo_id = ret.attrs["RepoDigests"][0].split("@")[-1][:19]
+    logger.info(f"got image {ret.tags[0]} ({repo_id})")
+
     return ret
 
 
@@ -139,7 +149,7 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
             try:
                 with closing(container.logs(stream=True)) as fp:
                     for line in fp:
-                        logger.user_cmd(line.decode("utf-8"))
+                        user_cmd_logger.user_cmd(line.decode("utf-8"))
 
             except Exception:
                 logger.exception("----- error during subprocess logging: ")

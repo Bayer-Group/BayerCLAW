@@ -1,5 +1,29 @@
 # Changelog for BayerCLAW
 
+## [v1.2.5] 2025-xx-xx Feature release
+
+**NOTE:** Due to Python version upgrades in the CodeBuild project and elsewhere, you will need to
+update the [BayerCLAW installer stack](doc/installation.md#updating-bayerclaw) before upgrading to v1.2.5. 
+
+### Added/Changed
+- Workflows may now specify tags to apply to the S3 objects they create. This is intended to help
+clean up unneeded intermediate files using S3 lifecycle policies.
+- Batch jobs can take advantage of the new resource-aware scheduling feature, which prevents Batch
+jobs from overwhelming limited resources like database connections or software licenses.
+- Batch job outputs can now be written to S3 locations outside of the workflow's S3 repository.
+- Improved readability of CloudWatch log messages.
+- `bclaw_runner` now logs the (shortened) SHA hash of the Docker image it has pulled.
+- An SNS topic policy that prevents publication of messages from unsecured sources has been restored.
+- Improvements to job definition registrar error messaging and deletion handling.
+- Upgraded everything to Python 3.12
+
+### Removed
+- Workflow runs no longer write `execution_info` records in the repository.
+
+### Experimental
+- Tags may be applied to Batch jobs to help with cost tracking. This feature is experimental and
+  may be removed in future releases.
+
 ## [v1.2.4] 2024-06-25 Feature release
 
 **NOTE:** Because of new parameters in the installer stack, you will  need to

@@ -220,7 +220,7 @@ Resources:
       Environment:
         Type: LINUX_CONTAINER
         # https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-available.html
-        Image: "aws/codebuild/standard:6.0"
+        Image: "aws/codebuild/standard:7.0"
         ComputeType: BUILD_GENERAL1_SMALL
         PrivilegedMode: true
         EnvironmentVariables:

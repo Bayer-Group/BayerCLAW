@@ -14,6 +14,7 @@ def file_submit_step(step: Step, run_subpipe_step_name: str) -> dict:
             "repo.$": "$.repo.uri",
             "job_data": step.spec["job_data"],
             "submit": json.dumps(step.spec["submit"]),
+            "step_name": step.name,
             **lambda_logging_block(step.name),
         },
         **lambda_retry(),

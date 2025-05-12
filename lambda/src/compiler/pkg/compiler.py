@@ -43,10 +43,6 @@ def compile_template(fragment: dict, param_values: dict, state_machine_out=None)
         "AWSTemplateFormatVersion": "2010-09-09",
         "Resources": resources,
         "Outputs": {
-            # todo: remove this after it passes the scream test
-            # "ECSTaskRoleArn": {
-            #     "Value": os.environ["ECS_TASK_ROLE_ARN"],
-            # },
             "LauncherBucketName": {
                 "Value": os.environ["LAUNCHER_BUCKET_NAME"],
             },

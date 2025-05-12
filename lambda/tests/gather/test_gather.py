@@ -41,6 +41,7 @@ def test_lambda_handler(caplog, repo_bucket):
     event = {
         "repo": f"s3://{repo_bucket.name}/repo/path",
         "outputs": json.dumps({"out1": "output1", "out2": "output2", "out3": "output3"}),
+        "step_name": "test-step",
         "items": [
             {"repo": f"s3://{repo_bucket.name}/repo/path/test-step/00000"},
             {"repo": f"s3://{repo_bucket.name}/repo/path/test-step/00001"},

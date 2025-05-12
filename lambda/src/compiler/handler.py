@@ -38,5 +38,4 @@ def lambda_handler(event: dict, context: object) -> dict:
         ret["status"] = "failure"
         ret["errorMessage"] = str(e)
 
-    finally:
-        return ret
+    return ret

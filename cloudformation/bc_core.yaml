@@ -152,6 +152,44 @@ Resources:
       TopicName: !Sub "${AWS::StackName}-notifications"
       KmsMasterKeyId: "alias/aws/sns"
 
+  NotificationsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref NotificationsTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: "NotifcationsTopicPolicy"
+        Statement:
+          -
+            Sid: OwnerAccessOnly
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - "SNS:AddPermission"
+              - "SNS:DeleteTopic"
+              - "SNS:GetTopicAttributes"
+              - "SNS:ListSubscriptionsByTopic"
+              - "SNS:Publish"
+              - "SNS:Receive"
+              - "SNS:RemovePermission"
+              - "SNS:SetTopicAttributes"
+              - "SNS:Subscribe"
+            Resource: !Ref NotificationsTopic
+            Condition:
+              StringEquals:
+                "AWS:SourceOwner": !Ref AWS::AccountId
+          -
+            Sid: SecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "sns:Publish"
+            Resource: !Ref NotificationsTopic
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
   # lambdas
   CommonLayer:
     Type: AWS::Serverless::LayerVersion
@@ -159,16 +197,16 @@ Resources:
       LayerName: !Sub ${AWS::StackName}-bclaw-common
       ContentUri: ../lambda/src/common
       CompatibleRuntimes:
-        - python3.7
-        - python3.8
         - python3.9
         - python3.10
+        - python3.11
+        - python3.12
 
   RouterLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: job_router.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/router
       Environment:
         Variables:
@@ -243,7 +281,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: multichooser.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/chooser
       AutoPublishAlias: current
       Environment:
@@ -284,7 +322,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: handler.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/compiler
       AutoPublishAlias: current
       Environment:
@@ -295,6 +333,7 @@ Resources:
           ECS_TASK_ROLE_ARN: !GetAtt EcsTaskRoleStack.Outputs.EcsTaskRoleArn
           NOTIFICATIONS_LAMBDA_ARN: !GetAtt NotificationsLambda.Arn
           GATHER_LAMBDA_ARN: !Ref GatherLambda.Version
+          INITIALIZER_LAMBDA_ARN: !Ref InitializerLambda.Version
           JOB_DEF_LAMBDA_ARN: !GetAtt JobDefLambda.Arn
           LAUNCHER_BUCKET_NAME: !Ref LauncherBucket
           LOG_RETENTION_DAYS: !Ref LogRetentionDays
@@ -339,7 +378,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: initializer.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/initializer
       AutoPublishAlias: current
       Environment:
@@ -359,6 +398,8 @@ Resources:
                 - "s3:PutObject"
                 - "s3:GetObjectVersion"
                 - "s3:ListBucket"
+                - "s3:PutObjectTagging"
+                - "s3:GetObjectTagging"
               Resource: "*"
       DeploymentPreference:
         Enabled: false
@@ -381,7 +422,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: register.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/job_def
       # do not enable AutoPublishAlias for custom resource lambdas
       # https://advancedweb.hu/custom-resources-in-cloudformation-templates-lessons-learned/#cant-change-the-servicetoken
@@ -423,7 +464,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: scatter.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/scatter
       AutoPublishAlias: current
       Environment:
@@ -443,6 +484,8 @@ Resources:
                 - "s3:PutObject"
                 - "s3:GetObject"
                 - "s3:ListBucket"
+                - "s3:PutObjectTagging"
+                - "s3:GetObjectTagging"
               Resource: "*"
       DeploymentPreference:
         Enabled: false
@@ -465,7 +508,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: scatter_init.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/scatter_init
       AutoPublishAlias: current
       Environment:
@@ -485,6 +528,8 @@ Resources:
                 - "s3:PutObject"
                 - "s3:GetObject"
                 - "s3:ListBucket"
+                - "s3:PutObjectTagging"
+                - "s3:GetObjectTagging"
               Resource: "*"
       DeploymentPreference:
         Enabled: false
@@ -507,7 +552,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: gather.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/gather
       AutoPublishAlias: current
       Environment:
@@ -527,6 +572,8 @@ Resources:
                 - "s3:PutObject"
                 - "s3:GetObject"
                 - "s3:ListBucket"
+                - "s3:PutObjectTagging"
+                - "s3:GetObjectTagging"
               Resource: "*"
       DeploymentPreference:
         Enabled: false
@@ -551,7 +598,7 @@ Resources:
     DeletionPolicy: "Retain"
     Properties:
       Handler: qc_checker.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/qc_checker
       AutoPublishAlias: current
       Environment:
@@ -599,7 +646,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: subpipes.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/subpipes
       AutoPublishAlias: current
       Environment:
@@ -619,6 +666,8 @@ Resources:
                 - "s3:PutObject"
                 - "s3:GetObject"
                 - "s3:ListBucket"
+                - "s3:GetObjectTagging"
+                - "s3:PutObjectTagging"
               Resource: "*"
       DeploymentPreference:
         Enabled: false
@@ -641,7 +690,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: notifications.lambda_handler
-      Runtime: python3.10
+      Runtime: python3.12
       CodeUri: lambda/src/notifications
       Environment:
         Variables:
@@ -725,6 +774,7 @@ Resources:
               - "batch:SubmitJob"
               - "batch:DescribeJobs"
               - "batch:TerminateJob"
+              - "batch:TagResource"
             Resource: "*"
           - Effect: Allow
             Action:

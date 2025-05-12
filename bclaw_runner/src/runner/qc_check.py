@@ -33,7 +33,6 @@ def abort_execution(failed_expressions: list) -> None:
         cause=cause
     )
 
-
 def run_one_qc_check(qc_data: dict, qc_expression: str) -> bool:
     if result := eval(qc_expression, globals(), qc_data):
         logger.warning(f"failed QC check: {qc_expression}")

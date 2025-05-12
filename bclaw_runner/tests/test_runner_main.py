@@ -81,9 +81,23 @@ def test_main(monkeypatch, tmp_path, mock_bucket, mocker):
     }
 
     outputs = {
-        "output1": "outfile${job.key1}",
-        "output2": "outfile${job.key2}",
-        "output3": "outfile3",
+        "output1": {
+            "name": "outfile${job.key1}",
+            "s3_tags": {
+                "tag1": "${job.key1}",
+                "tag2": "${job.key2}",
+            },
+        },
+        "output2": {
+            "name": "outfile${job.key2}",
+            "s3_tags": {
+                "tag1": "value99",
+            },
+        },
+        "output3": {
+            "name": "outfile3",
+            "s3_tags": {},
+        },
     }
 
     commands = [
@@ -101,6 +115,12 @@ def test_main(monkeypatch, tmp_path, mock_bucket, mocker):
         {"qc_result_file": "qc.out", "stop_early_if": ["x == 1"]},
     ]
 
+    tags = {
+        "tag1": "valueA",
+        "tag2": "valueB",
+        "tag3": "${job.img_tag}",
+    }
+
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
 
     mock_do_checks = mocker.patch("bclaw_runner.src.runner.runner_main.do_checks")
@@ -113,7 +133,8 @@ def test_main(monkeypatch, tmp_path, mock_bucket, mocker):
                     qc=qc,
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     shell="sh",
-                    skip="true")
+                    skip="true",
+                    tags=tags)
     assert response == 0
 
     curr_bucket_contents = {o.key for o in mock_bucket.objects.all()}
@@ -135,21 +156,37 @@ def test_main(monkeypatch, tmp_path, mock_bucket, mocker):
         outfile1
         reference_file
     """)
+    expect_outfile1_tags = [
+        {"Key": "tag1", "Value": "1"},
+        {"Key": "tag2", "Value": "2"},
+        {"Key": "tag3", "Value": "test"}
+    ]
     outfile1 = mock_bucket.Object("repo/path/outfile1").get()
     with closing(outfile1["Body"]) as fp:
         outfile1_contents = next(fp).decode("utf-8").split()
         for name, pattern in zip(outfile1_contents, expect_outfile1_contents.split()):
             assert re.fullmatch(pattern, name)
+    response = mock_bucket.meta.client.get_object_tagging(Bucket=TEST_BUCKET, Key="repo/path/outfile1")
+    tags = sorted(response["TagSet"], key=lambda x: x["Key"])
+    assert tags == expect_outfile1_tags
 
     expect_outfile2_contents = textwrap.dedent(fr"""
         BC_SCRATCH_PATH={tmp_path}
         BC_STEP_NAME=step1
     """)
+    expect_outfile2_tags = [
+        {"Key": "tag1", "Value": "value99"},
+        {"Key": "tag2", "Value": "valueB"},
+        {"Key": "tag3", "Value": "test"}
+    ]
     outfile2 = mock_bucket.Object("repo/path/outfile2").get()
     with closing(outfile2["Body"]) as fp:
         outfile2_contents = sorted(next(fp).decode("utf-8").split())
         for value, pattern in zip(outfile2_contents, expect_outfile2_contents.split()):
             assert re.fullmatch(pattern, value)
+    response = mock_bucket.meta.client.get_object_tagging(Bucket=TEST_BUCKET, Key="repo/path/outfile2")
+    tags = sorted(response["TagSet"], key=lambda x: x["Key"])
+    assert tags == expect_outfile2_tags
 
     expect_outfile3_contents = textwrap.dedent("""
     1
@@ -159,6 +196,11 @@ def test_main(monkeypatch, tmp_path, mock_bucket, mocker):
     3
     file99
     """)
+    expect_outfile3_tags = [
+        {"Key": "tag1", "Value": "valueA"},
+        {"Key": "tag2", "Value": "valueB"},
+        {"Key": "tag3", "Value": "test"}
+    ]
     outfile3 = mock_bucket.Object("repo/path/outfile3").get()
     with closing(outfile3["Body"]) as fp:
         outfile3_contents = next(fp).decode("utf-8").split()
@@ -171,6 +213,9 @@ def test_main(monkeypatch, tmp_path, mock_bucket, mocker):
     with open(expected_cached_file) as fp:
         contents = next(fp)
         assert contents == "reference"
+    response = mock_bucket.meta.client.get_object_tagging(Bucket=TEST_BUCKET, Key="repo/path/outfile3")
+    tags = sorted(response["TagSet"], key=lambda x: x["Key"])
+    assert tags == expect_outfile3_tags
 
     mock_do_checks.assert_called_once_with(qc)
 
@@ -189,7 +234,7 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
     }
 
     outputs = {
-        "output4": "outfile4"
+        "output4": {"name": "outfile4", "s3_tags": {}},
     }
 
     commands = [
@@ -197,6 +242,8 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
     ]
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
+
+    tags = {}
 
     response = main(image="fake_image:test",
                     commands=commands,
@@ -206,7 +253,8 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
                     qc=[],
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     shell="sh",
-                    skip="true")
+                    skip="true",
+                    tags=tags)
 
     assert response == 199
     curr_bucket_contents = {o.key for o in mock_bucket.objects.all()}
@@ -221,7 +269,7 @@ def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket):
     references = {}
     inputs = {}
     outputs = {
-        "output5": "outfile5"
+        "output5": {"name": "outfile5", "s3_tags": {}},
     }
 
     commands = [
@@ -231,6 +279,8 @@ def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket):
 
     orig_bucket_contents = {o.key for o in mock_bucket.objects.all()}
 
+    tags = {}
+
     response = main(image="fake_image:test",
                     commands=commands,
                     references=references,
@@ -239,7 +289,8 @@ def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket):
                     qc=[],
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     shell="sh",
-                    skip="true")
+                    skip="true",
+                    tags=tags)
     assert response != 0
 
     curr_bucket_contents = {o.key for o in mock_bucket.objects.all()}
@@ -259,8 +310,11 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
 
     references = {}
     inputs = {}
-    outputs = {"output6": "outfile6"}
+    outputs = {
+        "output6": {"name": "outfile6", "s3_tags": {}},
+    }
     commands = ["echo wut > ${output6}"]
+    tags = {}
 
     response = main(image="fake_image:test",
                     commands=commands,
@@ -270,7 +324,8 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
                     qc=[],
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     shell="sh",
-                    skip="true")
+                    skip="true",
+                    tags=tags)
     assert response != 0
     curr_bucket_contents = {o.key for o in mock_bucket.objects.all()}
     assert "repo/path/_control_/step4.complete" not in curr_bucket_contents
@@ -291,6 +346,7 @@ def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect):
     inputs = {}
     outputs = {}
     commands = ["false"]
+    tags = {}
 
     response = main(image="fake_image:test",
                     commands=commands,
@@ -300,7 +356,8 @@ def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect):
                     qc=[],
                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
                     shell="sh",
-                    skip=skip)
+                    skip=skip,
+                    tags=tags)
     assert response == expect
 
 
@@ -316,8 +373,8 @@ def fake_termination_checker_impl(*_):
 
 @moto.mock_aws
 @pytest.mark.parametrize("argv, expect", [
-    ("prog --cmd 2 --in 3 --out 4 --shell 5 --ref 6 --repo 7 --skip 8 --image 9 --qc 10",
-     [2, "9", 3, 4, 10, 6, "7", "5", "8"])
+    ("prog -c 2 -i 3 -o 4 -s 5 -f 6 -r 7 -k 8 -m 9 -q 10 -t 11",
+    [2, "9", 3, 4, 10, 6, "7", "5", "8", 11])
 ])
 def test_cli(capsys, requests_mock, mock_ec2_instance, monkeypatch, argv, expect):
     requests_mock.get("http://169.254.169.254/latest/meta-data/instance-life-cycle", text="spot")
@@ -327,6 +384,12 @@ def test_cli(capsys, requests_mock, mock_ec2_instance, monkeypatch, argv, expect
     monkeypatch.setenv("BC_STEP_NAME", "test:step:name")
     monkeypatch.setenv("BC_JOB_NAME", "test*job")
     monkeypatch.setenv("BC_VERSION", "v1.2.3")
+    monkeypatch.setenv("BC_LAUNCH_BUCKET", "test-bucket")
+    monkeypatch.setenv("BC_LAUNCH_KEY", "test-key")
+    monkeypatch.setenv("BC_LAUNCH_VERSION", "1234567890abcdef")
+    monkeypatch.setenv("BC_EXECUTION_ID", "test-execution-id")
+    monkeypatch.setenv("BC_BRANCH_IDX", "test-branch")
+    monkeypatch.setenv("AWS_BATCH_JOB_ID", "fedcba0987654321")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     monkeypatch.setattr("sys.argv", argv.split())
     monkeypatch.setattr("bclaw_runner.src.runner.runner_main.main", fake_main)

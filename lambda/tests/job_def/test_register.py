@@ -32,7 +32,11 @@ def job_def_spec() -> dict:
                 }
             ]
         },
-        "schedulingPriority": 1
+        "schedulingPriority": 1,
+        "propagateTags": True,
+        "tags": {
+            "bclaw:workflow": "",
+        }
     }
     return ret
 
@@ -61,6 +65,7 @@ def event_factory(job_def_spec):
 
 class FakeContext:
     def __init__(self):
+        self.log_group_name = "fake-log-group"
         self.log_stream_name = "fake-log-stream"
 
 
@@ -83,6 +88,7 @@ def test_edit_spec(job_def_spec, monkeypatch):
                                                      {"name": "AWS_DEFAULT_REGION", "value": "us-west-1"},
                                                      {"name": "AWS_ACCOUNT_ID", "value": "123456789012"},]
     expect["parameters"]["image"] = "test-image"
+    expect["tags"]["bclaw:workflow"] = "test-wf"
     result = edit_spec(job_def_spec, "test-wf", "test-step", "test-image")
     assert result == expect
 
@@ -125,6 +131,7 @@ def test_lambda_handler_create(event_factory, mocker, monkeypatch):
                                                                  {"name": "BC_STEP_NAME", "value": "test-step"},
                                                                  {"name": "AWS_DEFAULT_REGION", "value": "us-west-1"},
                                                                  {"name": "AWS_ACCOUNT_ID", "value": "123456789012"},]
+    assert job_defs[0]["tags"]["bclaw:workflow"] == "test-wf"
 
 
 def test_lambda_handler_update(event_factory, batch_job_def_arn, mocker, monkeypatch):
@@ -192,6 +199,27 @@ def test_lambda_handler_delete(event_factory, batch_job_def_arn, mocker):
     assert job_defs[0]["status"] == "INACTIVE"
 
 
+def test_lambda_handler_no_physical_resource_id(event_factory, batch_job_def_arn, mocker):
+    mock_respond_fn = mocker.patch("lambda.src.job_def.register.respond")
+    event = event_factory("Delete", "wut")
+    event.pop("PhysicalResourceId")
+
+    _ = lambda_handler(event, FakeContext())
+
+    expect = {
+        "PhysicalResourceId": None,
+        "StackId": event["StackId"],
+        "RequestId": event["RequestId"],
+        "LogicalResourceId": event["LogicalResourceId"],
+        "Status": "SUCCESS",
+        "Reason": "",
+        "NoEcho": False,
+        "Data": {}
+    }
+
+    mock_respond_fn.assert_called_once_with(event["ResponseURL"], expect)
+
+
 @moto.mock_aws()
 def test_lambda_handler_fail(event_factory, mocker):
     mock_respond_fn = mocker.patch("lambda.src.job_def.register.respond")
@@ -207,7 +235,7 @@ def test_lambda_handler_fail(event_factory, mocker):
         "RequestId": event["RequestId"],
         "LogicalResourceId": event["LogicalResourceId"],
         "Status": "FAILED",
-        "Reason": f"see log stream {ctx.log_stream_name}",
+        "Reason": f"see log group {ctx.log_group_name} / log stream {ctx.log_stream_name}",
         "NoEcho": False,
         "Data": {}
     }

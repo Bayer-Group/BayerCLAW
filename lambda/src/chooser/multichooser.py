@@ -8,12 +8,11 @@ from typing import Generator, Tuple, Any
 import boto3
 from box import Box, BoxList
 
-from lambda_logs import JSONFormatter, custom_lambda_logs
+from lambda_logs import log_preamble, log_event
 from substitutions import substitute_job_data
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-logger.handlers[0].setFormatter(JSONFormatter())
 
 
 class ConditionFailed(Exception):
@@ -71,22 +70,31 @@ def run_exprs(exprs: list, vals: dict):
 
 def lambda_handler(event: dict, context: object):
     # event = {
-    #   repo
-    #   inputs -- needs to be a json string for auto inputs compatibility
-    #   expressions[] | expression
-    #   logging{}
+    #   repo: str
+    #   inputs: str  # needs to be a json string for auto inputs compatibility
+    #   expressions: [str] | expression: str
+    #   logging: {
+    #     branch: str
+    #     job_file_bucket: str
+    #     job_file_key: str
+    #     job_file_version: str
+    #     sfn_execution_id: str
+    #     step_name: str
+    #     workflow_name: str
+    #   }
     # }
-    with custom_lambda_logs(**event["logging"]):
-        logger.info(f"event: {str(event)}")
 
-        vals = Box(load_vals(event["inputs"], event["repo"]))
+    log_preamble(**event.pop("logging"), logger=logger)
+    log_event(logger, event)
 
-        if "expressions" in event:
-            ret = run_exprs(event["expressions"], vals)
-            return ret
+    vals = Box(load_vals(event["inputs"], event["repo"]))
 
-        elif "expression" in event:
-            result = eval_this(event["expression"], vals)
-            if not result:
-                raise ConditionFailed
-            return event["expression"]
+    if "expressions" in event:
+        ret = run_exprs(event["expressions"], vals)
+        return ret
+
+    elif "expression" in event:
+        result = eval_this(event["expression"], vals)
+        if not result:
+            raise ConditionFailed
+        return event["expression"]

@@ -311,13 +311,32 @@ def test_outputerator(monkeypatch, tmp_path, caplog):
     for filename in filenames:
         file = tmp_path / filename
         file.open("w").close()
-    request = ["output*", "other_thing", "non_thing*"]
+
+    output_spec = {
+        "outputs": {
+            "name": "output*",
+            "s3_tags": {"tag1": "value1"},
+        },
+        "other_thing!": {
+            "name": "other_thing",
+            "s3_tags": {"tag2": "value2"},
+        },
+        "non_thing": {
+            "name": "non_thing*",
+            "s3_tags": {"tag3": "value3"},
+        },
+    }
+
+    expect = [
+        ("other_thing!", {"name": "other_thing", "s3_tags": {"tag2": "value2"}}),
+        ("outputs", {"name": "output1", "s3_tags": {"tag1": "value1"}}),
+        ("outputs", {"name": "output2", "s3_tags": {"tag1": "value1"}}),
+        ("outputs", {"name": "output3", "s3_tags": {"tag1": "value1"}}),
+    ]
 
     os.chdir(tmp_path)
-    result = sorted(list(repo._outputerator(request)))
-    expect = sorted("output1 output2 output3 other_thing".split())
+    result = sorted(list(repo._outputerator(output_spec)), key=lambda x: x[1]["name"])
     assert result == expect
-
     assert caplog.messages[0] == "no file matching 'non_thing*' found in workspace"
 
 
@@ -333,11 +352,21 @@ def test_outputerator_recursive_glob(monkeypatch, tmp_path):
         target.parent.mkdir(exist_ok=True, parents=True)
         target.write_text("foo")
 
+    out_spec = {
+        "files": {
+            "name": "dir*/**/file*.txt",
+            "s3_tags": {"tag1": "value1"},
+        }
+    }
+
+    expect = [
+        ("files", {"name": "dir1/dir2/dir3/file1.txt", "s3_tags": {"tag1": "value1"}}),
+        ("files", {"name": "dir4/dir5/file2.txt", "s3_tags": {"tag1": "value1"}}),
+    ]
+
     os.chdir(tmp_path)
-    request = ["dir*/**/file*.txt"]
-    result = sorted(list(repo._outputerator(request)))
-    assert result[0] == "dir1/dir2/dir3/file1.txt"
-    assert result[1] == "dir4/dir5/file2.txt"
+    result = sorted(repo._outputerator(out_spec), key=lambda x: x[1]["name"])
+    assert result == expect
 
 
 def test_upload_that(monkeypatch, tmp_path, mock_buckets):
@@ -349,7 +378,13 @@ def test_upload_that(monkeypatch, tmp_path, mock_buckets):
     with target_file.open("w") as fp:
         print("target file", file=fp)
 
-    repo._upload_that(str(target_file.absolute()))
+    global_tags = {"tag1": "valueX", "tag2": "valueY"}
+    file_spec = {
+        "name": str(target_file.absolute()),
+        "s3_tags": {"tag1": "value1", "tag3": "value3"},
+    }
+
+    repo._upload_that("sym_name", file_spec, global_tags)
 
     test_bucket, _ = mock_buckets
     chek = test_bucket.Object("repo/path/output1").get()
@@ -361,15 +396,54 @@ def test_upload_that(monkeypatch, tmp_path, mock_buckets):
         line = next(fp)
         assert line == "target file\n".encode("utf-8")
 
+    expected_tags = [
+        {"Key": "tag1", "Value": "value1"},
+        {"Key": "tag2", "Value": "valueY"},
+        {"Key": "tag3", "Value": "value3"},
+    ]
+    resp = test_bucket.meta.client.get_object_tagging(Bucket=TEST_BUCKET, Key="repo/path/output1")
+    tags = sorted(resp["TagSet"], key=lambda x: x["Key"])
+    assert tags == expected_tags
+
+
+def test_upload_that_with_destination(monkeypatch, tmp_path, mock_buckets):
+    monkeypatch.setenv("BC_EXECUTION_ID", "ELVISLIVES")
+    monkeypatch.setenv("BC_STEP_NAME", "test_step")
+    repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
+
+    target_file = tmp_path / "output1"
+    with target_file.open("w") as fp:
+        print("target file", file=fp)
+
+    file_spec = {
+        "name": str(target_file.absolute()),
+        "dest": f"s3://{DIFFERENT_BUCKET}/alternate/path/",
+        "s3_tags": {}
+    }
+
+    repo._upload_that("sym_name", file_spec, {})
+
+    _, other_bucket = mock_buckets
+    chek = other_bucket.Object("alternate/path/output1").get()
+
+    with closing(chek["Body"]) as fp:
+        line = next(fp)
+        assert line == "target file\n".encode("utf-8")
+
 
 def test_upload_that_missing_file(monkeypatch, tmp_path, caplog, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
 
     target_file = tmp_path / "missing"
+    output_spec = {
+        "name": str(target_file),
+        "s3_tags": {}
+    }
+    global_tags = {}
 
     with pytest.raises(FileNotFoundError):
-        repo._upload_that(str(target_file.absolute()))
+        repo._upload_that("sym_name", output_spec, global_tags)
 
 
 def test_upload_that_fail(monkeypatch, tmp_path, mock_buckets):
@@ -382,8 +456,14 @@ def test_upload_that_fail(monkeypatch, tmp_path, mock_buckets):
     with target_file.open("w") as fp:
         print("target file", file=fp)
 
+    output_spec = {
+        "name": str(target_file),
+        "s3_tags": {}
+    }
+    global_tags = {}
+
     with pytest.raises(boto3.exceptions.S3UploadFailedError):
-        repo._upload_that(str(target_file.absolute()))
+        repo._upload_that("sym_name", output_spec, global_tags)
 
 
 def test_upload_outputs(monkeypatch, tmp_path, mock_buckets):
@@ -395,14 +475,24 @@ def test_upload_outputs(monkeypatch, tmp_path, mock_buckets):
         with file.open("w") as fp:
             print(output_filename, file=fp)
 
-    file_spec = {
-        "outputs": "output*",
-        "other_output": "other_output",
-        "missing_file": "missing_file",
+    global_tags = {}
+    output_spec = {
+        "outputs": {
+            "name": "output*",
+            "s3_tags": {"tag1": "value1"},
+        },
+        "other_thing!": {
+            "name": "other_output",
+            "s3_tags": {"tag2": "value2"},
+        },
+        "non_thing": {
+            "name": "missing_file",
+            "s3_tags": {},
+        },
     }
 
     os.chdir(tmp_path)
-    repo.upload_outputs(file_spec)
+    repo.upload_outputs(output_spec, global_tags)
 
     repo_objects = boto3.client("s3", region_name="us-east-1").list_objects_v2(Bucket=TEST_BUCKET, Prefix="repo_two/path")
     repo_contents = sorted(jmespath.search("Contents[].Key", repo_objects))
@@ -425,22 +515,27 @@ def test_upload_outputs_fail(monkeypatch, tmp_path, mock_buckets):
         with file.open("w") as fp:
             print(output_filename, file=fp)
 
-    file_spec = {
-        "outputs": "output*",
+    global_tags = {}
+    output_spec = {
+        "outputs": {
+            "name": "output*",
+            "s3_tags": {"tag1": "value1"}
+        }
     }
 
     os.chdir(tmp_path)
     with pytest.raises(boto3.exceptions.S3UploadFailedError):
-        repo.upload_outputs(file_spec)
+        repo.upload_outputs(output_spec, global_tags)
 
 
 def test_upload_outputs_empty_outputs(monkeypatch, mock_buckets):
     monkeypatch.setenv("BC_STEP_NAME", "test_step")
     repo = Repository(f"s3://{TEST_BUCKET}/repo/path")
 
-    file_spec = {}
+    output_spec = {}
+    global_tags = {"tag1": "value1"}
 
-    repo.upload_outputs(file_spec)
+    repo.upload_outputs(output_spec, global_tags)
 
 
 @pytest.mark.parametrize("step_name, expect_skip", [

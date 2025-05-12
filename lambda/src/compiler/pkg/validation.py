@@ -58,6 +58,28 @@ def no_substitutions(s):
     return s
 
 
+splitter = re.compile(r"(?<=\s)\+(\w+):\s+")
+src_dest = re.compile(r"^(\S+?(?<![>/])) (?:\s+->\s+ (s3://.+/))?$", flags=re.X)
+
+def output_spec(spec: str) -> dict:
+    ret = {}
+    file, *tags = splitter.split(spec)
+
+    if m := src_dest.fullmatch(file.strip()):
+        src, dest = m.groups()
+        ret["name"] = src.strip()
+        if dest is not None:
+            ret["dest"] = dest.strip()
+    else:
+        raise Invalid(f"invalid filename spec: '{file}'")
+
+    ret["s3_tags"] = {}
+    for k, v in itertools.batched(tags, 2):
+        ret["s3_tags"][k.strip()] = v.strip()
+
+    return ret
+
+
 skip_msg = "only one of 'skip_on_rerun' or 'skip_if_output_exists' is allowed"
 next_or_end_msg = "cannot specify both 'next' and 'end' in a step"
 
@@ -68,7 +90,6 @@ next_or_end = {
 
 qc_check_block = {
     Required("qc_result_file"): str,
-    # Required("stop_early_if"): Any(str, All([str], Length(min=1)))
     Required("stop_early_if"): Listified(str, min=1)
 }
 
@@ -91,10 +112,22 @@ batch_step_schema = Schema(All(
         Optional("inputs", default=None): Any(None, {str: str}),
         Optional("references", default={}): {str: Match(r"^s3://", msg="reference values must be s3 paths")},
         Required("commands", msg="commands list is required"): Listified(str, min=1),
-        Optional("outputs", default={}): {str: str},
+        Optional("s3_tags", default={}): {str: Coerce(str)},
+        Optional("job_tags", default={}): {str: Coerce(str)},
+        Optional("outputs", default={}): {
+            str: Or(
+                And(str, output_spec),
+                {
+                    Required("name"): str,
+                    Optional("dest"): All(str, Match(r"^s3://", msg="output destination must be an s3 path")),
+                    Optional("s3_tags", default={}): {str: Coerce(str)},
+                },
+            ),
+        },
         Exclusive("skip_if_output_exists", "skip_behavior", msg=skip_msg): bool,
         Exclusive("skip_on_rerun", "skip_behavior", msg=skip_msg): bool,
         Optional("compute", default={}): {
+            Optional("consumes", default={}): {str: All(int, Range(min=1))},
             Optional("cpus", default=1): All(int, Range(min=1)),
             Optional("gpu", default=0): Or(
                 All(int, Range(min=0)),
@@ -102,19 +135,19 @@ batch_step_schema = Schema(All(
                 msg="gpu spec must be a nonnegative integer or 'all'"
             ),
             Optional("memory", default="1 Gb"): Any(float, int, str, msg="memory must be a number or string"),
-            Optional("spot", default=True): bool,
             Optional("queue_name", default=None): Maybe(str),
             Optional("shell", default=None): Any(None, "bash", "sh", "sh-pipefail",
                                                  msg="shell option must be bash, sh, or sh-pipefail"),
+            Optional("spot", default=True): bool,
         },
         Optional("filesystems", default=[]): Listified(filesystem_block),
         Optional("qc_check", default=[]): Listified(qc_check_block),
         Optional("retry", default={}): {
             Optional("attempts", default=3): int,
-            Optional("interval", default="3s"): Match(r"^\d+\s?[smhdw]$",
-                                                      msg="incorrect retry interval time string"),
             Optional("backoff_rate", default=1.5): All(Any(float, int),
                                                        Clamp(min=1.0, msg="backoff rate must be at least 1.0")),
+            Optional("interval", default="3s"): Match(r"^\d+\s?[smhdw]$",
+                                                      msg="incorrect retry interval time string"),
         },
         Optional("timeout", default=None): Any(None, Match(r"^\d+\s?[smhdw]$",
                                                            msg="incorrect timeout time string")),
@@ -211,6 +244,9 @@ workflow_schema = Schema(
             Optional("shell", default="sh"): Any ("bash", "sh", "sh-pipefail",
                                                   msg="shell option must be bash, sh, or sh-pipefail"),
             Optional("task_role", default=None): Maybe(str),
+            Optional("s3_tags", default={}): {str: Coerce(str)},
+            Optional("job_tags", default={}): {str: Coerce(str)},
+            # deprecated...
             Optional("versioned", default="false"): All(Lower, Coerce(str), Any("true", "false"))
         },
         Required("Steps", "Steps list not found"): Listified(wf_step, min=1),
