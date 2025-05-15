@@ -27,10 +27,13 @@ class MockImages:
 
     @staticmethod
     def pull(tag: str, auth_config: dict) -> MockImage:
-        if auth_config:
+        if "dkr.ecr" in tag:
             return MockImage(tag, "ecr", auth_config)
         else:
-            return MockImage(tag, "public repo")
+            if auth_config:
+                return MockImage(tag, "private repo", auth_config)
+            else:
+                return MockImage(tag, "public repo")
 
 
 class MockContainer:

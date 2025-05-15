@@ -1,3 +1,10 @@
+"""
+When CloudFormation updates a Batch job definition, it will deactivate the old version automatically. This doesn't
+work well with blue/green deployments, where we want to keep the old version active in case a rollback is required.
+This lambda function will register a new version of the job definition without deactivating the old one. It is meant
+to be used as a custom resource in CloudFormation.
+"""
+
 from contextlib import contextmanager
 from dataclasses import dataclass, asdict, field
 import http.client
@@ -114,6 +121,7 @@ def lambda_handler(event: dict, context: object):
             cfn_response.return_this(Arn=result["jobDefinitionArn"])
 
         else:
+            # handle Delete requests
             try:
                 if (job_def_id := event.get("PhysicalResourceId")) is not None:
                     batch.deregister_job_definition(jobDefinition=job_def_id)

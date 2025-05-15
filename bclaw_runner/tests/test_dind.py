@@ -1,11 +1,27 @@
 import json
 import pytest
 
+import boto3
 import docker
 from docker.types import DeviceRequest, DriverConfig, Mount
 import moto
 
-from ..src.runner.dind import get_gpu_requests, get_container_metadata, get_mounts, get_environment_vars, pull_image, run_child_container
+from ..src.runner.dind import (get_gpu_requests, get_container_metadata, get_mounts, get_environment_vars, get_auth,
+                               pull_image, run_child_container)
+
+
+TEST_SECRET_NAME = "test_secret"
+TEST_SECRET = {
+    "username": "me",
+    "password": "my_password"
+}
+
+@pytest.fixture(scope="module")
+def mock_secrets():
+    with moto.mock_aws():
+        secrets = boto3.client("secretsmanager", region_name="us-east-1")
+        secrets.create_secret(Name=TEST_SECRET_NAME, SecretString=json.dumps(TEST_SECRET))
+        yield TEST_SECRET_NAME
 
 
 @pytest.mark.parametrize("nvidia_visible_devices, expect", [
@@ -88,25 +104,31 @@ def test_get_environment_vars(monkeypatch):
     assert result == expect
 
 
-@pytest.mark.skip(reason="temporary skip")
-@pytest.mark.parametrize("tag, expected_source, expected_auth", [
-    ("public/image", "public repo", None),
-    ("987654321.dkr.ecr.us-east-1.amazonaws.com/ecr-image", "ecr", {"username": "AWS", "password": "987654321-auth-token"}),
+def test_get_auth(mock_secrets):
+    result = get_auth(mock_secrets)
+    assert result == TEST_SECRET
+
+
+@pytest.mark.parametrize("image_spec, expected_source, expected_auth", [
+    ({"tag": "public/image", "auth": ""}, "public repo", None),
+    ({"tag": "private/image", "auth": TEST_SECRET_NAME}, "private repo", TEST_SECRET),
+    ({"tag": "987654321.dkr.ecr.us-east-1.amazonaws.com/ecr-image", "auth": ""}, "ecr", {"username": "AWS", "password": "987654321-auth-token"}),
 ])
-def test_pull_images(tag, expected_source, expected_auth, monkeypatch, mock_docker_client_factory):
+def test_pull_image(image_spec, expected_source, expected_auth, monkeypatch, mock_docker_client_factory, mock_secrets):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+
     with moto.mock_aws():
         client = mock_docker_client_factory()
-        result = pull_image(client, tag)
-        assert result.tags == [tag]
+        result = pull_image(client, image_spec)
+        assert image_spec["tag"] in result.tags
         assert result.source == expected_source
         assert result.auth == expected_auth
 
 
-@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.parametrize("exit_code", [0, 88])
 @pytest.mark.parametrize("logging_crash", [False, True])
-def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logging_crash, mock_container_factory, mock_docker_client_factory):
+def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logging_crash,
+                             mock_container_factory, mock_docker_client_factory, mock_secrets):
     bc_scratch_path = "/_bclaw_scratch"
     monkeypatch.setenv("BC_SCRATCH_PATH", bc_scratch_path)
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
@@ -143,7 +165,11 @@ def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logg
 
     job_data_file = f"{bc_scratch_path}/parent/workspace/job_data_12345.json"
 
-    result = run_child_container("local/image", "ls -l", f"{bc_scratch_path}/parent/workspace", job_data_file)
+    image_spec = {
+        "tag": "local/image",
+        "auth": "",
+    }
+    result = run_child_container(image_spec, "ls -l", f"{bc_scratch_path}/parent/workspace", job_data_file)
 
     assert test_container.args[0].tags == ["local/image"]
     assert test_container.args[1] == "ls -l"

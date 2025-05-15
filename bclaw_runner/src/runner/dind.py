@@ -95,7 +95,6 @@ def get_environment_vars() -> dict:
     return ret
 
 
-# todo: test
 def get_auth(secret_id: str) -> dict:
     logger.info("getting docker credentials from secrets manager")
     client = boto3.client("secretsmanager")
@@ -106,7 +105,6 @@ def get_auth(secret_id: str) -> dict:
     return ret
 
 
-# todo: update tests
 def pull_image(docker_client: docker.DockerClient, image_spec: dict) -> Image:
     tag = image_spec["tag"]
     if m := re.match(r"(\d+)\.dkr\.ecr", tag):
