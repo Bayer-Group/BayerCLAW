@@ -58,6 +58,17 @@ def no_substitutions(s):
     return s
 
 
+img_creds = re.compile(r"^(?!\+)(?P<tag>.+?)(?:\s+\+auth:\s+(?P<auth>.+))?$")
+
+def image_spec(spec: str) -> dict:
+    spec = spec.strip()
+    if m := img_creds.fullmatch(spec):
+        tag = m.group("tag") or DEFAULT_IMAGE
+        auth = m.group("auth") or ""
+        return {"tag": tag, "auth": auth}
+    raise Invalid(f"invalid image spec: '{spec}'")
+
+
 splitter = re.compile(r"(?<=\s)\+(\w+):\s+")
 src_dest = re.compile(r"^(\S+?(?<![>/])) (?:\s+->\s+ (s3://.+/))?$", flags=re.X)
 
@@ -105,7 +116,13 @@ filesystem_block = {
 
 batch_step_schema = Schema(All(
     {
-        Optional("image", default=DEFAULT_IMAGE): str,
+        Optional("image", default={"tag": DEFAULT_IMAGE}): Or(
+            And(str, image_spec),
+            {
+                Required("tag", msg="image tag not found"): str,
+                Optional("auth", default=""): str,
+            }
+        ),
         Optional("task_role", default=None): Maybe(str),
         # None is used as a signal that inputs was not specified at all, and should be copied from previous outputs.
         # inputs = {} can be used to explicitly specify a step has no inputs at all, with no copy from previous output.

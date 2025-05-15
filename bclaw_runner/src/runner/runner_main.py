@@ -40,8 +40,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# todo: update tests
 def main(commands: List[str],
-         image: str,
+         image_spec: dict,
          inputs: Dict[str, str],
          outputs: Dict[str, str | Dict],
          qc: List[dict],
@@ -69,7 +70,7 @@ def main(commands: List[str],
         jobby_references = substitute(references, job_data_obj)
         jobby_tags       = substitute(tags,       job_data_obj)
 
-        jobby_image = substitute_image_tag(image, job_data_obj)
+        jobby_image_spec = substitute_image_tag(image_spec, job_data_obj)
 
         with workspace() as wrk:
             # download references, link to workspace
@@ -87,7 +88,7 @@ def main(commands: List[str],
             local_job_data = write_job_data_file(job_data_obj, wrk)
 
             try:
-                run_commands(jobby_image, subbed_commands, wrk, local_job_data, shell)
+                run_commands(jobby_image_spec, subbed_commands, wrk, local_job_data, shell)
                 do_checks(qc)
 
             finally:
@@ -116,6 +117,7 @@ def main(commands: List[str],
     return exit_code
 
 
+# todo: update tests
 def cli() -> int:
     log_preamble()
     logger.info("---------- bclaw_runner starting ----------")
@@ -131,10 +133,8 @@ def cli() -> int:
     with spot_termination_checker():
         args = docopt(__doc__, version=os.environ["BC_VERSION"])
 
-        # logger.info(f"{args=}")
-
         commands = json.loads(args["-c"])
-        image    = args["-m"]
+        image    = json.loads(args["-m"])
         inputs   = json.loads(args["-i"])
         outputs  = json.loads(args["-o"])
         qc       = json.loads(args["-q"])

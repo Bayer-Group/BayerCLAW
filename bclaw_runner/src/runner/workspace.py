@@ -41,7 +41,8 @@ def write_job_data_file(job_data: dict, dest_dir: str) -> str:
     return fp.name
 
 
-def run_commands(image_tag: str, commands: list, work_dir: str, job_data_file: str, shell_opt: str) -> None:
+# todo: update tests
+def run_commands(image_spec: dict, commands: list, work_dir: str, job_data_file: str, shell_opt: str) -> None:
     script_file = "_commands.sh"
 
     with open(script_file, "w") as fp:
@@ -62,7 +63,7 @@ def run_commands(image_tag: str, commands: list, work_dir: str, job_data_file: s
     os.chmod(script_file, 0o700)
     command = f"{shell_cmd} {script_file}"
 
-    if (exit_code := run_child_container(image_tag, command, work_dir, job_data_file)) == 0:
+    if (exit_code := run_child_container(image_spec, command, work_dir, job_data_file)) == 0:
         logger.info("command block succeeded")
     else:
         logger.error("command block failed")

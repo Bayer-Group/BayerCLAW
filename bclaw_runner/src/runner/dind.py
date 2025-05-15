@@ -1,5 +1,6 @@
 from base64 import b64decode
 from contextlib import closing
+import json
 import logging
 import os
 import re
@@ -94,7 +95,20 @@ def get_environment_vars() -> dict:
     return ret
 
 
-def pull_image(docker_client: docker.DockerClient, tag: str) -> Image:
+# todo: test
+def get_auth(secret_id: str) -> dict:
+    logger.info("getting docker credentials from secrets manager")
+    client = boto3.client("secretsmanager")
+    secret = client.get_secret_value(SecretId=secret_id)
+
+    # secret should be a json string containing "username" and "password" keys
+    ret = json.loads(secret["SecretString"])
+    return ret
+
+
+# todo: update tests
+def pull_image(docker_client: docker.DockerClient, image_spec: dict) -> Image:
+    tag = image_spec["tag"]
     if m := re.match(r"(\d+)\.dkr\.ecr", tag):
         # pull from ECR
         logger.info(f"pulling image {tag} from ECR")
@@ -103,9 +117,12 @@ def pull_image(docker_client: docker.DockerClient, tag: str) -> Image:
         u, p = b64decode(token["authorizationData"][0]["authorizationToken"]).decode("utf-8").split(":")
         auth_config = {"username": u, "password": p}
     else:
-        # pull from public repository
-        logger.info(f"pulling image {tag} from public repo")
-        auth_config = None
+        if image_spec["auth"]:
+            logger.info(f"pulling image {tag} from private repo")
+            auth_config = get_auth(image_spec["auth"])
+        else:
+            logger.info(f"pulling image {tag} from public repo")
+            auth_config = None
 
     ret = docker_client.images.pull(tag, auth_config=auth_config)
 
@@ -115,7 +132,8 @@ def pull_image(docker_client: docker.DockerClient, tag: str) -> Image:
     return ret
 
 
-def run_child_container(image_tag: str, command: str, parent_workspace: str, parent_job_data_file: str) -> int:
+# todo: update tests
+def run_child_container(image_spec: dict, command: str, parent_workspace: str, parent_job_data_file: str) -> int:
     child_workspace = os.environ["BC_SCRATCH_PATH"]
 
     parent_metadata = get_container_metadata()
@@ -131,7 +149,7 @@ def run_child_container(image_tag: str, command: str, parent_workspace: str, par
 
     exit_code = 255
     with closing(docker.client.from_env()) as docker_client:
-        child_image = pull_image(docker_client, image_tag)
+        child_image = pull_image(docker_client, image_spec)
 
         logger.info("---------- starting user command block ----------")
         container = docker_client.containers.run(child_image, command,

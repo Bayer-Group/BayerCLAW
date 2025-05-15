@@ -33,6 +33,8 @@ def test_no_shared_keys_fail(no_shared_keys_func):
         no_shared_keys_func(record)
 
 
+# todo: test image_spec
+
 # note: value2 below has trailing spaces
 ospec1 = dedent("""\
     file1 -> s3://bucket/yada/yada/

@@ -12,7 +12,7 @@ from .util import Step, Resource, State, make_logical_name, time_string_to_secon
 SCRATCH_PATH = "/_bclaw_scratch"
 
 
-def expand_image_uri(uri: str) -> Union[str, dict]:
+def expand_image_uri0(uri: str) -> Union[str, dict]:
     subbed = re.sub(r"\${", "${!", uri)
     # https://stackoverflow.com/questions/37861791/how-are-docker-image-names-parsed
     #   The hostname [of a docker image uri] must contain a . dns separator,
@@ -22,6 +22,24 @@ def expand_image_uri(uri: str) -> Union[str, dict]:
         return subbed
     else:
         return {"Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed}"}
+
+
+# todo: update tests
+def expand_image_uri(image_spec: dict) -> Union[str, dict]:
+    uri = image_spec["tag"]
+    subbed = re.sub(r"\${", "${!", uri)
+    # https://stackoverflow.com/questions/37861791/how-are-docker-image-names-parsed
+    #   The hostname [of a docker image uri] must contain a . dns separator,
+    #   a : port separator, or the value "localhost" before the first /.
+    # ...but it's unlikely that localhost will be used in a batch job
+    if re.match(r"^.*[.:].*/", subbed):
+        ret0 = subbed
+    else:
+        ret0 = {"Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed}"}
+
+    ret = image_spec.copy()
+    ret["tag"] = ret0
+    return ret
 
 
 def get_job_queue(compute_spec: dict) -> str:
@@ -176,6 +194,21 @@ def get_consumable_resource_properties(spec: dict) -> dict:
         return {}
 
 
+# don't need this here
+# def get_repository_credentials(spec: dict) -> dict:
+#     if spec["credentials"]:
+#         ret = {
+#             "repositoryCredentials": {
+#                 "credentialsParameter": spec["credentials"]
+#             }
+#         }
+#     else:
+#         ret = {}
+#
+#     return ret
+
+
+# todo: update tests
 def job_definition_rc(step: Step,
                       task_role: str,
                       shell_opt: str,
@@ -184,7 +217,9 @@ def job_definition_rc(step: Step,
     logical_name = make_logical_name(f"{step.name}.job.defx")
 
     # note: this is not a CloudFormation spec, it is meant to be submitted to
-    # the Batch API by register.py
+    # the Batch API by register.py. It gets serialized and passed to the
+    # registration lambda as a string. CloudFormation pseudoparameter values
+    # (notably AWS::StackName, AWS::AccountId and AWS::Region) do not get subbed in.
     job_def_spec = {
         "type": "container",
         "parameters": {
@@ -219,6 +254,8 @@ def job_definition_rc(step: Step,
             **get_resource_requirements(step),
             **get_volume_info(step),
         },
+        # oops...wrong place for this
+        # **get_repository_credentials(step.spec["image"]),
         **get_consumable_resource_properties(step.spec["compute"]["consumes"]),
         "schedulingPriority": 1,
         **get_timeout(step),
@@ -230,14 +267,25 @@ def job_definition_rc(step: Step,
         },
     }
 
+    # this is a CloudFormation spec. CloudFormation will supply the pseudoparameter
+    # values (AWS::StackName, AWS::AccountId, AWS::Region) to the lambda function, which will
+    # substitute them into the job definition spec before passing it to the Batch API
     resource_spec = {
         "Type": "Custom::BatchJobDefinition",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
             "ServiceToken": os.environ["JOB_DEF_LAMBDA_ARN"],
+
+            # needed to complete the job definition spec and register it
             "workflowName": {"Ref": "AWS::StackName"},
+
+            # the value returned from expand_image_uri may contain AWS::AccountId and AWS::Region,
+            # so this needs to be passed to register.py
+            "image": expand_image_uri(step.spec["image"]["name"]),
+
+            # register.py needs the step name to create the job definition name ( <wf_name>_<step_name> ). The
+            # alternative is to dig it out of job_def_spec
             "stepName": step.name,
-            "image": expand_image_uri(step.spec["image"]),
             "spec": json.dumps(job_def_spec, sort_keys=True),
         },
     }
@@ -344,7 +392,6 @@ def batch_step(step: Step,
         },
         "ResultSelector": {
             **get_output_uris(step.spec["outputs"])
-            # **{k.rstrip("!"): v["name"] for k, v in step.spec["outputs"].items()}
         },
         "ResultPath": "$.prev_outputs",
         "OutputPath": "$",

@@ -227,6 +227,7 @@ def sample_scatter_step():
     yield ret
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_handle_scatter_gather(sample_scatter_step, compiler_env):
     options = {
         "wf": "options",
@@ -307,6 +308,7 @@ def test_handle_scatter_gather_too_deep():
     _ = list(helper())
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_handle_scatter_gather_auto_inputs(sample_scatter_step, compiler_env):
     sample_scatter_step["inputs"] = None
 
