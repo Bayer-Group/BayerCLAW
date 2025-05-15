@@ -281,7 +281,7 @@ def job_definition_rc(step: Step,
 
             # the value returned from expand_image_uri may contain AWS::AccountId and AWS::Region,
             # so this needs to be passed to register.py
-            "image": expand_image_uri(step.spec["image"]["name"]),
+            "image": expand_image_uri(step.spec["image"]),
 
             # register.py needs the step name to create the job definition name ( <wf_name>_<step_name> ). The
             # alternative is to dig it out of job_def_spec
