@@ -71,7 +71,7 @@ def get_environment(step: Step) -> dict:
         "environment": [
             {
                 "name": "BC_WORKFLOW_NAME",
-                "value": {"Ref": "AWs::StackName"},
+                "value": {"Ref": "AWS::StackName"},
             },
             {
                 "name": "BC_STEP_NAME",
