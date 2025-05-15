@@ -66,12 +66,28 @@ def get_memory_in_mibs(request: Union[str, float, int]) -> int:
     return ret
 
 
-def get_environment() -> dict:
+def get_environment(step: Step) -> dict:
     ret = {
         "environment": [
             {
+                "name": "BC_WORKFLOW_NAME",
+                "value": {"Ref": "AWs::StackName"},
+            },
+            {
+                "name": "BC_STEP_NAME",
+                "value": step.name,
+            },
+            {
                 "name": "BC_SCRATCH_PATH",
                 "value": SCRATCH_PATH,
+            },
+            {
+                "name": "AWS_DEFAULT_REGION",
+                "value": {"Ref": "AWS::Region"},
+            },
+            {
+                "name": "AWS_ACCOUNT_ID",
+                "value": {"Ref": "AWS::AccountId"},
             },
         ]
     }
@@ -221,6 +237,7 @@ def job_definition_rc(step: Step,
     # registration lambda as a string. CloudFormation pseudoparameter values
     # (notably AWS::StackName, AWS::AccountId and AWS::Region) do not get subbed in.
     job_def_spec = {
+        "jobDefinitionName": {"Fn::Sub": f"${{AWS::StackName}}_{step.name}"},
         "type": "container",
         "parameters": {
             "repo": "rrr",
@@ -250,7 +267,7 @@ def job_definition_rc(step: Step,
                 "-t", "Ref::s3tags",
             ],
             "jobRoleArn": task_role,
-            **get_environment(),
+            **get_environment(step),
             **get_resource_requirements(step),
             **get_volume_info(step),
         },
@@ -261,7 +278,7 @@ def job_definition_rc(step: Step,
         **get_timeout(step),
         "propagateTags": True,
         "tags": job_tags | {
-            "bclaw:workflow": "",  # placeholder; will be filled in by register.py
+            "bclaw:workflow": {"Ref": "AWS::StackName"},
             "bclaw:step": step.name,
             "bclaw:version": os.environ["SOURCE_VERSION"],
         },
@@ -270,23 +287,32 @@ def job_definition_rc(step: Step,
     # this is a CloudFormation spec. CloudFormation will supply the pseudoparameter
     # values (AWS::StackName, AWS::AccountId, AWS::Region) to the lambda function, which will
     # substitute them into the job definition spec before passing it to the Batch API
+    # resource_spec = {
+    #     "Type": "Custom::BatchJobDefinition",
+    #     "UpdateReplacePolicy": "Retain",
+    #     "Properties": {
+    #         "ServiceToken": os.environ["JOB_DEF_LAMBDA_ARN"],
+    #
+    #         # needed to complete the job definition spec and register it
+    #         "workflowName": {"Ref": "AWS::StackName"},
+    #
+    #         # the value returned from expand_image_uri may contain AWS::AccountId and AWS::Region,
+    #         # so this needs to be passed to register.py
+    #         "image": expand_image_uri(step.spec["image"]),
+    #
+    #         # register.py needs the step name to create the job definition name ( <wf_name>_<step_name> ). The
+    #         # alternative is to dig it out of job_def_spec
+    #         "stepName": step.name,
+    #         "spec": json.dumps(job_def_spec, sort_keys=True),
+    #     },
+    # }
     resource_spec = {
         "Type": "Custom::BatchJobDefinition",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
             "ServiceToken": os.environ["JOB_DEF_LAMBDA_ARN"],
-
-            # needed to complete the job definition spec and register it
-            "workflowName": {"Ref": "AWS::StackName"},
-
-            # the value returned from expand_image_uri may contain AWS::AccountId and AWS::Region,
-            # so this needs to be passed to register.py
+            "spec": job_def_spec,
             "image": expand_image_uri(step.spec["image"]),
-
-            # register.py needs the step name to create the job definition name ( <wf_name>_<step_name> ). The
-            # alternative is to dig it out of job_def_spec
-            "stepName": step.name,
-            "spec": json.dumps(job_def_spec, sort_keys=True),
         },
     }
 

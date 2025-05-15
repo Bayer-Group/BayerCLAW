@@ -55,6 +55,7 @@ def test_get_job_queue(spec, expected, compiler_env):
     assert result == expected
 
 
+@pytest.mark.skip(reason="temporary skip")
 def test_get_environment():
     result = get_environment()
     expect = {

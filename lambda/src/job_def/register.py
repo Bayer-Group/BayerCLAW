@@ -60,23 +60,24 @@ def responder(event, context, no_echo=False) -> Generator[Response, None, None]:
 # todo: update tests
 def edit_spec(spec: dict, wf_name: str, step_name: str, image: dict) -> dict:
     ret = spec.copy()
-    ret["jobDefinitionName"] = f"{wf_name}_{step_name}"
-    ret["containerProperties"]["environment"] += [{"name": "BC_WORKFLOW_NAME", "value": wf_name},
-                                                  {"name": "BC_STEP_NAME", "value": step_name},
-                                                  {"name": "AWS_DEFAULT_REGION", "value": os.environ["REGION"]},
-                                                  {"name": "AWS_ACCOUNT_ID", "value": os.environ["ACCT_NUM"]}]
+    # ret["jobDefinitionName"] = f"{wf_name}_{step_name}"
+    # ret["containerProperties"]["environment"] += [{"name": "BC_WORKFLOW_NAME", "value": wf_name},
+    #                                               {"name": "BC_STEP_NAME", "value": step_name},
+    #                                               {"name": "AWS_DEFAULT_REGION", "value": os.environ["REGION"]},
+    #                                               {"name": "AWS_ACCOUNT_ID", "value": os.environ["ACCT_NUM"]}]
     ret["parameters"]["image"] = json.dumps(image, separators=(",", ":"))
-    ret["tags"]["bclaw:workflow"] = wf_name
+    # ret["tags"]["bclaw:workflow"] = wf_name
     return ret
 
 
 # todo: update tests
 def lambda_handler(event: dict, context: object):
     # event[ResourceProperties] = {
-    #   workflowName: str
-    #   stepName: str
+    ##   workflowName: str
+    ##   stepName: str
     #   image: dict  # str
     #   spec: "{
+    #     jobDefinitionName: str
     #     type: str
     #     parameters: {str: str}
     #     containerProperties: {
@@ -88,7 +89,10 @@ def lambda_handler(event: dict, context: object):
     #       mountPoints: [dict]
     #       resourceRequirements: [{value: str, type: str}]
     #     }
+    #     consumableResourceProperties: dict
     #     schedulingPriority: int
+    #     timeout: dict
+    #     propagateTags: bool
     #     tags: dict
     #   }"
     # }
@@ -99,11 +103,15 @@ def lambda_handler(event: dict, context: object):
 
     with responder(event, context) as cfn_response:
         if event["RequestType"] in ["Create", "Update"]:
-            spec0 = json.loads(event["ResourceProperties"]["spec"])
-            spec = edit_spec(spec0,
-                             event["ResourceProperties"]["workflowName"],
-                             event["ResourceProperties"]["stepName"],
-                             event["ResourceProperties"]["image"])
+            spec = event["ResourceProperties"]["spec"]
+            spec["parameters"]["image"] = json.dumps(event["ResourceProperties"]["image"], separators=(",", ":"))
+
+            # spec0 = json.loads(event["ResourceProperties"]["spec"])
+            # spec = edit_spec(spec0,
+            #                  event["ResourceProperties"]["workflowName"],
+            #                  event["ResourceProperties"]["stepName"],
+            #                  event["ResourceProperties"]["image"])
+
             logger.info(f"{spec=}")
 
             result = batch.register_job_definition(**spec)
