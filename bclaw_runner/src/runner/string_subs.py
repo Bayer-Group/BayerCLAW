@@ -27,7 +27,6 @@ def substitute(target: Any, spec: dict) -> Any:
     return ret
 
 
-# todo: update tests
 def substitute_image_tag(image_spec: dict, sub_spec: dict) -> dict:
     image_tag = image_spec["tag"]
     parts = image_tag.split("/")

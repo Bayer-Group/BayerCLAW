@@ -127,7 +127,6 @@ def test_substitute_recursion():
     assert result == expect
 
 
-@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.parametrize("original, expect", [
     ("docker.io/library/single:${sub}", "docker.io/library/single:tag"),
     ("no_${a}_registry:${sub}", "no_eh_registry:tag"),
@@ -145,8 +144,10 @@ def test_substitute_image_tag(original, expect):
         "b": "bee",
         "c": "sea",
     }
-    result = substitute_image_tag(original, spec)
-    assert result == expect
+    image_spec = {"tag": original, "auth": "doesnt_change"}
+    result = substitute_image_tag(image_spec, spec)
+    assert result["tag"] == expect
+    assert result["auth"] == "doesnt_change"
 
 
 def test_substitute_tagged_output():

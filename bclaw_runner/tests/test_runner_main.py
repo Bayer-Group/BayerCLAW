@@ -46,8 +46,8 @@ def mock_bucket():
         yield yld
 
 
-def fake_container(image_tag: str, command: str, work_dir: str, job_data_file: str):
-    assert image_tag == "fake_image:test"
+def fake_container(image_spec: dict, command: str, work_dir: str, job_data_file: str):
+    assert image_spec["tag"] == "fake_image:test"
     response = subprocess.run(command, shell=True)
     return response.returncode
 
@@ -63,7 +63,6 @@ opt_inputs = {
 }
 
 
-@pytest.mark.skip(reason="temp")
 def test_main(monkeypatch, tmp_path, mock_bucket, mocker):
     monkeypatch.setenv("BC_STEP_NAME", "step1")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
@@ -125,7 +124,12 @@ def test_main(monkeypatch, tmp_path, mock_bucket, mocker):
 
     mock_do_checks = mocker.patch("bclaw_runner.src.runner.runner_main.do_checks")
 
-    response = main(image="fake_image:${job.img_tag}",
+    image_spec = {
+        "tag": "fake_image:${job.img_tag}",
+        "auth": "",
+    }
+
+    response = main(image_spec=image_spec,
                     commands=commands,
                     references=references,
                     inputs=inputs,
@@ -220,7 +224,6 @@ def test_main(monkeypatch, tmp_path, mock_bucket, mocker):
     mock_do_checks.assert_called_once_with(qc)
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "step2")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
@@ -246,7 +249,12 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
 
     tags = {}
 
-    response = main(image="fake_image:test",
+    image_spec = {
+        "tag": "fake_image:${job.img_tag}",
+        "auth": "",
+    }
+
+    response = main(image_spec=image_spec,
                     commands=commands,
                     references=references,
                     inputs=inputs,
@@ -262,7 +270,6 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
     assert curr_bucket_contents == orig_bucket_contents
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "step3")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
@@ -283,7 +290,13 @@ def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket):
 
     tags = {}
 
-    response = main(image="fake_image:test",
+    image_spec = {
+        "tag": "fake_image:${job.img_tag}",
+        "auth": "",
+    }
+
+
+    response = main(image_spec=image_spec,
                     commands=commands,
                     references=references,
                     inputs=inputs,
@@ -304,7 +317,6 @@ def failing_uploader(*args, **kwargs):
     raise RuntimeError("miscellaneous error")
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
     monkeypatch.setenv("BC_STEP_NAME", "step4")
     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
@@ -319,7 +331,13 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
     commands = ["echo wut > ${output6}"]
     tags = {}
 
-    response = main(image="fake_image:test",
+    image_spec = {
+        "tag": "fake_image:${job.img_tag}",
+        "auth": "",
+    }
+
+
+    response = main(image_spec=image_spec,
                     commands=commands,
                     references=references,
                     inputs=inputs,
@@ -334,7 +352,6 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
     assert "repo/path/_control_/step4.complete" not in curr_bucket_contents
 
 
-@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.parametrize("skip, expect", [
     ("rerun", 0),
     ("output", 0),
@@ -352,7 +369,13 @@ def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect):
     commands = ["false"]
     tags = {}
 
-    response = main(image="fake_image:test",
+    image_spec = {
+        "tag": "fake_image:${job.img_tag}",
+        "auth": "",
+    }
+
+
+    response = main(image_spec=image_spec,
                     commands=commands,
                     references=references,
                     inputs=inputs,
@@ -376,10 +399,9 @@ def fake_termination_checker_impl(*_):
 
 
 @moto.mock_aws
-@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.parametrize("argv, expect", [
     ("prog -c 2 -i 3 -o 4 -s 5 -f 6 -r 7 -k 8 -m 9 -q 10 -t 11",
-    [2, "9", 3, 4, 10, 6, "7", "5", "8", 11])
+    [2, 9, 3, 4, 10, 6, "7", "5", "8", 11])
 ])
 def test_cli(capsys, requests_mock, mock_ec2_instance, monkeypatch, argv, expect):
     requests_mock.get("http://169.254.169.254/latest/meta-data/instance-life-cycle", text="spot")

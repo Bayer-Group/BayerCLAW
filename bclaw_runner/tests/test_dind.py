@@ -16,7 +16,7 @@ TEST_SECRET = {
     "password": "my_password"
 }
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def mock_secrets():
     with moto.mock_aws():
         secrets = boto3.client("secretsmanager", region_name="us-east-1")
@@ -128,7 +128,7 @@ def test_pull_image(image_spec, expected_source, expected_auth, monkeypatch, moc
 @pytest.mark.parametrize("exit_code", [0, 88])
 @pytest.mark.parametrize("logging_crash", [False, True])
 def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logging_crash,
-                             mock_container_factory, mock_docker_client_factory, mock_secrets):
+                             mock_container_factory, mock_docker_client_factory):
     bc_scratch_path = "/_bclaw_scratch"
     monkeypatch.setenv("BC_SCRATCH_PATH", bc_scratch_path)
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")

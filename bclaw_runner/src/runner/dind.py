@@ -130,7 +130,6 @@ def pull_image(docker_client: docker.DockerClient, image_spec: dict) -> Image:
     return ret
 
 
-# todo: update tests
 def run_child_container(image_spec: dict, command: str, parent_workspace: str, parent_job_data_file: str) -> int:
     child_workspace = os.environ["BC_SCRATCH_PATH"]
 
