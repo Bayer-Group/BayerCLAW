@@ -104,7 +104,8 @@ def test_get_environment_vars(monkeypatch):
     assert result == expect
 
 
-def test_get_auth(mock_secrets):
+def test_get_auth(mock_secrets, monkeypatch):
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     result = get_auth(mock_secrets)
     assert result == TEST_SECRET
 
