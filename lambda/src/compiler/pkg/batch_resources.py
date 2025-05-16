@@ -12,21 +12,8 @@ from .util import Step, Resource, State, make_logical_name, time_string_to_secon
 SCRATCH_PATH = "/_bclaw_scratch"
 
 
-def expand_image_uri0(uri: str) -> Union[str, dict]:
-    subbed = re.sub(r"\${", "${!", uri)
-    # https://stackoverflow.com/questions/37861791/how-are-docker-image-names-parsed
-    #   The hostname [of a docker image uri] must contain a . dns separator,
-    #   a : port separator, or the value "localhost" before the first /.
-    # ...but it's unlikely that localhost will be used in a batch job
-    if re.match(r"^.*[.:].*/", subbed):
-        return subbed
-    else:
-        return {"Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed}"}
-
-
-# todo: update tests
 def expand_image_uri(image_spec: dict) -> Union[str, dict]:
-    uri = image_spec["tag"]
+    uri = image_spec["name"]
     subbed = re.sub(r"\${", "${!", uri)
     # https://stackoverflow.com/questions/37861791/how-are-docker-image-names-parsed
     #   The hostname [of a docker image uri] must contain a . dns separator,
@@ -38,7 +25,7 @@ def expand_image_uri(image_spec: dict) -> Union[str, dict]:
         ret0 = {"Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed}"}
 
     ret = image_spec.copy()
-    ret["tag"] = ret0
+    ret["name"] = ret0
     return ret
 
 
@@ -208,7 +195,6 @@ def get_consumable_resource_properties(spec: dict) -> dict:
 #     return ret
 
 
-# todo: update tests
 def job_definition_rc(step: Step,
                       task_role: str,
                       shell_opt: str,

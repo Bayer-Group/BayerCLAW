@@ -78,23 +78,26 @@ def batch_job_def_arn(job_def_spec, monkeypatch):
         yield yld["jobDefinitionArn"]
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_edit_spec(job_def_spec, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
+
+    test_image_spec = {
+        "name": "test_image",
+        "auth": "test_auth",
+    }
 
     expect = deepcopy(job_def_spec) | {"jobDefinitionName": "test-wf_test-step"}
     expect["containerProperties"]["environment"] += [{"name": "BC_WORKFLOW_NAME", "value": "test-wf"},
                                                      {"name": "BC_STEP_NAME", "value": "test-step"},
                                                      {"name": "AWS_DEFAULT_REGION", "value": "us-west-1"},
                                                      {"name": "AWS_ACCOUNT_ID", "value": "123456789012"},]
-    expect["parameters"]["image"] = "test-image"
+    expect["parameters"]["image"] = json.dumps(test_image_spec,sort_keys=True, separators=(",", ":"))
     expect["tags"]["bclaw:workflow"] = "test-wf"
-    result = edit_spec(job_def_spec, "test-wf", "test-step", "test-image")
+    result = edit_spec(job_def_spec, "test-wf", "test-step", test_image_spec)
     assert result == expect
 
 
-@pytest.mark.skip(reason="temporary skip")
 @moto.mock_aws()
 def test_lambda_handler_create(event_factory, mocker, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
@@ -136,7 +139,6 @@ def test_lambda_handler_create(event_factory, mocker, monkeypatch):
     assert job_defs[0]["tags"]["bclaw:workflow"] == "test-wf"
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_lambda_handler_update(event_factory, batch_job_def_arn, mocker, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")

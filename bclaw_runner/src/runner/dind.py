@@ -106,23 +106,23 @@ def get_auth(secret_id: str) -> dict:
 
 
 def pull_image(docker_client: docker.DockerClient, image_spec: dict) -> Image:
-    tag = image_spec["tag"]
-    if m := re.match(r"(\d+)\.dkr\.ecr", tag):
+    img_repo = image_spec["name"]
+    if m := re.match(r"(\d+)\.dkr\.ecr", img_repo):
         # pull from ECR
-        logger.info(f"pulling image {tag} from ECR")
+        logger.info(f"pulling image {img_repo} from ECR")
         ecr_client = boto3.client("ecr")
         token = ecr_client.get_authorization_token(registryIds=m.groups())
         u, p = b64decode(token["authorizationData"][0]["authorizationToken"]).decode("utf-8").split(":")
         auth_config = {"username": u, "password": p}
     else:
         if image_spec["auth"]:
-            logger.info(f"pulling image {tag} from private repo")
+            logger.info(f"pulling image {img_repo} from private repo")
             auth_config = get_auth(image_spec["auth"])
         else:
-            logger.info(f"pulling image {tag} from public repo")
+            logger.info(f"pulling image {img_repo} from public repo")
             auth_config = None
 
-    ret = docker_client.images.pull(tag, auth_config=auth_config)
+    ret = docker_client.images.pull(img_repo, auth_config=auth_config)
 
     repo_id = ret.attrs["RepoDigests"][0].split("@")[-1][:19]
     logger.info(f"got image {ret.tags[0]} ({repo_id})")

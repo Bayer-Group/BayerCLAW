@@ -47,7 +47,7 @@ def mock_bucket():
 
 
 def fake_container(image_spec: dict, command: str, work_dir: str, job_data_file: str):
-    assert image_spec["tag"] == "fake_image:test"
+    assert image_spec["name"] == "fake_image:test"
     response = subprocess.run(command, shell=True)
     return response.returncode
 
@@ -125,7 +125,7 @@ def test_main(monkeypatch, tmp_path, mock_bucket, mocker):
     mock_do_checks = mocker.patch("bclaw_runner.src.runner.runner_main.do_checks")
 
     image_spec = {
-        "tag": "fake_image:${job.img_tag}",
+        "name": "fake_image:${job.img_tag}",
         "auth": "",
     }
 
@@ -250,7 +250,7 @@ def test_main_fail_before_commands(monkeypatch, tmp_path, mock_bucket):
     tags = {}
 
     image_spec = {
-        "tag": "fake_image:${job.img_tag}",
+        "name": "fake_image:${job.img_tag}",
         "auth": "",
     }
 
@@ -291,7 +291,7 @@ def test_main_fail_in_commands(monkeypatch, tmp_path, mock_bucket):
     tags = {}
 
     image_spec = {
-        "tag": "fake_image:${job.img_tag}",
+        "name": "fake_image:${job.img_tag}",
         "auth": "",
     }
 
@@ -332,7 +332,7 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
     tags = {}
 
     image_spec = {
-        "tag": "fake_image:${job.img_tag}",
+        "name": "fake_image:${job.img_tag}",
         "auth": "",
     }
 
@@ -370,7 +370,7 @@ def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect):
     tags = {}
 
     image_spec = {
-        "tag": "fake_image:${job.img_tag}",
+        "name": "fake_image:${job.img_tag}",
         "auth": "",
     }
 

@@ -58,14 +58,14 @@ def no_substitutions(s):
     return s
 
 
-img_creds = re.compile(r"^(?!\+)(?P<tag>.+?)(?:\s+\+auth:\s+(?P<auth>.+))?$")
+img_creds = re.compile(r"^(?!\+)(?P<name>\S+?)(?:\s+\+auth:\s+(?P<auth>[A-Za-z0-9/_+=.@-]+))?$")
 
 def image_spec(spec: str) -> dict:
     spec = spec.strip()
     if m := img_creds.fullmatch(spec):
-        tag = m.group("tag") or DEFAULT_IMAGE
+        name = m.group("name") or DEFAULT_IMAGE
         auth = m.group("auth") or ""
-        return {"tag": tag, "auth": auth}
+        return {"name": name, "auth": auth}
     raise Invalid(f"invalid image spec: '{spec}'")
 
 
@@ -116,10 +116,10 @@ filesystem_block = {
 
 batch_step_schema = Schema(All(
     {
-        Optional("image", default={"tag": DEFAULT_IMAGE}): Or(
+        Optional("image", default={"name": DEFAULT_IMAGE}): Or(
             And(str, image_spec),
             {
-                Required("tag", msg="image tag not found"): str,
+                Required("name", msg="image name not found"): str,
                 Optional("auth", default=""): str,
             }
         ),

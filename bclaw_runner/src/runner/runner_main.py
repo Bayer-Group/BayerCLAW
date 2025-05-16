@@ -9,7 +9,7 @@ Options:
     -f JSON_STRING  reference files
     -i JSON_STRING  input files
     -k STRING       step skip condition: output, rerun, none [default: none]
-    -m STRING       Docker image tag
+    -m JSON_STRING  Docker image spec
     -o JSON_STRING  output files
     -q JSON_STRING  QC check spec
     -r S3_PATH      repository path

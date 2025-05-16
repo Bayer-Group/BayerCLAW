@@ -14,7 +14,6 @@ from ...src.compiler.pkg.util import Step, Resource, State
 
 # Docker image tag format:
 #   https://docs.docker.com/engine/reference/commandline/tag/#description
-@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.parametrize("uri, expected", [
     ("image", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image"}),
     ("image:ver", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:ver"}),
@@ -29,9 +28,10 @@ from ...src.compiler.pkg.util import Step, Resource, State
     ("host-with-port:1234/image", "host-with-port:1234/image"),
 ])
 def test_expand_image_uri(uri, expected):
-    result = expand_image_uri(uri)
-    assert result == expected
-
+    image_spec = {"name": uri, "auth": "doesnt_change"}
+    result = expand_image_uri(image_spec)
+    assert result["name"] == expected
+    assert result["auth"] == "doesnt_change"
 
 @pytest.mark.parametrize("req, mibs", [(10, 10), (1, 4), (9.1, 10), ("1G", 1024), ("9.1M", 10), ("1M", 4)])
 def test_get_memory_in_mibs(req, mibs):
@@ -55,7 +55,6 @@ def test_get_job_queue(spec, expected, compiler_env):
     assert result == expected
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_get_environment():
     result = get_environment()
     expect = {
@@ -226,8 +225,10 @@ def sample_batch_step():
               efs_id: fs-12345
               host_path: /step_efs
               root_dir: /path/to/my/data
-          image: skim3-fastp
-          inputs: 
+          image:
+            name: skim3-fastp
+            auth: arn:aws:secretsmanager:us-west-1:123456789012:secret:docker_auth
+          inputs:
             adapter: s3://bayer-skim-sequence-processing-696164428135/adapters/${job.ADAPTER_FILE}
             reads1: ${job.READ_PATH1}
             reads2: ${job.READ_PATH2}
@@ -278,7 +279,6 @@ def sample_batch_step():
     return ret
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_job_definition_rc(sample_batch_step, compiler_env):
     step_name = "skim3-fastp"
     expected_rc_name = "Skim3FastpJobDefx"
@@ -386,7 +386,8 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
             },
             "stepName": step_name,
             "image":  {
-                "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp",
+                "name": {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp"},
+                "auth": "arn:aws:secretsmanager:us-west-1:123456789012:secret:docker_auth"
             },
             "spec": json.dumps(expected_job_def_spec, sort_keys=True),
         },
@@ -526,7 +527,6 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
     assert result == expected_body
 
 
-@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.parametrize("options", [
     {"no_task_role": "", "s3_tags": {}, "job_tags": {}},
     {"task_role": "arn:from:workflow:params", "s3_tags": {}, "job_tags": {}}
@@ -571,7 +571,6 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
         assert job_def_spec["containerProperties"]["jobRoleArn"] == expected_job_role_arn
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):
     step = Step("step_name", sample_batch_step, "next_step")
     step.spec["inputs"] = None
@@ -584,7 +583,6 @@ def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):
     _ = dict(helper())
 
 
-@pytest.mark.skip(reason="temporary skip")
 @pytest.mark.parametrize("step_shell, expect", [
     (None, "sh"),
     ("bash", "bash"),
@@ -603,7 +601,6 @@ def test_handle_batch_shell_opt(sample_batch_step, step_shell, expect, compiler_
     assert spec["parameters"]["shell"] == expect
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_handle_batch_s3_tags_opt(sample_batch_step, compiler_env):
     global_s3_tags = {
         "tag1": "global_s3_value1",
@@ -629,7 +626,6 @@ def test_handle_batch_s3_tags_opt(sample_batch_step, compiler_env):
     assert tags == expected_s3_tags
 
 
-@pytest.mark.skip(reason="temporary skip")
 def test_handle_batch_job_tags_opt(sample_batch_step, compiler_env):
     global_job_tags = {
         "job_tag1": "global_job_value1",

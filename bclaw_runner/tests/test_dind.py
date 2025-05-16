@@ -110,9 +110,9 @@ def test_get_auth(mock_secrets):
 
 
 @pytest.mark.parametrize("image_spec, expected_source, expected_auth", [
-    ({"tag": "public/image", "auth": ""}, "public repo", None),
-    ({"tag": "private/image", "auth": TEST_SECRET_NAME}, "private repo", TEST_SECRET),
-    ({"tag": "987654321.dkr.ecr.us-east-1.amazonaws.com/ecr-image", "auth": ""}, "ecr", {"username": "AWS", "password": "987654321-auth-token"}),
+    ({"name": "public/image", "auth": ""}, "public repo", None),
+    ({"name": "private/image", "auth": TEST_SECRET_NAME}, "private repo", TEST_SECRET),
+    ({"name": "987654321.dkr.ecr.us-east-1.amazonaws.com/ecr-image", "auth": ""}, "ecr", {"username": "AWS", "password": "987654321-auth-token"}),
 ])
 def test_pull_image(image_spec, expected_source, expected_auth, monkeypatch, mock_docker_client_factory, mock_secrets):
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
@@ -120,7 +120,7 @@ def test_pull_image(image_spec, expected_source, expected_auth, monkeypatch, moc
     with moto.mock_aws():
         client = mock_docker_client_factory()
         result = pull_image(client, image_spec)
-        assert image_spec["tag"] in result.tags
+        assert image_spec["name"] in result.tags
         assert result.source == expected_source
         assert result.auth == expected_auth
 
@@ -166,7 +166,7 @@ def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logg
     job_data_file = f"{bc_scratch_path}/parent/workspace/job_data_12345.json"
 
     image_spec = {
-        "tag": "local/image",
+        "name": "local/image",
         "auth": "",
     }
     result = run_child_container(image_spec, "ls -l", f"{bc_scratch_path}/parent/workspace", job_data_file)

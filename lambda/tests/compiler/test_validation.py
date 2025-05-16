@@ -3,7 +3,7 @@ from textwrap import dedent
 import pytest
 from voluptuous import Invalid
 
-from ...src.compiler.pkg.validation import no_shared_keys, output_spec
+from ...src.compiler.pkg.validation import no_shared_keys, image_spec, output_spec
 
 
 @pytest.fixture(scope="module")
@@ -33,7 +33,40 @@ def test_no_shared_keys_fail(no_shared_keys_func):
         no_shared_keys_func(record)
 
 
-# todo: test image_spec
+imgspec1 = "test_image"
+
+imgspec2 = "test_image +auth: test_auth   "
+
+imgspec3 = dedent("""\
+    test_image
+      +auth: test_auth
+""")
+
+@pytest.mark.parametrize("imgspec, expect", [
+    (imgspec1, {"name": "test_image", "auth": ""}),
+    (imgspec2, {"name": "test_image", "auth": "test_auth"}),
+    (imgspec3, {"name": "test_image", "auth": "test_auth"}),
+])
+def test_image_spec(imgspec, expect):
+    result = image_spec(imgspec)
+    assert result == expect
+
+
+@pytest.mark.parametrize("badspec", [
+    "",  # nothing
+    "test_image +auth:"  # missing auth value
+    "+auth test_auth",  # no image name
+    "test_image +auth test_auth",  # no colon after auth
+    "test_image auth: test_auth",  # no plus before auth
+    "test_image another_image +auth: test_auth",  # multiple names
+    "test_image +auth: test_auth another auth",  # multiple auths
+    "name with spaces +auth: test_auth",  # name with spaces
+    "test_image +auth: invalid_auth!!!",  # invalid characters in auth
+])
+def test_image_spec_fail(badspec):
+    with pytest.raises(Invalid, match="invalid image spec"):
+        result = image_spec(badspec)
+        print(result)
 
 # note: value2 below has trailing spaces
 ospec1 = dedent("""\

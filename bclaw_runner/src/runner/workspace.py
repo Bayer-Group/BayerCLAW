@@ -41,7 +41,6 @@ def write_job_data_file(job_data: dict, dest_dir: str) -> str:
     return fp.name
 
 
-# todo: update tests
 def run_commands(image_spec: dict, commands: list, work_dir: str, job_data_file: str, shell_opt: str) -> None:
     script_file = "_commands.sh"
 

@@ -64,7 +64,6 @@ def responder(event, context, no_echo=False) -> Generator[Response, None, None]:
         respond(event["ResponseURL"], asdict(response))
 
 
-# todo: update tests
 def edit_spec(spec: dict, wf_name: str, step_name: str, image: dict) -> dict:
     ret = spec.copy()
     ret["jobDefinitionName"] = f"{wf_name}_{step_name}"
@@ -72,12 +71,11 @@ def edit_spec(spec: dict, wf_name: str, step_name: str, image: dict) -> dict:
                                                   {"name": "BC_STEP_NAME", "value": step_name},
                                                   {"name": "AWS_DEFAULT_REGION", "value": os.environ["REGION"]},
                                                   {"name": "AWS_ACCOUNT_ID", "value": os.environ["ACCT_NUM"]}]
-    ret["parameters"]["image"] = json.dumps(image, separators=(",", ":"))
+    ret["parameters"]["image"] = json.dumps(image, sort_keys=True, separators=(",", ":"))
     ret["tags"]["bclaw:workflow"] = wf_name
     return ret
 
 
-# todo: update tests
 def lambda_handler(event: dict, context: object):
     # event[ResourceProperties] = {
     #   workflowName: str
