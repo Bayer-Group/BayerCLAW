@@ -89,6 +89,11 @@ Resources:
             Action:
               - "states:StopExecution"
             Resource: "*"
+          - Sid: "getSecrets"
+            Effect: "Allow"
+            Action:
+              - "secretsmanager:GetSecretValue"
+            Resource: "*"
 
 Outputs:
   EcsTaskRoleArn:
