@@ -104,6 +104,15 @@ The fields of the step specification objects are:
   Use of version tags is optional but recommended. Per custom, the version tag defaults to `:latest`. The usual
   [caveats](https://www.howtogeek.com/devops/understanding-dockers-latest-tag/) about the `:latest` tag apply.
 
+  🆕 You can supply credentials for private repositories using the `+auth` syntax. For example:
+  ```yaml
+    image: "third.party.repo/my_image:v1 +auth: my_credentials"
+  ```
+  The `+auth` value is the name or ARN of an AWS Secrets Manager secret. The contents of the secret must be a
+  JSON object of the form `{"username": "<username>", "password": "<password>"}`.
+
+  See the section on [block scalar formatting](#block-scalar-formatting) for options on how to format the image field.
+
   <!-- this is less important now that compile-time parameters are available
   You can [substitute](#string-substitution) values from the job data file into the
   image name or version tag of your image, for example:
@@ -162,7 +171,7 @@ The fields of the step specification objects are:
   be applied to this file, and will override any S3 tags specified at the global or step level. Tags must follow the
   destination folder, if present.
 
-  See the [More about output fields](#more-about-output-fields) section below for important information about 
+  See the [block scalar formatting](#block-scalar-formatting) section below for information about options for
   item formatting in the outputs block.
 
 * `s3_tags` (optional): 🆕 A list of tags to apply to all of the S3 objects created by this step. Tags are specified as a
@@ -306,7 +315,9 @@ Steps:
         backoff_rate: 2.0
   -
     Blast:
-      image: ncbi-blast
+      image: |
+        third.party.repo/ncbi-blast
+          +auth: my_blast_credentials
       inputs:
         prots: annot.faa
       filesystems:
@@ -327,6 +338,61 @@ Steps:
       skip_on_rerun: false
 ```
 
+### Block scalar formatting
+
+Some fields in a step block can be formatted as YAML block scalars. This is useful for long strings
+that are difficult to read when formatted as a single line. The most common use case is the `commands` field, but
+it can also be used for the `image` field, and the `outputs` field. The block scalar syntax is as follows:
+
+```yaml
+my_field: |
+  This is a long string
+  that is formatted as a block
+  scalar. It can contain
+  multiple lines of text.
+```
+
+The `|` character indicates that the following lines are part of a block scalar. The text is indented to indicate
+that it is part of the block. The text will be treated as a single string, with newlines preserved.
+
+Fields the `outputs` section can be formatted like this:
+```yaml
+my_symbolic_name: |
+  my_local_file.txt -> s3://my_bucket/my_folder/
+    +tag1: value1
+    +tag2: value2
+```
+
+The image field may also be formatted like this:
+```yaml
+my_image: |
+  third.party.repo/my_image:v1
+    +auth: my_credentials
+```
+
+Parsing a block scalar formatted field introduces some restrictions on the values within the block, chiefly
+the locations of spaces and the use of special characters. If you need to work around these restrictions, you can
+use the longhand version of the field. For example, the `image` field can be specified as:
+
+```yaml
+my_image:
+  name: third.party.repo/my_image:v1
+  auth: my_credentials
+```
+
+This is equivalent to the previous example. An `outputs` field can be specified as:
+
+```yaml
+my_symbolic_name:
+  name: my_local_file.txt
+  dest: s3://my_bucket/my_folder/
+  s3_tags:
+    tag1: value1
+    tag2: value2
+```
+
+
+<!--
 ### More about output fields
 
 The full specification for a single output file, including alternate destination folder and tags, would look like this:
@@ -359,6 +425,7 @@ my_symbolic_name:
     tag1: value1
     tag2: value2
 ```
+-->
 
 ## Scatter-gather steps
 

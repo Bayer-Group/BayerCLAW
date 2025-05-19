@@ -10,6 +10,8 @@ update the [BayerCLAW installer stack](doc/installation.md#updating-bayerclaw) b
 clean up unneeded intermediate files using S3 lifecycle policies.
 - Batch jobs can take advantage of the new resource-aware scheduling feature, which prevents Batch
 jobs from overwhelming limited resources like database connections or software licenses.
+- Batch jobs can now pull Docker images from private registries using registry credentials supplied
+in a SecretsManager secret.
 - Batch job outputs can now be written to S3 locations outside of the workflow's S3 repository.
 - Improved readability of CloudWatch log messages.
 - `bclaw_runner` now logs the (shortened) SHA hash of the Docker image it has pulled.
