@@ -1,11 +1,11 @@
 # Changelog for BayerCLAW
 
-## [v1.2.5] 2025-xx-xx Feature release
+## [v1.2.5] 2025-05-29 Feature release
 
 **NOTE:** Due to Python version upgrades in the CodeBuild project and elsewhere, you will need to
 update the [BayerCLAW installer stack](doc/installation.md#updating-bayerclaw) before upgrading to v1.2.5.
 
-**NOTE:** The following permissions have been added to the default ECS task role:
+**NOTE:** Custom ECS task roles will need to be updated to include the following permissions:
 - s3:GetObjectTagging
 - s3:PutObjectTagging
 - secretsmanager:GetSecretValue
