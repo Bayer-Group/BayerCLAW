@@ -181,20 +181,6 @@ def get_consumable_resource_properties(spec: dict) -> dict:
         return {}
 
 
-# don't need this here
-# def get_repository_credentials(spec: dict) -> dict:
-#     if spec["credentials"]:
-#         ret = {
-#             "repositoryCredentials": {
-#                 "credentialsParameter": spec["credentials"]
-#             }
-#         }
-#     else:
-#         ret = {}
-#
-#     return ret
-
-
 def job_definition_rc(step: Step,
                       task_role: str,
                       shell_opt: str,
@@ -241,8 +227,6 @@ def job_definition_rc(step: Step,
             **get_resource_requirements(step),
             **get_volume_info(step),
         },
-        # oops...wrong place for this
-        # **get_repository_credentials(step.spec["image"]),
         **get_consumable_resource_properties(step.spec["compute"]["consumes"]),
         "schedulingPriority": 1,
         **get_timeout(step),

@@ -40,7 +40,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# todo: update tests
 def main(commands: List[str],
          image_spec: dict,
          inputs: Dict[str, str],
@@ -117,7 +116,6 @@ def main(commands: List[str],
     return exit_code
 
 
-# todo: update tests
 def cli() -> int:
     log_preamble()
     logger.info("---------- bclaw_runner starting ----------")
