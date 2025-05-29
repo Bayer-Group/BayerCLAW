@@ -28,9 +28,10 @@ from ...src.compiler.pkg.util import Step, Resource, State
     ("host-with-port:1234/image", "host-with-port:1234/image"),
 ])
 def test_expand_image_uri(uri, expected):
-    result = expand_image_uri(uri)
-    assert result == expected
-
+    image_spec = {"name": uri, "auth": "doesnt_change"}
+    result = expand_image_uri(image_spec)
+    assert result["name"] == expected
+    assert result["auth"] == "doesnt_change"
 
 @pytest.mark.parametrize("req, mibs", [(10, 10), (1, 4), (9.1, 10), ("1G", 1024), ("9.1M", 10), ("1M", 4)])
 def test_get_memory_in_mibs(req, mibs):
@@ -224,8 +225,10 @@ def sample_batch_step():
               efs_id: fs-12345
               host_path: /step_efs
               root_dir: /path/to/my/data
-          image: skim3-fastp
-          inputs: 
+          image:
+            name: skim3-fastp
+            auth: arn:aws:secretsmanager:us-west-1:123456789012:secret:docker_auth
+          inputs:
             adapter: s3://bayer-skim-sequence-processing-696164428135/adapters/${job.ADAPTER_FILE}
             reads1: ${job.READ_PATH1}
             reads2: ${job.READ_PATH2}
@@ -383,7 +386,8 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
             },
             "stepName": step_name,
             "image":  {
-                "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp",
+                "name": {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp"},
+                "auth": "arn:aws:secretsmanager:us-west-1:123456789012:secret:docker_auth"
             },
             "spec": json.dumps(expected_job_def_spec, sort_keys=True),
         },

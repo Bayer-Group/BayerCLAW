@@ -3,18 +3,28 @@
 ## [v1.2.5] 2025-xx-xx Feature release
 
 **NOTE:** Due to Python version upgrades in the CodeBuild project and elsewhere, you will need to
-update the [BayerCLAW installer stack](doc/installation.md#updating-bayerclaw) before upgrading to v1.2.5. 
+update the [BayerCLAW installer stack](doc/installation.md#updating-bayerclaw) before upgrading to v1.2.5.
+
+**NOTE:** The following permissions have been added to the default ECS task role:
+- s3:GetObjectTagging
+- s3:PutObjectTagging
+- secretsmanager:GetSecretValue
+
+See the [bc_ecs_task_role.yaml](cloudformation/bc_ecs_task_role.yaml) template for details.
 
 ### Added/Changed
 - Workflows may now specify tags to apply to the S3 objects they create. This is intended to help
 clean up unneeded intermediate files using S3 lifecycle policies.
 - Batch jobs can take advantage of the new resource-aware scheduling feature, which prevents Batch
 jobs from overwhelming limited resources like database connections or software licenses.
+- Batch jobs can now pull Docker images from private registries using registry credentials supplied
+in a SecretsManager secret.
 - Batch job outputs can now be written to S3 locations outside of the workflow's S3 repository.
 - Improved readability of CloudWatch log messages.
 - `bclaw_runner` now logs the (shortened) SHA hash of the Docker image it has pulled.
 - An SNS topic policy that prevents publication of messages from unsecured sources has been restored.
 - Improvements to job definition registrar error messaging and deletion handling.
+- System files that BayerCLAW creates in the repository are now tagged with `bclaw.system: true`.
 - Upgraded everything to Python 3.12
 
 ### Removed
@@ -80,7 +90,7 @@ update the [BayerCLAW installer stack](doc/installation.md#updating-bayerclaw) b
 Also, though not strictly required, it will speed up the upgrade process to empty the `bayerclaw2-core/launcher` ECR
 repository before upgrading to v1.2.3. You can do this through the AWS Console or use the following commmand:
 
-```commandline
+```bash
 aws ecr batch-delete-image \
 --repository bayerclaw2-core/launcher \
 --image-ids "$(aws ecr list-images --repository-name bayerclaw2-core/launcher --query 'imageIds[*]' --output json)"

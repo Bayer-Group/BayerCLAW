@@ -16,12 +16,12 @@ def tag_this_instance():
         instance_id = response.text
         logger.info(f"{instance_id=}")
 
-        tag = ".".join([os.environ.get("BC_WORKFLOW_NAME", "undefined"),
-                        os.environ.get("BC_STEP_NAME", "undefined")])
+        instance_tag = ".".join([os.environ.get("BC_WORKFLOW_NAME", "undefined"),
+                                 os.environ.get("BC_STEP_NAME", "undefined")])
 
         ec2 = boto3.resource("ec2")
         instance = ec2.Instance(instance_id)
-        instance.create_tags(Tags=[{"Key": "Name", "Value": tag}])
+        instance.create_tags(Tags=[{"Key": "Name", "Value": instance_tag}])
 
     except Exception:
         logger.warning("unable to tag instance, continuing...")

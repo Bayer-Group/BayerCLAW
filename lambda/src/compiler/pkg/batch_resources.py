@@ -12,16 +12,21 @@ from .util import Step, Resource, State, make_logical_name, time_string_to_secon
 SCRATCH_PATH = "/_bclaw_scratch"
 
 
-def expand_image_uri(uri: str) -> Union[str, dict]:
+def expand_image_uri(image_spec: dict) -> Union[str, dict]:
+    uri = image_spec["name"]
     subbed = re.sub(r"\${", "${!", uri)
     # https://stackoverflow.com/questions/37861791/how-are-docker-image-names-parsed
     #   The hostname [of a docker image uri] must contain a . dns separator,
     #   a : port separator, or the value "localhost" before the first /.
     # ...but it's unlikely that localhost will be used in a batch job
     if re.match(r"^.*[.:].*/", subbed):
-        return subbed
+        ret0 = subbed
     else:
-        return {"Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed}"}
+        ret0 = {"Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed}"}
+
+    ret = image_spec.copy()
+    ret["name"] = ret0
+    return ret
 
 
 def get_job_queue(compute_spec: dict) -> str:
@@ -183,8 +188,11 @@ def job_definition_rc(step: Step,
                       job_tags: dict) -> Generator[Resource, None, str]:
     logical_name = make_logical_name(f"{step.name}.job.defx")
 
-    # note: this is not a CloudFormation spec, it is meant to be submitted to
-    # the Batch API by register.py
+    # note: this is not a CloudFormation spec, it is meant to be submitted to the Batch API by register.py.
+    # To pass it to the registration lambda, it must be json serialized or else the ints and bools will be
+    # stringified. Because it gets serialized here in the compiler lambda, though, CloudFormation will not
+    # be able to substitute the values for the pseudo parameters (AWS::AccountId, AWS::Region, etc.) in the
+    # job definition spec. Therefore, some fields are left unset and will be filled in by register.py.
     job_def_spec = {
         "type": "container",
         "parameters": {
@@ -230,14 +238,26 @@ def job_definition_rc(step: Step,
         },
     }
 
+    # this is a CloudFormation spec. CloudFormation will supply the necessary pseudoparameter
+    # values (AWS::StackName, AWS::AccountId, AWS::Region), and register.py will finish the
+    # job definition spec and register it with Batch.
     resource_spec = {
         "Type": "Custom::BatchJobDefinition",
         "UpdateReplacePolicy": "Retain",
         "Properties": {
             "ServiceToken": os.environ["JOB_DEF_LAMBDA_ARN"],
+
+            # used to complete the job definition spec and register it
             "workflowName": {"Ref": "AWS::StackName"},
-            "stepName": step.name,
+
+            # the value returned from expand_image_uri may contain AWS::AccountId and AWS::Region,
+            # so this needs to be substituted here and passed to register.py. It can be passed unserialized
+            # because all the values are strings.
             "image": expand_image_uri(step.spec["image"]),
+
+            # register.py needs the step name to create the job definition name ( <wf_name>_<step_name> ). The
+            # alternative is to dig it out of job_def_spec
+            "stepName": step.name,
             "spec": json.dumps(job_def_spec, sort_keys=True),
         },
     }
@@ -344,7 +364,6 @@ def batch_step(step: Step,
         },
         "ResultSelector": {
             **get_output_uris(step.spec["outputs"])
-            # **{k.rstrip("!"): v["name"] for k, v in step.spec["outputs"].items()}
         },
         "ResultPath": "$.prev_outputs",
         "OutputPath": "$",

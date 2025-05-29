@@ -150,7 +150,9 @@ def test_handle_parallel_native_step(compiler_env):
           steps:
             -
               do_this:
-                image: bclaw-blank
+                image:
+                    name: bclaw-blank
+                    auth: ""
                 references:
                   m: s3://n
                 inputs:
@@ -168,7 +170,9 @@ def test_handle_parallel_native_step(compiler_env):
                 skip_if_output_exists: true
             -
               do_that:
-                image: bclaw-wut
+                image:
+                    name: bclaw-wut
+                    auth: ""
                 references:
                   m: s3://n
                 inputs:
@@ -188,7 +192,9 @@ def test_handle_parallel_native_step(compiler_env):
           steps:
             -
               do_the_other:
-                image: who-dat
+                image:
+                    name: who-dat
+                    auth: ""
                 references:
                   m: s3://n
                 inputs:

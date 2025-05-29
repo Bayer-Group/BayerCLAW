@@ -197,7 +197,9 @@ def sample_scatter_step():
       steps:
         -
           Step1:
-            image: test_image
+            image:
+              name: test_image
+              auth: ""
             references:
                 ref1: "s3://ref-bucket/path/to/reference.file"
             inputs:

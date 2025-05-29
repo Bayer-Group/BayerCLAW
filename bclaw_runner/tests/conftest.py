@@ -8,29 +8,32 @@ import pytest
 
 
 class MockImage:
-    def __init__(self, tag: str, source: str, auth: Optional[dict] = None):
-        self.tags = [tag]
+    def __init__(self, name: str, source: str, auth: Optional[dict] = None):
+        self.tags = [name]
         self.source = source
         self.auth = auth
         self.attrs = {
-            "RepoDigests": [f"{tag}@sha256:1234567890abcdef"],
+            "RepoDigests": [f"{name}@sha256:1234567890abcdef"],
         }
 
 
 class MockImages:
     @staticmethod
-    def get(tag: str) -> MockImage:
-        if tag == "local/image":
-            return MockImage(tag, "local repo")
+    def get(img_uri: str) -> MockImage:
+        if img_uri == "local/image":
+            return MockImage(img_uri, "local repo")
         else:
             raise ImageNotFound("not found message")
 
     @staticmethod
-    def pull(tag: str, auth_config: dict) -> MockImage:
-        if auth_config:
-            return MockImage(tag, "ecr", auth_config)
+    def pull(img_uri: str, auth_config: dict) -> MockImage:
+        if "dkr.ecr" in img_uri:
+            return MockImage(img_uri, "ecr", auth_config)
         else:
-            return MockImage(tag, "public repo")
+            if auth_config:
+                return MockImage(img_uri, "private repo", auth_config)
+            else:
+                return MockImage(img_uri, "public repo")
 
 
 class MockContainer:

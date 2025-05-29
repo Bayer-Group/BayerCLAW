@@ -144,8 +144,10 @@ def test_substitute_image_tag(original, expect):
         "b": "bee",
         "c": "sea",
     }
-    result = substitute_image_tag(original, spec)
-    assert result == expect
+    image_spec = {"name": original, "auth": "doesnt_change"}
+    result = substitute_image_tag(image_spec, spec)
+    assert result["name"] == expect
+    assert result["auth"] == "doesnt_change"
 
 
 def test_substitute_tagged_output():

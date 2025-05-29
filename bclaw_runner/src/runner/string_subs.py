@@ -27,10 +27,13 @@ def substitute(target: Any, spec: dict) -> Any:
     return ret
 
 
-def substitute_image_tag(image_tag: str, spec: dict) -> str:
-    parts = image_tag.split("/")
+def substitute_image_tag(image_spec: dict, sub_spec: dict) -> dict:
+    name = image_spec["name"]
+    parts = name.split("/")
     name_ver = parts.pop(-1)
-    _lookup = partial(lookup, spec=spec)
+    _lookup = partial(lookup, spec=sub_spec)
     subbed = SUB_FINDER.sub(_lookup, name_ver)
-    ret = "/".join(parts + [subbed])
+
+    ret = image_spec.copy()
+    ret["name"] = "/".join(parts + [subbed])
     return ret
