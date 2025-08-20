@@ -56,9 +56,9 @@ Parameters:
   InstanceTypes:
     Type: CommaDelimitedList
     Description: >
-      A comma-separated list of EC2 instance types to run your jobs on. Enter "optimal" to allow Batch to
-      choose a suitable instance type from the M4, C4, or R4 instance families.
-    Default: "optimal"
+      A comma-separated list of EC2 instance types to run your jobs on. Enter "default_x86_64" to allow Batch to
+      choose a suitable instance type.
+    Default: "default_x86_64"
 
   MaxvCpus:
     Type: Number

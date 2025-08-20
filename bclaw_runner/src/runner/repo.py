@@ -186,6 +186,8 @@ class Repository(object):
         # https://jcoenraadts.medium.com/how-to-write-tags-when-a-file-is-uploaded-to-s3-with-boto3-and-python-690f92224e2b
         tagging_str = "&".join(f"{k}={v}" for k, v in (global_tags | local_tags).items())
 
+        # todo: add more retries? adaptive retries?
+        #   https://boto3.amazonaws.com/v1/documentation/api/latest/guide/retries.html
         logger.info(f"starting upload: {local_file} ({local_size} bytes) -> {dest_uri}")
         session = boto3.Session()
         s3 = session.resource("s3")

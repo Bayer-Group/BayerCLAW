@@ -62,7 +62,7 @@ def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> G
                 #   child_workspace = /tmp12345
                 #   volume_spec = { Source: /scratch
                 #                   Destination: /_bclaw_scratch }
-                # desired output: Mount(target=/tmp12345, source=/scratch/tmp12345, type="bind", read_only=False
+                # desired output: Mount(target=/tmp12345, source=/scratch/tmp12345, type="bind", read_only=False)
 
                 # first locate the parent workspace on the host's scratch volume, e.g.
                 #   /_bclaw_scratch/tmp12345 -> /scratch/tmp12345
