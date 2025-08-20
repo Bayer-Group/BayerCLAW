@@ -910,7 +910,7 @@ Resources:
       Parameters:
         AmiId: !Ref GpuAmiId
         GpuEnabled: "True"
-        InstanceTypes: "g4dn,g5,g6,p4d,p5,p6"
+        InstanceTypes: "g4dn,g5,g6e,p4d,p5"
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
         QueueName: !Sub "${AWS::StackName}-on-demand-gpu-queue"
@@ -947,7 +947,7 @@ Resources:
       Parameters:
         AmiId: !Ref GpuAmiId
         GpuEnabled: "True"
-        InstanceTypes: "g4dn,g5,g6,p4d,p5,p6"
+        InstanceTypes: "g4dn,g5,g6e,p4d,p5"
         MaxvCpus: !Ref MaxvCpus
         MinvCpus: !Ref MinvCpus
         QueueName: !Sub "${AWS::StackName}-spot-gpu-queue"
