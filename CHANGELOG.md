@@ -1,5 +1,14 @@
 # Changelog for BayerCLAW
 
+## [v1.2.6] 2025-08-20 Upgrade
+
+- Use the `default_x86_64` instance type for non-GPU Batch jobs, rather than `optimal'. This enables
+  use of more modern EC2 instance types.
+- Added the `g6e` instance family to the list of GPU instance types, and removed `g3` and `p3`.
+
+It is not necessary to update the BayerCLAW installer stack for this release, nor is it necessary to
+rebuild workflow stacks to take advantage of it.
+
 ## [v1.2.5] 2025-05-29 Feature release
 
 **NOTE:** Due to Python version upgrades in the CodeBuild project and elsewhere, you will need to
@@ -53,7 +62,7 @@ add the following to that role's policy document:
 ```
 
 ### Added/Changed
-- Built-in GPU-enabled Batch queues. Batch jobs that request GPU resources will be automaticall
+- Built-in GPU-enabled Batch queues. Batch jobs that request GPU resources will be automatically
 directed to either the GPU spot or GPU on-demand queue.
 - The ECS task role has been broken out into a separate cloudformation template, making it easier
 for users to create custom task roles. The default ECS task role also uses a managed IAM policy
