@@ -13,7 +13,7 @@ import pytest
 
 from ..src import runner
 from ..src.runner.runner_main import main, cli
-from ..src.runner.tagging import INSTANCE_ID_URL
+# from bclaw_runner.defunct.tagging import INSTANCE_ID_URL
 
 
 TEST_BUCKET = "test-bucket"
@@ -404,9 +404,10 @@ def fake_termination_checker_impl(*_):
     [2, 9, 3, 4, 10, 6, "7", "5", "8", 11])
 ])
 def test_cli(capsys, requests_mock, mock_ec2_instance, monkeypatch, argv, expect):
+    requests_mock.put("http://169.254.169.254/latest/api/token", text="mocked-token")
     requests_mock.get("http://169.254.169.254/latest/meta-data/instance-life-cycle", text="spot")
     requests_mock.get("http://169.254.169.254/latest/meta-data/spot/instance-action", status_code=404)
-    requests_mock.get(INSTANCE_ID_URL, text=mock_ec2_instance.id)
+    requests_mock.get("http://169.254.169.254/latest/meta-data/instance-id", text=mock_ec2_instance.id)
     monkeypatch.setenv("BC_WORKFLOW_NAME", "testWorkflowName")
     monkeypatch.setenv("BC_STEP_NAME", "test:step:name")
     monkeypatch.setenv("BC_JOB_NAME", "test*job")
@@ -420,7 +421,7 @@ def test_cli(capsys, requests_mock, mock_ec2_instance, monkeypatch, argv, expect
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     monkeypatch.setattr("sys.argv", argv.split())
     monkeypatch.setattr("bclaw_runner.src.runner.runner_main.main", fake_main)
-    monkeypatch.setattr("bclaw_runner.src.runner.termination._termination_checker_impl", fake_termination_checker_impl)
+    monkeypatch.setattr("bclaw_runner.src.runner.instance._termination_checker_impl", fake_termination_checker_impl)
 
     response = cli()
     assert response == expect
