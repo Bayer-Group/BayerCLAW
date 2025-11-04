@@ -21,7 +21,7 @@ def compile_template(fragment: dict, param_values: dict, state_machine_out=None)
     normalized_wf = workflow_schema(subbed_fragment)
 
     options = normalized_wf["Options"]
-    repository = normalized_wf["Repository"]
+    repository = normalized_wf["Repository"].rstrip("/")
     steps = normalized_wf["Steps"]
 
     # create state machine and associated resources

@@ -3,7 +3,8 @@ from textwrap import dedent
 import pytest
 from voluptuous import Invalid
 
-from ...src.compiler.pkg.validation import no_shared_keys, image_spec, output_spec
+from ...src.compiler.pkg.validation import (no_shared_keys, shorthand_image_spec, shorthand_output_spec,
+                                            file_list)
 
 
 @pytest.fixture(scope="module")
@@ -48,7 +49,7 @@ imgspec3 = dedent("""\
     (imgspec3, {"name": "test_image", "auth": "test_auth"}),
 ])
 def test_image_spec(imgspec, expect):
-    result = image_spec(imgspec)
+    result = shorthand_image_spec(imgspec)
     assert result == expect
 
 
@@ -65,7 +66,7 @@ def test_image_spec(imgspec, expect):
 ])
 def test_image_spec_fail(badspec):
     with pytest.raises(Invalid, match="invalid image spec"):
-        result = image_spec(badspec)
+        result = shorthand_image_spec(badspec)
         print(result)
 
 # note: value2 below has trailing spaces
@@ -95,8 +96,8 @@ ospec4 = dedent("""\
     (ospec3, {"name": "dirname/file3", "s3_tags": {"tag3": "colon:and+plus", "tag4": "value4 with spaces"}}),
     (ospec4, {"name": "file4*", "s3_tags": {}}),
 ])
-def test_output_spec(ospec, expect):
-    result = output_spec(ospec)
+def test_shorthand_output_spec(ospec, expect):
+    result = shorthand_output_spec(ospec)
     assert result == expect
 
 
@@ -105,9 +106,9 @@ def test_output_spec(ospec, expect):
     (ospec2, {"name": "${job.file2}", "dest": "s3://bucket/${job.yadayada}/", "s3_tags": {}}),
     (ospec3, {"name": "dirname/file3", "s3_tags": {"tag3": "colon:and+plus", "tag4": "value4 with spaces"}}),
 ])
-def test_output_spec_one_line(ospec, expect):
+def test_shorthand_output_spec_one_line(ospec, expect):
     one_liner = ospec.replace("\n", " ")
-    result = output_spec(one_liner)
+    result = shorthand_output_spec(one_liner)
     assert result == expect
 
 
@@ -121,15 +122,61 @@ def test_output_spec_one_line(ospec, expect):
     "filename with spaces",
     "file6 -> s3://bucket/yada/yada.txt",  # destination is not a folder
 ])
-def test_output_spec_bad_filename(badspec):
+def test_shorthand_output_spec_bad_filename(badspec):
     with pytest.raises(Invalid, match="invalid filename spec"):
-        output_spec(badspec)
+        shorthand_output_spec(badspec)
 
 
 @pytest.mark.parametrize("badspec", [
     "file1:\n-tag1: value1",  # tag line does not start with +
     "file2:\n+tag2:value2",  # no space after tag name
 ])
-def test_output_spec_bad_tag(badspec):
+def test_shorthand_output_spec_bad_tag(badspec):
     with pytest.raises(Invalid, match="invalid filename spec"):
-        output_spec(badspec)
+        shorthand_output_spec(badspec)
+
+
+def test_file_list_dict():
+    tester = file_list({str: str})
+
+    spec = {
+        "input1": "s3://bucket/path/to/input1.txt",
+        "input2": "s3://bucket/path/to/input2.txt",
+    }
+    result = tester(spec)
+    assert result == spec
+
+
+def test_file_list_list():
+    tester = file_list({str: str})
+
+    spec = [
+        {"input1": "s3://bucket/path/to/input1.txt"},
+        {"input2": "s3://bucket/path/to/input2.txt"},
+    ]
+    result = tester(spec)
+    expect = {
+        "input1": "s3://bucket/path/to/input1.txt",
+        "input2": "s3://bucket/path/to/input2.txt",
+    }
+    assert result == expect
+
+
+def test_file_list_invalid():
+    tester = file_list({str: str})
+
+    spec = [
+        {"input1": "s3://bucket/path/to/input1.txt"},
+        "not-a-dict",
+    ]
+    with pytest.raises(Invalid, match="expected list of dicts"):
+        result = tester(spec)
+
+
+def test_file_list_empty():
+    tester = file_list({str: str})
+
+    spec = []
+    result = tester(spec)
+    expect = {}
+    assert result == expect
