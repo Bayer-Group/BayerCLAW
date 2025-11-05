@@ -32,8 +32,7 @@ from .string_subs import substitute, substitute_image_tag
 from .preamble import log_preamble
 from .qc_check import do_checks, abort_execution, QCFailure
 from .repo import Repository, SkipExecution
-from .tagging import tag_this_instance
-from .termination import spot_termination_checker
+from .instance import get_imdsv2_token, tag_this_instance, spot_termination_checker
 from .workspace import workspace, write_job_data_file, run_commands, UserCommandsFailed
 
 logging.basicConfig(level=logging.INFO)
@@ -119,6 +118,7 @@ def main(commands: List[str],
 def cli() -> int:
     log_preamble()
     logger.info("---------- bclaw_runner starting ----------")
+    get_imdsv2_token()
     tag_this_instance()
 
     # create custom log level for user commands

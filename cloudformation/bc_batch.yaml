@@ -233,7 +233,7 @@ Resources:
           Version: !GetAtt LaunchTemplate.LatestVersionNumber
         Ec2Configuration:
           -
-            ImageType: !If [UseGpu, "ECS_AL2_NVIDIA", "ECS_AL2"]
+            ImageType: !If [UseGpu, "ECS_AL2023_NVIDIA", "ECS_AL2023"]
             ImageIdOverride: !If [UseAmi, !Ref AmiId, !Ref AWS::NoValue]
         InstanceRole: !Ref EcsInstanceProfile
         InstanceTypes: !Ref InstanceTypes

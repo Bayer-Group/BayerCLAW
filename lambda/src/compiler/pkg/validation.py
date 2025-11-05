@@ -1,5 +1,7 @@
 from collections import Counter
+from functools import reduce
 from itertools import chain
+from typing import Any, Callable
 
 from voluptuous import *
 
@@ -29,9 +31,9 @@ class CompilerError(Exception):
         return ret
 
 
-def Listified(validator, min: int = 0):
+def listified(validator, min: int = 0) -> Callable:
     listy_validator = Schema([validator])
-    def f(v):
+    def f(v: Any) -> list:
         if not isinstance(v, list):
             v = [v]
         if len(v) < min:
@@ -40,7 +42,7 @@ def Listified(validator, min: int = 0):
     return f
 
 
-def no_shared_keys(*field_names):
+def no_shared_keys(*field_names: str) -> Callable:
     def _impl(record: dict) -> dict:
         key_iters = ((record.get(f) or {}).keys() for f in field_names)
         keys = chain(*key_iters)
@@ -52,17 +54,17 @@ def no_shared_keys(*field_names):
     return _impl
 
 
-def no_substitutions(s):
+def no_substitutions(s: str) -> str:
     if re.search(r"\${.+}", s):
         raise Invalid("string substitutions are not allowed")
     return s
 
 
-img_creds = re.compile(r"^(?!\+)(?P<name>\S+?)(?:\s+\+auth:\s+(?P<auth>[A-Za-z0-9/_+=.@-]+))?$")
+image_credentials = re.compile(r"^(?!\+)(?P<name>\S+?)(?:\s+\+auth:\s+(?P<auth>[A-Za-z0-9/_+=.@-]+))?$")
 
-def image_spec(spec: str) -> dict:
+def shorthand_image_spec(spec: str) -> dict:
     spec = spec.strip()
-    if m := img_creds.fullmatch(spec):
+    if m := image_credentials.fullmatch(spec):
         name = m.group("name") or DEFAULT_IMAGE
         auth = m.group("auth") or ""
         return {"name": name, "auth": auth}
@@ -72,7 +74,7 @@ def image_spec(spec: str) -> dict:
 splitter = re.compile(r"(?<=\s)\+(\w+):\s+")
 src_dest = re.compile(r"^(\S+?(?<![>/])) (?:\s+->\s+ (s3://.+/))?$", flags=re.X)
 
-def output_spec(spec: str) -> dict:
+def shorthand_output_spec(spec: str) -> dict:
     ret = {}
     file, *tags = splitter.split(spec)
 
@@ -91,6 +93,39 @@ def output_spec(spec: str) -> dict:
     return ret
 
 
+def s3_path(v: str) -> str:
+    if not isinstance(v, str) or not v.startswith("s3://"):
+        raise Invalid("must be an S3 path starting with 's3://'")
+    return v
+
+
+output_spec = Schema({
+    str: Or(
+        And(str, shorthand_output_spec),
+        {
+            Required("name", msg="output file name is required"): str,
+            Optional("dest"): s3_path,
+            Optional("s3_tags", default={}): {str: str},
+        }
+    )
+})
+
+
+def file_list(validator) -> Callable:
+    dicty_validator = Schema(validator)
+    def _f(v: dict | list) -> dict:
+        try:
+            if isinstance(v, list):
+                # merge list of dicts into single dict. The 'or r' trick returns
+                # the updated dict (because dict.update() returns None).
+                v = reduce(lambda r, dic: r.update(dic) or r, v, {})
+        except Exception as e:
+            raise Invalid("expected list of dicts") from e
+        ret = dicty_validator(v)
+        return ret
+    return _f
+
+
 skip_msg = "only one of 'skip_on_rerun' or 'skip_if_output_exists' is allowed"
 next_or_end_msg = "cannot specify both 'next' and 'end' in a step"
 
@@ -101,7 +136,7 @@ next_or_end = {
 
 qc_check_block = {
     Required("qc_result_file"): str,
-    Required("stop_early_if"): Listified(str, min=1)
+    Required("stop_early_if"): listified(str, min=1)
 }
 
 filesystem_block = {
@@ -117,7 +152,7 @@ filesystem_block = {
 batch_step_schema = Schema(All(
     {
         Optional("image", default={"name": DEFAULT_IMAGE}): Or(
-            And(str, image_spec),
+            And(str, shorthand_image_spec),
             {
                 Required("name", msg="image name not found"): str,
                 Optional("auth", default=""): str,
@@ -126,21 +161,24 @@ batch_step_schema = Schema(All(
         Optional("task_role", default=None): Maybe(str),
         # None is used as a signal that inputs was not specified at all, and should be copied from previous outputs.
         # inputs = {} can be used to explicitly specify a step has no inputs at all, with no copy from previous output.
-        Optional("inputs", default=None): Any(None, {str: str}),
-        Optional("references", default={}): {str: Match(r"^s3://", msg="reference values must be s3 paths")},
-        Required("commands", msg="commands list is required"): Listified(str, min=1),
+        ## remove  Optional("inputs", default=None): Any(None, {str: str}),
+        Optional("inputs", default=None): file_list(Any(None, {str: str})),
+        ## remove  Optional("references", default={}): {str: Match(r"^s3://", msg="reference values must be s3 paths")},
+        Optional("references", default={}): file_list({str: s3_path}),
+        Required("commands", msg="commands list is required"): listified(str, min=1),
         Optional("s3_tags", default={}): {str: Coerce(str)},
         Optional("job_tags", default={}): {str: Coerce(str)},
-        Optional("outputs", default={}): {
-            str: Or(
-                And(str, output_spec),
-                {
-                    Required("name"): str,
-                    Optional("dest"): All(str, Match(r"^s3://", msg="output destination must be an s3 path")),
-                    Optional("s3_tags", default={}): {str: Coerce(str)},
-                },
-            ),
-        },
+        ## remove  Optional("outputs", default={}): {
+        #     str: Or(
+        #         And(str, shorthand_output_spec),
+        #         {
+        #             Required("name"): str,
+        #             Optional("dest"): All(str, Match(r"^s3://", msg="output destination must be an s3 path")),
+        #             Optional("s3_tags", default={}): {str: Coerce(str)},
+        #         },
+        #     ),
+        # },
+        Optional("outputs", default={}): file_list(output_spec),
         Exclusive("skip_if_output_exists", "skip_behavior", msg=skip_msg): bool,
         Exclusive("skip_on_rerun", "skip_behavior", msg=skip_msg): bool,
         Optional("compute", default={}): {
@@ -157,8 +195,8 @@ batch_step_schema = Schema(All(
                                                  msg="shell option must be bash, sh, or sh-pipefail"),
             Optional("spot", default=True): bool,
         },
-        Optional("filesystems", default=[]): Listified(filesystem_block),
-        Optional("qc_check", default=[]): Listified(qc_check_block),
+        Optional("filesystems", default=[]): listified(filesystem_block),
+        Optional("qc_check", default=[]): listified(qc_check_block),
         Optional("retry", default={}): {
             Optional("attempts", default=3): int,
             Optional("backoff_rate", default=1.5): All(Any(float, int),
@@ -189,13 +227,13 @@ native_step_schema = Schema(
 
 parallel_branch = {
     Optional("if"): str,
-    Required("steps", msg="steps list not found"): Listified(dict, min=1),
+    Required("steps", msg="steps list not found"): listified(dict, min=1),
 }
 
 parallel_step_schema = Schema(
     {
-        Optional("inputs", default={}): {str: str},
-        Required("branches", msg="branches not found"): Listified(parallel_branch, min=1),
+        Optional("inputs", default={}): file_list({str: str}),
+        Required("branches", msg="branches not found"): listified(parallel_branch, min=1),
         **next_or_end,
     }
 )
@@ -208,8 +246,8 @@ choice = {
 
 chooser_step_schema = Schema(
     {
-        Optional("inputs", default={}): {str: str},
-        Required("choices", msg="choices list not found"): Listified(choice, min=1),
+        Optional("inputs", default={}): file_list({str: str}),
+        Required("choices", msg="choices list not found"): listified(choice, min=1),
         Optional("next"): str,
     }
 )
@@ -218,9 +256,9 @@ chooser_step_schema = Schema(
 scatter_step_schema = Schema(All(
     {
         Required("scatter"): {str: Any(str, list)},
-        Optional("inputs", default=None):
-            Maybe({str: str}),
-        Required("steps", "steps list is required"): Listified({str: dict}, min=1),
+        Optional("inputs", default=None): file_list(Any(None, {str: str})),
+            ## remove  Maybe({str: str}),
+        Required("steps", "steps list is required"): listified({str: dict}, min=1),
         Optional("outputs", default={}):
             {str: str},
         Optional("max_concurrency", default=0):
@@ -238,9 +276,9 @@ scatter_step_schema = Schema(All(
 subpipe_step_schema = Schema(
     {
         Optional("job_data", default=None): Maybe(str),
-        Optional("submit", default=[]): Listified(str),  # deprecated
+        Optional("submit", default=[]): listified(str),  # deprecated
         Required("subpipe"): str,
-        Optional("retrieve", default=[]): Listified(str),
+        Optional("retrieve", default=[]): listified(str),
         **next_or_end,
     }
 )
@@ -266,7 +304,7 @@ workflow_schema = Schema(
             # deprecated...
             Optional("versioned", default="false"): All(Lower, Coerce(str), Any("true", "false"))
         },
-        Required("Steps", "Steps list not found"): Listified(wf_step, min=1),
+        Required("Steps", "Steps list not found"): listified(wf_step, min=1),
     }
 )
 
