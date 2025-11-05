@@ -1,5 +1,12 @@
 # Changelog for BayerCLAW
 
+## [v1.2.7] 2025-11-05 Upgrade
+
+- Changes to EC2 instance naming and spot instance termination checking to allow the use of Amazon
+Linux 2023-based AMIs in Batch Compute Environments.
+- Allow input, output, and reference file blocks to be specified as lists. This may make workflow
+templates more readable in some cases.
+
 ## [v1.2.6] 2025-08-20 Upgrade
 
 - Use the `default_x86_64` instance type for non-GPU Batch jobs, rather than `optimal'. This enables
