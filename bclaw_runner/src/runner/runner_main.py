@@ -15,6 +15,7 @@ Options:
     -r S3_PATH      repository path
     -s SHELL        unix shell to run commands in (bash | sh | sh-pipefail) [default: sh]
     -t JSON_STRING  global s3 tags
+    -z TOKEN        task token
     -h              show help
     --version       show version
 """
@@ -23,8 +24,10 @@ from functools import partial, partialmethod
 import json
 import logging.config
 import os
+import time
 from typing import Dict, List
 
+import boto3
 from docopt import docopt
 
 from .cache import get_reference_inputs
@@ -48,8 +51,11 @@ def main(commands: List[str],
          repo_path: str,
          shell: str,
          skip: str,
-         tags: Dict[str, str]) -> int:
+         tags: Dict[str, str],
+         token: str) -> int:
     exit_code = 0
+    sfn = boto3.client("stepfunctions")
+
     try:
         repo = Repository(repo_path)
 
@@ -94,6 +100,11 @@ def main(commands: List[str],
 
     except UserCommandsFailed as uce:
         logger.error(str(uce))
+        sfn.send_task_failure(
+            taskToken=token,
+            error="UserCommandsFailed",
+            cause=str(uce)
+        )
         exit_code = uce.exit_code
 
     except QCFailure as qcf:
@@ -102,14 +113,30 @@ def main(commands: List[str],
 
     except SkipExecution as se:
         logger.info(str(se))
+        sfn.send_task_success(
+            taskToken=token,
+            output=json.dumps({"status": "SKIPPED", "reason": str(se)})
+        )
         pass
 
     except Exception as e:
         logger.exception("bclaw_runner error: ")
+        sfn.send_task_failure(
+            taskToken=token,
+            error=type(e).__name__,
+            cause=str(e)
+        )
         exit_code = 199
 
     else:
         repo.put_run_status()
+
+        sfn.send_task_success(
+            taskToken=token,
+            output=json.dumps({"status": "SUCCEEDED"})
+        )
+        time.sleep(300)
+
         logger.info("runner finished")
 
     return exit_code
@@ -141,6 +168,7 @@ def cli() -> int:
         shell    = args["-s"]
         skip     = args["-k"]
         tags     = json.loads(args["-t"])
+        token    = args["-z"]
 
-        ret = main(commands, image, inputs, outputs, qc, refs, repo, shell, skip, tags)
+        ret = main(commands, image, inputs, outputs, qc, refs, repo, shell, skip, tags, token)
         return ret

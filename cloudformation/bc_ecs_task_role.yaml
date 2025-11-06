@@ -84,11 +84,16 @@ Resources:
               - "ec2:CreateTags"
               - "ec2:DeleteTags"
             Resource: "*"
-          - Sid: "abortExecution"
+          - Sid: "SFNAccess"
             Effect: "Allow"
             Action:
-              - "states:StopExecution"
+              - "states:*"
             Resource: "*"
+#          - Sid: "abortExecution"
+#            Effect: "Allow"
+#            Action:
+#              - "states:StopExecution"
+#            Resource: "*"
           - Sid: "getSecrets"
             Effect: "Allow"
             Action:
