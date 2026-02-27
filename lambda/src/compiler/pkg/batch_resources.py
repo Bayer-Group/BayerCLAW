@@ -6,6 +6,7 @@ import re
 from typing import Generator, List, Union
 
 import humanfriendly
+from cfnlint.rules.resources.UpdateReplacePolicy import UpdateReplacePolicy
 
 from .util import Step, Resource, State, make_logical_name, time_string_to_seconds
 
@@ -53,12 +54,28 @@ def get_memory_in_mibs(request: Union[str, float, int]) -> int:
     return ret
 
 
-def get_environment() -> dict:
+def get_environment(step: Step) -> dict:
     ret = {
-        "environment": [
+        "Environment": [
             {
-                "name": "BC_SCRATCH_PATH",
-                "value": SCRATCH_PATH,
+                "Name": "BC_WORKFLOW_NAME",
+                "Value": {"Ref": "AWS::StackName"},
+            },
+            {
+                "Name": "BC_SCRATCH_PATH",
+                "Value": SCRATCH_PATH,
+            },
+            {
+                "Name": "BC_STEP_NAME",
+                "Value": step.name,
+            },
+            {
+                "Name": "AWS_DEFAULT_REGION",
+                "Value": {"Ref": "AWS::Region"},
+            },
+            {
+                "Name": "AWS_ACCOUNT_ID",
+                "Value": {"Ref": "AWS::AccountId"},
             },
         ]
     }
@@ -68,83 +85,83 @@ def get_environment() -> dict:
 def get_resource_requirements(step: Step) -> dict:
     rc = [
         {
-            "type": "VCPU",
-            "value": str(step.spec["compute"]["cpus"]),
+            "Type": "VCPU",
+            "Value": str(step.spec["compute"]["cpus"]),
         },
         {
-            "type": "MEMORY",
-            "value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
+            "Type": "MEMORY",
+            "Value": str(get_memory_in_mibs(step.spec["compute"]["memory"])),
         },
     ]
 
     if (gpu_str := str(step.spec["compute"]["gpu"])) != "0":
         rc.append({
-            "type": "GPU",
-            "value": gpu_str,
+            "Type": "GPU",
+            "Value": gpu_str,
         })
 
-    ret = {"resourceRequirements": rc}
+    ret = {"ResourceRequirements": rc}
     return ret
 
 
 def get_volume_info(step: Step) -> dict:
     volumes = [
         {
-            "name": "docker_socket",
-            "host": {
-                "sourcePath": "/var/run/docker.sock",
+            "Name": "docker_socket",
+            "Host": {
+                "SourcePath": "/var/run/docker.sock",
             },
         },
         {
-            "name": "scratch",
-            "host": {
-                "sourcePath": "/scratch",
+            "Name": "scratch",
+            "Host": {
+                "SourcePath": "/scratch",
             },
         },
         {
-            "name": "docker_scratch",
-            "host": {
-                "sourcePath": "/docker_scratch"
+            "Name": "docker_scratch",
+            "Host": {
+                "SourcePath": "/docker_scratch"
             },
         }
     ]
     mount_points = [
         {
-            "sourceVolume": "docker_socket",
-            "containerPath": "/var/run/docker.sock",
-            "readOnly": False,
+            "SourceVolume": "docker_socket",
+            "ContainerPath": "/var/run/docker.sock",
+            "ReadOnly": False,
         },
         {
-            "sourceVolume": "scratch",
-            "containerPath": SCRATCH_PATH,
-            "readOnly": False,
+            "SourceVolume": "scratch",
+            "ContainerPath": SCRATCH_PATH,
+            "ReadOnly": False,
         },
         {
-            "sourceVolume": "docker_scratch",
-            "containerPath": "/.scratch",
-            "readOnly": False,
+            "SourceVolume": "docker_scratch",
+            "ContainerPath": "/.scratch",
+            "ReadOnly": False,
         }
     ]
 
     for filesystem in step.spec["filesystems"]:
         volume_name = f"{filesystem['efs_id']}-volume"
         volumes.append({
-            "name": volume_name,
-            "efsVolumeConfiguration": {
-                "fileSystemId": filesystem["efs_id"],
-                "rootDirectory": filesystem["root_dir"],
-                "transitEncryption": "ENABLED",
+            "Name": volume_name,
+            "EfsVolumeConfiguration": {
+                "FileSystemId": filesystem["efs_id"],
+                "RootDirectory": filesystem["root_dir"],
+                "TransitEncryption": "ENABLED",
             },
         })
         mount_points.append({
-            "sourceVolume": volume_name,
-            "containerPath": filesystem["host_path"],
-            "readOnly": False,
+            "SourceVolume": volume_name,
+            "ContainerPath": filesystem["host_path"],
+            "ReadOnly": False,
         })
 
     ret = {
-        "volumes": volumes,
-        "mountPoints": mount_points,
+        "Volumes": volumes,
+        "MountPoints": mount_points,
     }
 
     return ret
@@ -154,7 +171,7 @@ def get_timeout(step: Step) -> dict:
     if step.spec.get("timeout") is None:
         ret = {}
     else:
-        ret = {"timeout": {"attemptDurationSeconds": max(time_string_to_seconds(step.spec["timeout"]), 60)}}
+        ret = {"Timeout": {"AttemptDurationSeconds": max(time_string_to_seconds(step.spec["timeout"]), 60)}}
     return ret
 
 
@@ -175,8 +192,8 @@ def handle_qc_check(spec: dict | list | None) -> list:
 
 def get_consumable_resource_properties(spec: dict) -> dict:
     if spec:
-        ret = [{"consumableResource": k, "quantity": v } for k, v in spec.items()]
-        return {"consumableResourceProperties": {"consumableResourceList": ret}}
+        ret = [{"ConsumableResource": k, "Quantity": v } for k, v in spec.items()]
+        return {"ConsumableResourceProperties": {"ConsumableResourceList": ret}}
     else:
         return {}
 
@@ -186,7 +203,70 @@ def job_definition_rc(step: Step,
                       shell_opt: str,
                       s3_tags: dict,
                       job_tags: dict) -> Generator[Resource, None, str]:
-    logical_name = make_logical_name(f"{step.name}.job.defx")
+    logical_name = make_logical_name(f"{step.name}.job.defz")
+
+    job_def = {
+        "Type": "AWS::Batch::JobDefinition",
+        "UpdateReplacePolicy": "Retain",
+        "Properties": {
+            "Type": "container",
+            "Parameters": {
+                "repo": "rrr",
+                "image": "mmm",
+                "inputs": "iii",
+                "references": "fff",
+                "command": json.dumps(step.spec["commands"], separators=(",", ":")),
+                "outputs": "ooo",
+                "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
+                "shell": shell_opt,
+                "skip": "sss",
+                "s3tags": json.dumps(s3_tags, separators=(",", ":")),
+            },
+            "ContainerProperties": {
+                "Image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
+                "Command": [
+                    "python", "/bclaw_runner/src/runner_cli.py",
+                    "-c", "Ref::command",
+                    "-f", "Ref::references",
+                    "-i", "Ref::inputs",
+                    "-k", "Ref::skip",
+                    "-m", "Ref::image",
+                    "-o", "Ref::outputs",
+                    "-q", "Ref::qc",
+                    "-r", "Ref::repo",
+                    "-s", "Ref::shell",
+                    "-t", "Ref::s3tags",
+                ],
+                "JobRoleArn": task_role,
+                **get_environment(step),
+                **get_resource_requirements(step),
+                **get_volume_info(step),
+            },
+            **get_consumable_resource_properties(step.spec["compute"]["consumes"]),
+            "SchedulingPriority": 1,
+            **get_timeout(step),
+            "ResourceRetentionPolicy": {
+                "SkipDeregisterOnUpdate": True,
+            },
+            "PropagateTags": True,
+            "Tags": job_tags | {
+                "bclaw:workflow": {"Ref": "AWS::StackName"},
+                "bclaw:step": step.name,
+                "bclaw:version": os.environ["SOURCE_VERSION"],
+            },
+        },
+    }
+
+    yield Resource(logical_name, job_def)
+    return logical_name
+
+
+def job_definition_rc0(step: Step,
+                      task_role: str,
+                      shell_opt: str,
+                      s3_tags: dict,
+                      job_tags: dict) -> Generator[Resource, None, str]:
+    logical_name = make_logical_name(f"{step.name}.job.defz")
 
     # note: this is not a CloudFormation spec, it is meant to be submitted to the Batch API by register.py.
     # To pass it to the registration lambda, it must be json serialized or else the ints and bools will be

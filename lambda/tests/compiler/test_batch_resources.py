@@ -56,11 +56,20 @@ def test_get_job_queue(spec, expected, compiler_env):
 
 
 def test_get_environment():
-    result = get_environment()
+    step = Step("test_step", {}, "next_step")
+    result = get_environment(step)
     expect = {
-        "environment": [
-            {"name": "BC_SCRATCH_PATH",
-             "value": SCRATCH_PATH},
+        "Environment": [
+            {"Name": "BC_WORKFLOW_NAME",
+             "Value": {"Ref": "AWS::StackName"}},
+            {"Name": "BC_SCRATCH_PATH",
+             "Value": SCRATCH_PATH},
+            {"Name": "BC_STEP_NAME",
+             "Value": "test_step"},
+            {"Name": "AWS_DEFAULT_REGION",
+             "Value": {"Ref": "AWS::Region"}},
+            {"Name": "AWS_ACCOUNT_ID",
+             "Value": {"Ref": "AWS::AccountId"}},
         ]
     }
     assert result == expect
@@ -78,17 +87,17 @@ def test_get_resource_requirements(gpu):
     step = Step("test_step", spec, "next_step")
     result = get_resource_requirements(step)
 
-    assert "resourceRequirements" in result
-    rr = result["resourceRequirements"]
+    assert "ResourceRequirements" in result
+    rr = result["ResourceRequirements"]
     assert isinstance(rr, list)
 
-    assert rr[0] == {"type": "VCPU",
-                     "value": "4"}
-    assert rr[1] == {"type": "MEMORY",
-                     "value": "4096"}
+    assert rr[0] == {"Type": "VCPU",
+                     "Value": "4"}
+    assert rr[1] == {"Type": "MEMORY",
+                     "Value": "4096"}
     if str(gpu) != "0":
-        assert rr[2] == {"type": "GPU",
-                         "value": str(gpu)}
+        assert rr[2] == {"Type": "GPU",
+                         "Value": str(gpu)}
         assert len(rr) == 3
     else:
         assert len(rr) == 2
@@ -103,44 +112,44 @@ def test_get_resource_requirements(gpu):
 def test_get_volume_info(step_efs_specs):
     step = Step("test_step", {"filesystems": step_efs_specs}, "next_step")
     result = get_volume_info(step)
-    assert "volumes" in result
-    assert isinstance(result["volumes"], list)
-    assert "mountPoints" in result
-    assert isinstance(result["mountPoints"], list)
-    v_mp = list(zip(result["volumes"], result["mountPoints"]))
+    assert "Volumes" in result
+    assert isinstance(result["Volumes"], list)
+    assert "MountPoints" in result
+    assert isinstance(result["MountPoints"], list)
+    v_mp = list(zip(result["Volumes"], result["MountPoints"]))
 
     docker_socket_vol, docker_socket_mp = v_mp.pop(0)
-    assert docker_socket_vol == {"name": "docker_socket",
-                                 "host": {"sourcePath": "/var/run/docker.sock"}}
-    assert docker_socket_mp == {"sourceVolume": "docker_socket",
-                                "containerPath": "/var/run/docker.sock",
-                                "readOnly": False,}
+    assert docker_socket_vol == {"Name": "docker_socket",
+                                 "Host": {"SourcePath": "/var/run/docker.sock"}}
+    assert docker_socket_mp == {"SourceVolume": "docker_socket",
+                                "ContainerPath": "/var/run/docker.sock",
+                                "ReadOnly": False,}
 
     scratch_vol, scratch_mp = v_mp.pop(0)
-    assert scratch_vol == {"name": "scratch",
-                           "host": {"sourcePath": "/scratch"},}
-    assert scratch_mp == {"sourceVolume": scratch_vol["name"],
-                          "containerPath": SCRATCH_PATH,
-                          "readOnly": False,}
+    assert scratch_vol == {"Name": "scratch",
+                           "Host": {"SourcePath": "/scratch"},}
+    assert scratch_mp == {"SourceVolume": scratch_vol["Name"],
+                          "ContainerPath": SCRATCH_PATH,
+                          "ReadOnly": False,}
 
     docker_scratch_vol, docker_scratch_mp = v_mp.pop(0)
-    assert docker_scratch_vol == {"name": "docker_scratch",
-                                  "host": {"sourcePath": "/docker_scratch"},}
-    assert docker_scratch_mp == {"sourceVolume": docker_scratch_vol["name"],
-                                 "containerPath": "/.scratch",
-                                 "readOnly": False}
+    assert docker_scratch_vol == {"Name": "docker_scratch",
+                                  "Host": {"SourcePath": "/docker_scratch"},}
+    assert docker_scratch_mp == {"SourceVolume": docker_scratch_vol["Name"],
+                                 "ContainerPath": "/.scratch",
+                                 "ReadOnly": False}
 
     assert len(v_mp) == len(step_efs_specs)
     for ((vol, mp), spec) in zip(v_mp, step_efs_specs):
-        assert vol == {"name": f"{spec['efs_id']}-volume",
-                       "efsVolumeConfiguration": {
-                           "fileSystemId": spec["efs_id"],
-                           "rootDirectory": spec["root_dir"],
-                           "transitEncryption": "ENABLED",
+        assert vol == {"Name": f"{spec['efs_id']}-volume",
+                       "EfsVolumeConfiguration": {
+                           "FileSystemId": spec["efs_id"],
+                           "RootDirectory": spec["root_dir"],
+                           "TransitEncryption": "ENABLED",
                        },}
-        assert mp == {"sourceVolume": vol["name"],
-                      "containerPath": spec["host_path"],
-                      "readOnly": False,}
+        assert mp == {"SourceVolume": vol["Name"],
+                      "ContainerPath": spec["host_path"],
+                      "ReadOnly": False,}
 
 
 @pytest.mark.parametrize("timeout, expect", [
@@ -153,10 +162,10 @@ def test_get_timeout(timeout, expect):
     step = Step("step_name", {"timeout": timeout}, "next_step")
     result = {"Properties": {"stuff": "yada yada", **get_timeout(step)}}
     if expect is None:
-        assert "timeout" not in result["Properties"]
+        assert "Timeout" not in result["Properties"]
     else:
-        assert "timeout" in result["Properties"]
-        assert result["Properties"]["timeout"]["attemptDurationSeconds"] == expect
+        assert "Timeout" in result["Properties"]
+        assert result["Properties"]["Timeout"]["AttemptDurationSeconds"] == expect
 
 
 @pytest.mark.parametrize("qc_spec, expect", [
@@ -176,10 +185,10 @@ def test_handle_qc_check(qc_spec, expect):
 @pytest.mark.parametrize("spec, expect", [
     ({"res1": 99, "res2": 98},
      {
-         "consumableResourceProperties": {
-             "consumableResourceList": [
-                {"consumableResource": "res1", "quantity": 99},
-                {"consumableResource": "res2", "quantity": 98},
+         "ConsumableResourceProperties": {
+             "ConsumableResourceList": [
+                {"ConsumableResource": "res1", "Quantity": 99},
+                {"ConsumableResource": "res2", "Quantity": 98},
              ],
          },
     }),
@@ -281,7 +290,7 @@ def sample_batch_step():
 
 def test_job_definition_rc(sample_batch_step, compiler_env):
     step_name = "skim3-fastp"
-    expected_rc_name = "Skim3FastpJobDefx"
+    expected_rc_name = "Skim3FastpJobDefz"
     step = Step(step_name, sample_batch_step, "next_step")
 
     s3_tags = {
@@ -294,9 +303,9 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         "job_tag2": "step_job_value2",
     }
 
-    expected_job_def_spec = {
-        "type": "container",
-        "parameters": {
+    properties_spec = {
+        "Type": "container",
+        "Parameters": {
             "repo": "rrr",
             "image": "mmm",
             "inputs": "iii",
@@ -308,9 +317,9 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
             "skip": "sss",
             "s3tags": json.dumps(s3_tags, separators=(",", ":")),
         },
-        "containerProperties": {
-            "image": "runner_repo_uri:1234567",
-            "command": [
+        "ContainerProperties": {
+            "Image": "runner_repo_uri:1234567",
+            "Command": [
                 "python", "/bclaw_runner/src/runner_cli.py",
                 "-c", "Ref::command",
                 "-f", "Ref::references",
@@ -323,74 +332,70 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
                 "-s", "Ref::shell",
                 "-t", "Ref::s3tags",
             ],
-            "jobRoleArn": "arn:task:role",
-            "environment": [
-                {"name": "BC_SCRATCH_PATH", "value": SCRATCH_PATH},
+            "JobRoleArn": "arn:task:role",
+            "Environment": [
+                {"Name": "BC_WORKFLOW_NAME", "Value": {"Ref": "AWS::StackName"}},
+                {"Name": "BC_SCRATCH_PATH", "Value": SCRATCH_PATH},
+                {"Name": "BC_STEP_NAME", "Value": step_name},
+                {"Name": "AWS_DEFAULT_REGION", "Value": {"Ref": "AWS::Region"}},
+                {"Name": "AWS_ACCOUNT_ID", "Value": {"Ref": "AWS::AccountId"}},
             ],
-            "resourceRequirements": [
-                {"type": "VCPU", "value": "4"},
-                {"type": "MEMORY", "value": "4096"},
-                {"type": "GPU", "value": "2"},
+            "ResourceRequirements": [
+                {"Type": "VCPU", "Value": "4"},
+                {"Type": "MEMORY", "Value": "4096"},
+                {"Type": "GPU", "Value": "2"},
             ],
-            "mountPoints": [
-                {"containerPath": "/var/run/docker.sock", "sourceVolume": "docker_socket", "readOnly": False},
-                {"containerPath": "/_bclaw_scratch", "sourceVolume": "scratch", "readOnly": False},
-                {"containerPath": "/.scratch", "sourceVolume": "docker_scratch", "readOnly": False},
-                {"containerPath": "/step_efs", "sourceVolume": "fs-12345-volume", "readOnly": False},
+            "MountPoints": [
+                {"ContainerPath": "/var/run/docker.sock", "SourceVolume": "docker_socket", "ReadOnly": False},
+                {"ContainerPath": "/_bclaw_scratch", "SourceVolume": "scratch", "ReadOnly": False},
+                {"ContainerPath": "/.scratch", "SourceVolume": "docker_scratch", "ReadOnly": False},
+                {"ContainerPath": "/step_efs", "SourceVolume": "fs-12345-volume", "ReadOnly": False},
             ],
-            "volumes": [
-                {"name": "docker_socket", "host": {"sourcePath": "/var/run/docker.sock"}},
-                {"name": "scratch", "host": {"sourcePath": "/scratch"}},
-                {"name": "docker_scratch", "host": {"sourcePath": "/docker_scratch"}},
-                {"name": "fs-12345-volume",
-                 "efsVolumeConfiguration": {
-                     "fileSystemId": "fs-12345",
-                     "rootDirectory": "/path/to/my/data",
-                     "transitEncryption": "ENABLED",
+            "Volumes": [
+                {"Name": "docker_socket", "Host": {"SourcePath": "/var/run/docker.sock"}},
+                {"Name": "scratch", "Host": {"SourcePath": "/scratch"}},
+                {"Name": "docker_scratch", "Host": {"SourcePath": "/docker_scratch"}},
+                {"Name": "fs-12345-volume",
+                 "EfsVolumeConfiguration": {
+                     "FileSystemId": "fs-12345",
+                     "RootDirectory": "/path/to/my/data",
+                     "TransitEncryption": "ENABLED",
                  }}
             ],
         },
-        "consumableResourceProperties": {
-            "consumableResourceList": [
+        "ConsumableResourceProperties": {
+            "ConsumableResourceList": [
                 {
-                    "consumableResource": "resource1",
-                    "quantity": 99,
+                    "ConsumableResource": "resource1",
+                    "Quantity": 99,
                 },
                 {
-                    "consumableResource": "resource2",
-                    "quantity": 88,
+                    "ConsumableResource": "resource2",
+                    "Quantity": 88,
                 },
             ],
         },
-        "schedulingPriority": 1,
-        "timeout": {
-            "attemptDurationSeconds": 3600,
+        "SchedulingPriority": 1,
+        "Timeout": {
+            "AttemptDurationSeconds": 3600,
         },
-        "propagateTags": True,
-        "tags": {
+        "ResourceRetentionPolicy": {
+            "SkipDeregisterOnUpdate": True,
+        },
+        "PropagateTags": True,
+        "Tags": {
             "job_tag1": "global_job_value1",
             "job_tag2": "step_job_value2",
             "bclaw:step": step_name,
             "bclaw:version": "1234567",
-            "bclaw:workflow": "",
+            "bclaw:workflow": {"Ref": "AWS::StackName"},
         }
     }
 
     expected_rc_spec = {
-        "Type": "Custom::BatchJobDefinition",
+        "Type": "AWS::Batch::JobDefinition",
         "UpdateReplacePolicy": "Retain",
-        "Properties": {
-            "ServiceToken": "job_def_lambda_arn",
-            "workflowName": {
-                "Ref": "AWS::StackName",
-            },
-            "stepName": step_name,
-            "image":  {
-                "name": {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp"},
-                "auth": "arn:aws:secretsmanager:us-west-1:123456789012:secret:docker_auth"
-            },
-            "spec": json.dumps(expected_job_def_spec, sort_keys=True),
-        },
+        "Properties": properties_spec,
     }
 
     def helper():
@@ -401,12 +406,6 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         assert isinstance(resource, Resource)
         assert resource.name == expected_rc_name
         assert resource.spec == expected_rc_spec
-
-        job_def = json.loads(resource.spec["Properties"]["spec"])
-        with moto.mock_aws():
-            batch = boto3.client("batch")
-            # make sure the generated job definition is valid
-            _ = batch.register_job_definition(jobDefinitionName=expected_rc_name, **job_def)
 
 
 @pytest.mark.parametrize("spec, expect", [
@@ -551,7 +550,7 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
         assert isinstance(states[0], State)
         assert states[0].name == "step_name"
         assert states[0].spec["Resource"] == "arn:aws:states:::batch:submitJob.sync"
-        assert states[0].spec["Parameters"]["JobDefinition"] == "${StepNameJobDefx}"
+        assert states[0].spec["Parameters"]["JobDefinition"] == "${StepNameJobDefz}"
         assert states[0].spec["Next"] == "next_step_name"
 
         references = json.loads(states[0].spec["Parameters"]["Parameters"]["references"])
@@ -565,10 +564,10 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
 
     for resource in helper():
         assert isinstance(resource, Resource)
-        assert resource.spec["Type"] == "Custom::BatchJobDefinition"
+        assert resource.spec["Type"] == "AWS::Batch::JobDefinition"
 
-        job_def_spec = json.loads(resource.spec["Properties"]["spec"])
-        assert job_def_spec["containerProperties"]["jobRoleArn"] == expected_job_role_arn
+        job_role_arn = resource.spec["Properties"]["ContainerProperties"]["JobRoleArn"]
+        assert job_role_arn == expected_job_role_arn
 
 
 def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):
@@ -597,8 +596,8 @@ def test_handle_batch_shell_opt(sample_batch_step, step_shell, expect, compiler_
 
     rc = dict(helper())
 
-    spec = json.loads(rc["StepNameJobDefx"]["Properties"]["spec"])
-    assert spec["parameters"]["shell"] == expect
+    spec = rc["StepNameJobDefz"]["Properties"]["Parameters"]["shell"]
+    assert spec == expect
 
 
 def test_handle_batch_s3_tags_opt(sample_batch_step, compiler_env):
@@ -621,8 +620,7 @@ def test_handle_batch_s3_tags_opt(sample_batch_step, compiler_env):
 
     rc = dict(helper())
 
-    spec = json.loads(rc["StepNameJobDefx"]["Properties"]["spec"])
-    tags = json.loads(spec["parameters"]["s3tags"])
+    tags = json.loads(rc["StepNameJobDefz"]["Properties"]["Parameters"]["s3tags"])
     assert tags == expected_s3_tags
 
 
@@ -638,7 +636,7 @@ def test_handle_batch_job_tags_opt(sample_batch_step, compiler_env):
         "job_tag3": "step_job_value3",
         "bclaw:step": "step_name",
         "bclaw:version": "1234567",
-        "bclaw:workflow": "",
+        "bclaw:workflow": {"Ref": "AWS::StackName"},
     }
 
     step = Step("step_name", sample_batch_step, "next_step")
@@ -649,6 +647,5 @@ def test_handle_batch_job_tags_opt(sample_batch_step, compiler_env):
 
     rc = dict(helper())
 
-    spec = json.loads(rc["StepNameJobDefx"]["Properties"]["spec"])
-    tags = spec["tags"]
+    tags = rc["StepNameJobDefz"]["Properties"]["Tags"]
     assert tags == expected_job_tags

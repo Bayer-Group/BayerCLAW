@@ -284,10 +284,9 @@ def test_handle_scatter_gather(sample_scatter_step, compiler_env):
     resource_gen = helper()
     resources = list(resource_gen)
     assert len(resources) == 1
-    assert resources[0].name == "Step1JobDefx"
-    assert resources[0].spec["Type"] == "Custom::BatchJobDefinition"
-    subspec = json.loads(resources[0].spec["Properties"]["spec"])
-    s3_tags = json.loads(subspec["parameters"]["s3tags"])
+    assert resources[0].name == "Step1JobDefz"
+    assert resources[0].spec["Type"] == "AWS::Batch::JobDefinition"
+    s3_tags = json.loads(resources[0].spec["Properties"]["Parameters"]["s3tags"])
     expected_s3_tags = {
         "s3_tag1": "global_s3_value1",
         "s3_tag2": "step_s3_value2",
@@ -295,8 +294,7 @@ def test_handle_scatter_gather(sample_scatter_step, compiler_env):
     }
     assert s3_tags == expected_s3_tags
 
-    spec = json.loads(resources[0].spec["Properties"]["spec"])
-    cmd = json.loads(spec["parameters"]["command"])
+    cmd = json.loads(resources[0].spec["Properties"]["Parameters"]["command"])
     assert cmd[0] == "ls -l ${scatter.stuff} > ${output3}"
 
 
