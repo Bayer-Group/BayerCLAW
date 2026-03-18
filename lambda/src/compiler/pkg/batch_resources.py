@@ -261,89 +261,89 @@ def job_definition_rc(step: Step,
     return logical_name
 
 
-def job_definition_rc0(step: Step,
-                      task_role: str,
-                      shell_opt: str,
-                      s3_tags: dict,
-                      job_tags: dict) -> Generator[Resource, None, str]:
-    logical_name = make_logical_name(f"{step.name}.job.defz")
-
-    # note: this is not a CloudFormation spec, it is meant to be submitted to the Batch API by register.py.
-    # To pass it to the registration lambda, it must be json serialized or else the ints and bools will be
-    # stringified. Because it gets serialized here in the compiler lambda, though, CloudFormation will not
-    # be able to substitute the values for the pseudo parameters (AWS::AccountId, AWS::Region, etc.) in the
-    # job definition spec. Therefore, some fields are left unset and will be filled in by register.py.
-    job_def_spec = {
-        "type": "container",
-        "parameters": {
-            "repo": "rrr",
-            "image": "mmm",
-            "inputs": "iii",
-            "references": "fff",
-            "command": json.dumps(step.spec["commands"], separators=(",", ":")),
-            "outputs": "ooo",
-            "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
-            "shell": shell_opt,
-            "skip": "sss",
-            "s3tags": json.dumps(s3_tags, separators=(",", ":")),
-        },
-        "containerProperties": {
-            "image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
-            "command": [
-                "python", "/bclaw_runner/src/runner_cli.py",
-                "-c", "Ref::command",
-                "-f", "Ref::references",
-                "-i", "Ref::inputs",
-                "-k", "Ref::skip",
-                "-m", "Ref::image",
-                "-o", "Ref::outputs",
-                "-q", "Ref::qc",
-                "-r", "Ref::repo",
-                "-s", "Ref::shell",
-                "-t", "Ref::s3tags",
-            ],
-            "jobRoleArn": task_role,
-            **get_environment(),
-            **get_resource_requirements(step),
-            **get_volume_info(step),
-        },
-        **get_consumable_resource_properties(step.spec["compute"]["consumes"]),
-        "schedulingPriority": 1,
-        **get_timeout(step),
-        "propagateTags": True,
-        "tags": job_tags | {
-            "bclaw:workflow": "",  # placeholder; will be filled in by register.py
-            "bclaw:step": step.name,
-            "bclaw:version": os.environ["SOURCE_VERSION"],
-        },
-    }
-
-    # this is a CloudFormation spec. CloudFormation will supply the necessary pseudoparameter
-    # values (AWS::StackName, AWS::AccountId, AWS::Region), and register.py will finish the
-    # job definition spec and register it with Batch.
-    resource_spec = {
-        "Type": "Custom::BatchJobDefinition",
-        "UpdateReplacePolicy": "Retain",
-        "Properties": {
-            "ServiceToken": os.environ["JOB_DEF_LAMBDA_ARN"],
-
-            # used to complete the job definition spec and register it
-            "workflowName": {"Ref": "AWS::StackName"},
-
-            # the value returned from expand_image_uri may contain AWS::AccountId and AWS::Region,
-            # so this needs to be substituted here and passed to register.py. It can be passed unserialized
-            # because all the values are strings.
-            "image": expand_image_uri(step.spec["image"]),
-
-            # register.py needs the step name to create the job definition name ( <wf_name>_<step_name> ). The
-            # alternative is to dig it out of job_def_spec
-            "stepName": step.name,
-            "spec": json.dumps(job_def_spec, sort_keys=True),
-        },
-    }
-
-    yield Resource(logical_name, resource_spec)
-    return logical_name
+# def job_definition_rc0(step: Step,
+#                       task_role: str,
+#                       shell_opt: str,
+#                       s3_tags: dict,
+#                       job_tags: dict) -> Generator[Resource, None, str]:
+#     logical_name = make_logical_name(f"{step.name}.job.defz")
+#
+#     # note: this is not a CloudFormation spec, it is meant to be submitted to the Batch API by register.py.
+#     # To pass it to the registration lambda, it must be json serialized or else the ints and bools will be
+#     # stringified. Because it gets serialized here in the compiler lambda, though, CloudFormation will not
+#     # be able to substitute the values for the pseudo parameters (AWS::AccountId, AWS::Region, etc.) in the
+#     # job definition spec. Therefore, some fields are left unset and will be filled in by register.py.
+#     job_def_spec = {
+#         "type": "container",
+#         "parameters": {
+#             "repo": "rrr",
+#             "image": "mmm",
+#             "inputs": "iii",
+#             "references": "fff",
+#             "command": json.dumps(step.spec["commands"], separators=(",", ":")),
+#             "outputs": "ooo",
+#             "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
+#             "shell": shell_opt,
+#             "skip": "sss",
+#             "s3tags": json.dumps(s3_tags, separators=(",", ":")),
+#         },
+#         "containerProperties": {
+#             "image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
+#             "command": [
+#                 "python", "/bclaw_runner/src/runner_cli.py",
+#                 "-c", "Ref::command",
+#                 "-f", "Ref::references",
+#                 "-i", "Ref::inputs",
+#                 "-k", "Ref::skip",
+#                 "-m", "Ref::image",
+#                 "-o", "Ref::outputs",
+#                 "-q", "Ref::qc",
+#                 "-r", "Ref::repo",
+#                 "-s", "Ref::shell",
+#                 "-t", "Ref::s3tags",
+#             ],
+#             "jobRoleArn": task_role,
+#             **get_environment(),
+#             **get_resource_requirements(step),
+#             **get_volume_info(step),
+#         },
+#         **get_consumable_resource_properties(step.spec["compute"]["consumes"]),
+#         "schedulingPriority": 1,
+#         **get_timeout(step),
+#         "propagateTags": True,
+#         "tags": job_tags | {
+#             "bclaw:workflow": "",  # placeholder; will be filled in by register.py
+#             "bclaw:step": step.name,
+#             "bclaw:version": os.environ["SOURCE_VERSION"],
+#         },
+#     }
+#
+#     # this is a CloudFormation spec. CloudFormation will supply the necessary pseudoparameter
+#     # values (AWS::StackName, AWS::AccountId, AWS::Region), and register.py will finish the
+#     # job definition spec and register it with Batch.
+#     resource_spec = {
+#         "Type": "Custom::BatchJobDefinition",
+#         "UpdateReplacePolicy": "Retain",
+#         "Properties": {
+#             "ServiceToken": os.environ["JOB_DEF_LAMBDA_ARN"],
+#
+#             # used to complete the job definition spec and register it
+#             "workflowName": {"Ref": "AWS::StackName"},
+#
+#             # the value returned from expand_image_uri may contain AWS::AccountId and AWS::Region,
+#             # so this needs to be substituted here and passed to register.py. It can be passed unserialized
+#             # because all the values are strings.
+#             "image": expand_image_uri(step.spec["image"]),
+#
+#             # register.py needs the step name to create the job definition name ( <wf_name>_<step_name> ). The
+#             # alternative is to dig it out of job_def_spec
+#             "stepName": step.name,
+#             "spec": json.dumps(job_def_spec, sort_keys=True),
+#         },
+#     }
+#
+#     yield Resource(logical_name, resource_spec)
+#     return logical_name
 
 
 def get_skip_behavior(spec: dict) -> str:
