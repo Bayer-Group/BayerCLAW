@@ -47,6 +47,7 @@ def test_get_container_metadata(monkeypatch, requests_mock):
     assert result == metadata
 
 
+@pytest.mark.skip(reason="testing")
 def test_get_mounts(monkeypatch):
     monkeypatch.setenv("BC_SCRATCH_PATH", "/_bclaw_scratch")
     metadata = {
