@@ -48,6 +48,8 @@ def get_container_metadata() -> dict:
 
 def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> Generator[Mount, None, None]:
     for volume_spec in metadata["Volumes"]:
+        logger.info(f"source: {volume_spec['Source']}, destination: {volume_spec['Destination']}, DockerName: {volume_spec.get('DockerName', 'none')} ")
+
         if "Source" in volume_spec:
             if volume_spec["Source"] == "/var/run/docker.sock":
                 # prevent docker in docker in docker in docker...
