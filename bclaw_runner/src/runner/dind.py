@@ -98,11 +98,15 @@ def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> G
             #             driver_config=DriverConfig("amazon-ecs-volume-plugin"))
 
             # test: use host path
+            # failed: missing required fields: [device] (???)
+            # cw log stream: jax-wait-for-it-efs-2026_wait/default/6d6ffc35b27f46d3a604770589d722fd
+            # host_path = f"/var/lib/ecs/volumes/{volume_spec['DockerName']}/level1/level2"
+            # yield Mount(volume_spec["Destination"], host_path, type="volume", read_only=False,
+            #             driver_config=DriverConfig("amazon-ecs-volume-plugin"))
+
+            # test: mount host path the same way as other mounts
             host_path = f"/var/lib/ecs/volumes/{volume_spec['DockerName']}/level1/level2"
-            yield Mount(volume_spec["Destination"], host_path, type="volume", read_only=False,
-                        driver_config=DriverConfig("amazon-ecs-volume-plugin"))
-
-
+            yield Mount(volume_spec["Destination"], host_path, type="bind", read_only=False)
 
 
 def get_environment_vars() -> dict:
