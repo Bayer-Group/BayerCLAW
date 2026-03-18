@@ -87,8 +87,14 @@ def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> G
             # volume_spec:
             #   {'DockerName': 'ecs-jax-efs-test-EfsTestJobDef--1-1-fs-b5a4dd01-volume-bcd3a18fd8e28a9fe901',
             #    'Destination': '/efs'}
-            yield Mount(volume_spec["Destination"], volume_spec["DockerName"], type="volume", read_only=False,
+            # original
+            # yield Mount(volume_spec["Destination"], volume_spec["DockerName"], type="volume", read_only=False,
+            #             driver_config=DriverConfig("amazon-ecs-volume-plugin"))
+
+            # test: append path to volume_spec["DockerName"]
+            yield Mount(volume_spec["Destination"], f"{volume_spec['DockerName']}/level1/level2", type="volume", read_only=False,
                         driver_config=DriverConfig("amazon-ecs-volume-plugin"))
+
 
 
 def get_environment_vars() -> dict:
