@@ -105,6 +105,7 @@ def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> G
             #             driver_config=DriverConfig("amazon-ecs-volume-plugin"))
 
             # test: mount host path the same way as other mounts
+            # that works
             host_path = f"/var/lib/ecs/volumes/{volume_spec['DockerName']}/level1/level2"
             yield Mount(volume_spec["Destination"], host_path, type="bind", read_only=False)
 
