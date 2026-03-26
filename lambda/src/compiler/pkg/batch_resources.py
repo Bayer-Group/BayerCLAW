@@ -6,7 +6,6 @@ import re
 from typing import Generator, List, Union
 
 import humanfriendly
-from cfnlint.rules.resources.UpdateReplacePolicy import UpdateReplacePolicy
 
 from .util import Step, Resource, State, make_logical_name, time_string_to_seconds
 
