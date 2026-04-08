@@ -307,7 +307,10 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         "Type": "container",
         "Parameters": {
             "repo": "rrr",
-            "image": "mmm",
+            "image": {
+                "auth": "arn:aws:secretsmanager:us-west-1:123456789012:secret:docker_auth",
+                "name": {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp"},
+            },
             "inputs": "iii",
             "references": "fff",
             "command": json.dumps(step.spec["commands"], separators=(",", ":")),
