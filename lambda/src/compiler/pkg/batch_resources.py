@@ -211,7 +211,7 @@ def job_definition_rc(step: Step,
             "Type": "container",
             "Parameters": {
                 "repo": "rrr",
-                "image": expand_image_uri(step.spec["image"]),
+                "image": json.dumps(expand_image_uri(step.spec["image"]), sort_keys=True, separators=(",", ":")),
                 "inputs": "iii",
                 "references": "fff",
                 "command": json.dumps(step.spec["commands"], separators=(",", ":")),

@@ -303,14 +303,16 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         "job_tag2": "step_job_value2",
     }
 
+    image_spec = {
+        "auth": "arn:aws:secretsmanager:us-west-1:123456789012:secret:docker_auth",
+        "name": {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp"},
+    }
+
     properties_spec = {
         "Type": "container",
         "Parameters": {
             "repo": "rrr",
-            "image": {
-                "auth": "arn:aws:secretsmanager:us-west-1:123456789012:secret:docker_auth",
-                "name": {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp"},
-            },
+            "image": json.dumps(image_spec, sort_keys=True, separators=(",", ":")),
             "inputs": "iii",
             "references": "fff",
             "command": json.dumps(step.spec["commands"], separators=(",", ":")),
