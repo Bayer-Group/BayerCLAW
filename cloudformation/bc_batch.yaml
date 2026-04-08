@@ -212,6 +212,7 @@ Resources:
               mount /dev/sdh /scratch
               
               yum -y upgrade amazon-efs-utils
+              pip3 install botocore
 
               --==BOUNDARY==--
 
