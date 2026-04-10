@@ -18,9 +18,9 @@ jobs:
           fetch-tags: true
 
       - name: setupPython
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.10"
+          python-version: "3.14"
 
       - name: setupSam
         uses: aws-actions/setup-sam@v2
