@@ -1,8 +1,11 @@
 on:
-  push:
-    branches:
-      - installer
   workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to deploy from"
+        type: string
+        required: true
+        default: "main"
 
 jobs:
   doIt:
@@ -12,8 +15,9 @@ jobs:
       id-token: "write"
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.inputs.branch }}
           fetch-depth: 0
           fetch-tags: true
 
@@ -64,6 +68,7 @@ jobs:
           GpuAmiId=auto \
           InstallationName=bayerclaw2 \
           LauncherBucketName=default \
+          LoggingDestinationArn=none \
           LogRetentionDays=30 \
           MaxvCpus=256 \
           MinvCpus=0 \
