@@ -107,16 +107,17 @@ def lambda_handler(event: dict, context: object):
 
     with responder(event, context) as cfn_response:
         if event["RequestType"] in ["Create", "Update"]:
-            spec0 = json.loads(event["ResourceProperties"]["spec"])
-            spec = edit_spec(spec0,
-                             event["ResourceProperties"]["workflowName"],
-                             event["ResourceProperties"]["stepName"],
-                             event["ResourceProperties"]["image"])
-            logger.info(f"{spec=}")
-
-            result = batch.register_job_definition(**spec)
-            cfn_response.PhysicalResourceId = result["jobDefinitionArn"]
-            cfn_response.return_this(Arn=result["jobDefinitionArn"])
+            raise RuntimeError(f"don't call me")
+            # spec0 = json.loads(event["ResourceProperties"]["spec"])
+            # spec = edit_spec(spec0,
+            #                  event["ResourceProperties"]["workflowName"],
+            #                  event["ResourceProperties"]["stepName"],
+            #                  event["ResourceProperties"]["image"])
+            # logger.info(f"{spec=}")
+            #
+            # result = batch.register_job_definition(**spec)
+            # cfn_response.PhysicalResourceId = result["jobDefinitionArn"]
+            # cfn_response.return_this(Arn=result["jobDefinitionArn"])
 
         else:
             # handle Delete requests

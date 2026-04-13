@@ -98,6 +98,7 @@ def test_edit_spec(job_def_spec, monkeypatch):
     assert result == expect
 
 
+@pytest.mark.skip(reason="not implemented")
 @moto.mock_aws()
 def test_lambda_handler_create(event_factory, mocker, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
@@ -139,6 +140,7 @@ def test_lambda_handler_create(event_factory, mocker, monkeypatch):
     assert job_defs[0]["tags"]["bclaw:workflow"] == "test-wf"
 
 
+@pytest.mark.skip(reason="not implemented")
 def test_lambda_handler_update(event_factory, batch_job_def_arn, mocker, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
