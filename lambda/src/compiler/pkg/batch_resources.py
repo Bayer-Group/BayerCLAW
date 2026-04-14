@@ -207,6 +207,7 @@ def job_definition_rc(step: Step,
     job_def = {
         "Type": "AWS::Batch::JobDefinition",
         "UpdateReplacePolicy": "Retain",
+        "DeletionPolicy": "Retain",
         "Properties": {
             "JobDefinitionName": {"Fn::Sub": f"${{AWS::StackName}}_{step.name}"},
             "Type": "container",
