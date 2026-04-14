@@ -401,6 +401,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
     expected_rc_spec = {
         "Type": "AWS::Batch::JobDefinition",
         "UpdateReplacePolicy": "Retain",
+        "DeletionPolicy": "Retain",
         "Properties": properties_spec,
     }
 
