@@ -309,6 +309,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
     }
 
     properties_spec = {
+        "JobDefinitionName": {"Fn::Sub": "${AWS::StackName}_skim3-fastp"},
         "Type": "container",
         "Parameters": {
             "repo": "rrr",
