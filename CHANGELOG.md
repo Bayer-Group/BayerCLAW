@@ -1,12 +1,11 @@
 # Changelog for BayerCLAW
 
-<!--
-202604xx
-- bug fix: unable to roll back if a step has been deleted
-- remove job definition hack
-- update batch scheduling policy syntax
-- update to Python 3.14
--->
+## [v1.2.8] 2026-04-15 Upgrade and bug fix
+- Remove the hacky custom resource used to update Batch job definitions without deregistering
+old definitions.
+- Update CloudFormation syntax for Batch scheduling policies.
+- Update everything to Python 3.14.
+- Fixed a bug that would break rollbacks after a workflow step had been deleted.
 
 ## [v1.2.7] 2025-11-05 Upgrade
 
