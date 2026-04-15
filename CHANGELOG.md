@@ -5,6 +5,7 @@
 - bug fix: unable to roll back if a step has been deleted
 - remove job definition hack
 - update batch scheduling policy syntax
+- update to Python 3.14
 -->
 
 ## [v1.2.7] 2025-11-05 Upgrade

@@ -1,12 +1,10 @@
-from copy import deepcopy
 import json
 
 import boto3
-import jmespath
 import moto
 import pytest
 
-from ...src.job_def.register import edit_spec, lambda_handler
+from ...src.job_def.register import lambda_handler
 
 
 @pytest.fixture(scope="function")
@@ -78,27 +76,6 @@ def batch_job_def_arn(job_def_spec, monkeypatch):
         yield yld["jobDefinitionArn"]
 
 
-def test_edit_spec(job_def_spec, monkeypatch):
-    monkeypatch.setenv("REGION", "us-west-1")
-    monkeypatch.setenv("ACCT_NUM", "123456789012")
-
-    test_image_spec = {
-        "name": "test_image",
-        "auth": "test_auth",
-    }
-
-    expect = deepcopy(job_def_spec) | {"jobDefinitionName": "test-wf_test-step"}
-    expect["containerProperties"]["environment"] += [{"name": "BC_WORKFLOW_NAME", "value": "test-wf"},
-                                                     {"name": "BC_STEP_NAME", "value": "test-step"},
-                                                     {"name": "AWS_DEFAULT_REGION", "value": "us-west-1"},
-                                                     {"name": "AWS_ACCOUNT_ID", "value": "123456789012"},]
-    expect["parameters"]["image"] = json.dumps(test_image_spec,sort_keys=True, separators=(",", ":"))
-    expect["tags"]["bclaw:workflow"] = "test-wf"
-    result = edit_spec(job_def_spec, "test-wf", "test-step", test_image_spec)
-    assert result == expect
-
-
-@pytest.mark.skip(reason="not implemented")
 @moto.mock_aws()
 def test_lambda_handler_create(event_factory, mocker, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
@@ -107,22 +84,20 @@ def test_lambda_handler_create(event_factory, mocker, monkeypatch):
 
     mock_respond_fn = mocker.patch("lambda.src.job_def.register.respond")
     event = event_factory("Create", "yadaYada")
+    context = FakeContext()
 
-    _ = lambda_handler(event, FakeContext())
+    _ = lambda_handler(event, context)
 
     expected_job_def_name = "test-wf_test-step"
-    expected_job_def_arn = f"arn:aws:batch:us-west-1:123456789012:job-definition/{expected_job_def_name}:1"
     expected_respond_call = {
-        "PhysicalResourceId": expected_job_def_arn,
+        "PhysicalResourceId": event["PhysicalResourceId"],
         "StackId": event["StackId"],
         "RequestId": event["RequestId"],
         "LogicalResourceId": event["LogicalResourceId"],
-        "Status": "SUCCESS",
-        "Reason": "",
+        "Status": "FAILED",
+        "Reason": f"see log group {context.log_group_name} / log stream {context.log_stream_name}",
         "NoEcho": False,
-        "Data": {
-            "Arn": expected_job_def_arn,
-        },
+        "Data": {},
     }
 
     mock_respond_fn.assert_called_once_with(event["ResponseURL"], expected_respond_call)
@@ -130,17 +105,10 @@ def test_lambda_handler_create(event_factory, mocker, monkeypatch):
     batch = boto3.client("batch")
     response = batch.describe_job_definitions(jobDefinitionName=expected_job_def_name)
     job_defs = response["jobDefinitions"]
-    assert len(job_defs) == 1
-    assert job_defs[0]["jobDefinitionArn"] == expected_job_def_arn
-    assert job_defs[0]["status"] == "ACTIVE"
-    assert job_defs[0]["containerProperties"]["environment"] == [{"name": "BC_WORKFLOW_NAME", "value": "test-wf"},
-                                                                 {"name": "BC_STEP_NAME", "value": "test-step"},
-                                                                 {"name": "AWS_DEFAULT_REGION", "value": "us-west-1"},
-                                                                 {"name": "AWS_ACCOUNT_ID", "value": "123456789012"},]
-    assert job_defs[0]["tags"]["bclaw:workflow"] == "test-wf"
+    # no job definition created
+    assert len(job_defs) == 0
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_lambda_handler_update(event_factory, batch_job_def_arn, mocker, monkeypatch):
     monkeypatch.setenv("REGION", "us-west-1")
     monkeypatch.setenv("ACCT_NUM", "123456789012")
@@ -148,22 +116,21 @@ def test_lambda_handler_update(event_factory, batch_job_def_arn, mocker, monkeyp
 
     mock_respond_fn = mocker.patch("lambda.src.job_def.register.respond")
     event = event_factory("Update", batch_job_def_arn)
+    context = FakeContext()
 
-    _ = lambda_handler(event, FakeContext())
+    _ = lambda_handler(event, context)
 
     expected_job_def_name = "test-wf_test-step"
     expected_job_def_arn = f"arn:aws:batch:us-west-1:123456789012:job-definition/{expected_job_def_name}:2"
     expected_respond_call = {
-        "PhysicalResourceId": expected_job_def_arn,
+        "PhysicalResourceId": event["PhysicalResourceId"],
         "StackId": event["StackId"],
         "RequestId": event["RequestId"],
         "LogicalResourceId": event["LogicalResourceId"],
-        "Status": "SUCCESS",
-        "Reason": "",
+        "Status": "FAILED",
+        "Reason": f"see log group {context.log_group_name} / log stream {context.log_stream_name}",
         "NoEcho": False,
-        "Data": {
-            "Arn": expected_job_def_arn
-        }
+        "Data": {}
     }
 
     mock_respond_fn.assert_called_once_with(event["ResponseURL"], expected_respond_call)
@@ -171,14 +138,10 @@ def test_lambda_handler_update(event_factory, batch_job_def_arn, mocker, monkeyp
     batch = boto3.client("batch")
     response = batch.describe_job_definitions(jobDefinitionName=expected_job_def_name)
     job_defs = response["jobDefinitions"]
-    assert len(job_defs) == 2
-    arns = jmespath.search("[].jobDefinitionArn", job_defs)
-    assert set(arns) == {batch_job_def_arn, expected_job_def_arn}
-    statuses = jmespath.search("[].status", job_defs)
-    assert all(s == "ACTIVE" for s in statuses)
+    # no new job definition version created
+    assert len(job_defs) == 1
 
 
-@pytest.mark.skip(reason="not implemented")
 def test_lambda_handler_delete(event_factory, batch_job_def_arn, mocker):
     mock_respond_fn = mocker.patch("lambda.src.job_def.register.respond")
     event = event_factory("Delete", batch_job_def_arn)
@@ -201,10 +164,10 @@ def test_lambda_handler_delete(event_factory, batch_job_def_arn, mocker):
     batch = boto3.client("batch")
     response = batch.describe_job_definitions(jobDefinitionName="test-wf_test-step")
     job_defs = response["jobDefinitions"]
-    # job definition is still there, it just gets deactivated
+    # job definition should remain active for rollbacks
     assert len(job_defs) == 1
     assert job_defs[0]["jobDefinitionArn"] == batch_job_def_arn
-    assert job_defs[0]["status"] == "INACTIVE"
+    assert job_defs[0]["status"] == "ACTIVE"
 
 
 def test_lambda_handler_no_physical_resource_id(event_factory, batch_job_def_arn, mocker):
