@@ -1,5 +1,12 @@
 # Changelog for BayerCLAW
 
+<!--
+202604xx
+- bug fix: unable to roll back if a step has been deleted
+- remove job definition hack
+- update batch scheduling policy syntax
+-->
+
 ## [v1.2.7] 2025-11-05 Upgrade
 
 - Changes to EC2 instance naming and spot instance termination checking to allow the use of Amazon

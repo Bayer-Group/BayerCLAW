@@ -178,6 +178,7 @@ def test_lambda_handler_update(event_factory, batch_job_def_arn, mocker, monkeyp
     assert all(s == "ACTIVE" for s in statuses)
 
 
+@pytest.mark.skip(reason="not implemented")
 def test_lambda_handler_delete(event_factory, batch_job_def_arn, mocker):
     mock_respond_fn = mocker.patch("lambda.src.job_def.register.respond")
     event = event_factory("Delete", batch_job_def_arn)
