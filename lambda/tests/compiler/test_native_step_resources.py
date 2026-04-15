@@ -234,5 +234,5 @@ def test_handle_parallel_native_step(compiler_env):
 
     resources = list(helper())
     for resource in resources:
-        assert resource.name in {"DoThisJobDefx", "DoThatJobDefx", "DoTheOtherJobDefx"}
-        assert resource.spec["Type"] == "Custom::BatchJobDefinition"
+        assert resource.name in {"DoThisJobDefz", "DoThatJobDefz", "DoTheOtherJobDefz"}
+        assert resource.spec["Type"] == "AWS::Batch::JobDefinition"

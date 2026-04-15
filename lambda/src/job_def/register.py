@@ -1,4 +1,12 @@
 """
+Prior to v1.2.8, this was the business end of Lambda-backed custom CloudFormation resources (having
+logical names ending with JobDefx). The custom resource is no longer needed due to updates in the way
+CloudFormation handles Batch job definitions. However, this Lambda still needs to be present so that
+CloudFormation can call it when updating old workflows to v1.2.8. It doesn't do anything (other than
+complain when asked to create or update a resource), but it still must return a well-formed response
+when called to delete a resource.
+
+Old docstring:
 When CloudFormation updates a Batch job definition, it will deactivate the old version automatically. This doesn't
 work well with blue/green deployments, where we want to keep the old version active in case a rollback is required.
 This lambda function will register a new version of the job definition without deactivating the old one. It is meant
@@ -10,11 +18,8 @@ from dataclasses import dataclass, asdict, field
 import http.client
 import json
 import logging
-import os
 from typing import Generator
 import urllib.parse
-
-import boto3
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -64,18 +69,6 @@ def responder(event, context, no_echo=False) -> Generator[Response, None, None]:
         respond(event["ResponseURL"], asdict(response))
 
 
-def edit_spec(spec: dict, wf_name: str, step_name: str, image: dict) -> dict:
-    ret = spec.copy()
-    ret["jobDefinitionName"] = f"{wf_name}_{step_name}"
-    ret["containerProperties"]["environment"] += [{"name": "BC_WORKFLOW_NAME", "value": wf_name},
-                                                  {"name": "BC_STEP_NAME", "value": step_name},
-                                                  {"name": "AWS_DEFAULT_REGION", "value": os.environ["REGION"]},
-                                                  {"name": "AWS_ACCOUNT_ID", "value": os.environ["ACCT_NUM"]}]
-    ret["parameters"]["image"] = json.dumps(image, sort_keys=True, separators=(",", ":"))
-    ret["tags"]["bclaw:workflow"] = wf_name
-    return ret
-
-
 def lambda_handler(event: dict, context: object):
     # event[ResourceProperties] = {
     #   workflowName: str
@@ -103,27 +96,6 @@ def lambda_handler(event: dict, context: object):
 
     logger.info(f"{event=}")
 
-    batch = boto3.client("batch")
-
-    with responder(event, context) as cfn_response:
+    with responder(event, context):
         if event["RequestType"] in ["Create", "Update"]:
-            spec0 = json.loads(event["ResourceProperties"]["spec"])
-            spec = edit_spec(spec0,
-                             event["ResourceProperties"]["workflowName"],
-                             event["ResourceProperties"]["stepName"],
-                             event["ResourceProperties"]["image"])
-            logger.info(f"{spec=}")
-
-            result = batch.register_job_definition(**spec)
-            cfn_response.PhysicalResourceId = result["jobDefinitionArn"]
-            cfn_response.return_this(Arn=result["jobDefinitionArn"])
-
-        else:
-            # handle Delete requests
-            try:
-                if (job_def_id := event.get("PhysicalResourceId")) is not None:
-                    batch.deregister_job_definition(jobDefinition=job_def_id)
-                else:
-                    logger.warning("no physical resource id found")
-            except:
-                logger.warning("deregistration failed: ")
+            raise RuntimeError(f"don't call me")
