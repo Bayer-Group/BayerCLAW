@@ -211,6 +211,8 @@ Resources:
               mkdir -p /scratch
               mount /dev/sdh /scratch
 
+              # yum -y upgrade amazon-efs-utils
+
               --==BOUNDARY==--
 
   ComputeEnvironment:
