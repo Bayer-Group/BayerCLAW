@@ -213,8 +213,8 @@ Resources:
 
               # yum -y upgrade amazon-efs-utils
               
-              # mkdir -p /mnt/s3files
-              # mount -t s3files fs-079c6cdc12adea3f1:/ /mnt/s3files
+              mkdir -p /mnt/s3files
+              mount -t s3files fs-079c6cdc12adea3f1:/ /mnt/s3files
 
               --==BOUNDARY==--
 

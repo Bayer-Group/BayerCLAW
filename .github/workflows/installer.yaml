@@ -49,6 +49,8 @@ jobs:
         env:
           SUBNETS: "subnet-3ffe7854,subnet-b3b296ff,subnet-e1c63a9c"
           VPC_ID: "vpc-00cb556b"
+          AMI_ID: "ami-06ad53398e20e632e"
+          GPU_AMI_ID: "ami-0f45f826b73f042e0"
         run: |
           export SOURCE_VERSION=$(git describe --tags)
           export UNIQIFIER=$(date | md5sum | head -c 16)
@@ -62,10 +64,10 @@ jobs:
           --no-fail-on-empty-changeset \
           --tags "bclaw:version=${SOURCE_VERSION}" \
           --parameter-overrides \
-          AmiId=auto \
+          AmiId=${AMI_ID} \
           CompilerMacroName=BC2_Compiler \
           ExistingBatchSubscriptionFilter=none \
-          GpuAmiId=auto \
+          GpuAmiId=${GPU_AMI_ID} \
           InstallationName=bayerclaw2 \
           LauncherBucketName=default \
           LoggingDestinationArn=none \
