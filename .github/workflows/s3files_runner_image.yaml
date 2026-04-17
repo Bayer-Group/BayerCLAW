@@ -1,0 +1,43 @@
+name: deploy s3files runner image
+on:
+  push:
+    branches:
+      - s3files26
+    paths:
+      - 'bclaw_runner/**'
+
+jobs:
+  doIt:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Get creds
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: "arn:aws:iam::934778205429:role/jax-github-role-2025"
+          aws-region: "us-east-1"
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Setup buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build it
+        working-directory: bclaw_runner
+        run: |
+          docker buildx build \
+          -f Dockerfile.alpine \
+          --target build \
+          --platform linux/amd64 \
+          --tag 934778205429.dkr.ecr.us-east-2.amazonaws.com/s3files-runner:latest \
+          --push .

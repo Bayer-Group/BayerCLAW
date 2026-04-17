@@ -49,6 +49,8 @@ jobs:
         env:
           SUBNETS: "subnet-3ffe7854,subnet-b3b296ff,subnet-e1c63a9c"
           VPC_ID: "vpc-00cb556b"
+          # as of 4/16/2026, these are the only Amazon Linux 2023 AMIs that have version 3.0.x of
+          # amazon-efs-utils installed. This is required for mounting s3files volumes.
           AMI_ID: "ami-06ad53398e20e632e"
           GPU_AMI_ID: "ami-0f45f826b73f042e0"
         run: |
