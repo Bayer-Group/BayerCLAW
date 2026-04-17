@@ -13,6 +13,7 @@ from docker.types import DeviceRequest, DriverConfig, Mount
 import requests
 
 from .signal_trapper import signal_trapper
+from .workspace import Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +47,10 @@ def get_container_metadata() -> dict:
     return ret
 
 
-def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> Generator[Mount, None, None]:
+def get_mounts(metadata: dict, workspace: Workspace) -> Generator[Mount, None, None]:
     for volume_spec in metadata["Volumes"]:
+        logger.info(f"{volume_spec=}")
+
         if "Source" in volume_spec:
             if volume_spec["Source"] == "/var/run/docker.sock":
                 # prevent docker in docker in docker in docker...
@@ -66,10 +69,11 @@ def get_mounts(metadata: dict, parent_workspace: str, child_workspace: str) -> G
 
                 # first locate the parent workspace on the host's scratch volume, e.g.
                 #   /_bclaw_scratch/tmp12345 -> /scratch/tmp12345
-                host_workspace = parent_workspace.replace(os.environ["BC_SCRATCH_PATH"], volume_spec["Source"])
+                # host_workspace = parent_workspace.replace(os.environ["BC_SCRATCH_PATH"], volume_spec["Source"])
+                host_workspace = workspace.host_path
 
                 # then mount the host path to the child container
-                yield Mount(child_workspace, host_workspace, type="bind", read_only=False)
+                yield Mount(workspace.child_path, host_workspace, type="bind", read_only=False)
 
             elif volume_spec["Destination"] == "/.scratch":
                 yield Mount(volume_spec["Destination"], volume_spec["Source"], type="bind", read_only=False)
@@ -130,17 +134,17 @@ def pull_image(docker_client: docker.DockerClient, image_spec: dict) -> Image:
     return ret
 
 
-def run_child_container(image_spec: dict, command: str, parent_workspace: str, parent_job_data_file: str) -> int:
-    child_workspace = os.environ["BC_SCRATCH_PATH"]
+def run_child_container(image_spec: dict, command: str, workspace: Workspace) -> int:
+    # child_workspace = os.environ["BC_SCRATCH_PATH"]
 
     parent_metadata = get_container_metadata()
-    mounts = list(get_mounts(parent_metadata, parent_workspace, child_workspace))
+    mounts = list(get_mounts(parent_metadata, Workspace))
     cpu_shares = parent_metadata["Limits"]["CPU"]
     mem_limit = f"{parent_metadata['Limits']['Memory']}m"
 
     environment = get_environment_vars()
-    environment["BC_WORKSPACE"] = child_workspace
-    environment["BC_JOB_DATA_FILE"] = os.path.join(child_workspace, os.path.basename(parent_job_data_file))
+    environment["BC_WORKSPACE"] = workspace.child_path
+    # environment["BC_JOB_DATA_FILE"] = os.path.join(child_workspace, os.path.basename(parent_job_data_file))
 
     device_requests = get_gpu_requests()
 
@@ -159,18 +163,18 @@ def run_child_container(image_spec: dict, command: str, parent_workspace: str, p
                                                  mem_limit=mem_limit,
                                                  mounts=mounts,
                                                  version="auto",
-                                                 working_dir=child_workspace)
+                                                 working_dir=workspace.child_path)
         with signal_trapper(container):
             try:
                 with closing(container.logs(stream=True)) as fp:
-                    for line in fp:
-                        user_cmd_logger.user_cmd(line.decode("utf-8"))
+                    try:
+                        for line in fp:
+                            user_cmd_logger.user_cmd(line.decode("utf-8"))
 
-            except Exception:
-                logger.exception("----- error during subprocess logging: ")
-                container.reload()
-                logger.info(f"----- subprocess status is {container.status}")
-                logger.warning("----- continuing without subprocess logging")
+                    except Exception:
+                        logger.exception("----- error during subprocess logging: ")
+                        container.reload()
+                        logger.info(f"----- subprocess status is {container.status}")
 
             finally:
                 logger.info("---------- end of user command block ----------")
