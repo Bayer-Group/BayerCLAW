@@ -140,7 +140,7 @@ def command_runner(commands: List[str], image_spec: dict, repo: str, shell: str)
             for cmd_line in commands:
                 print(cmd_line, file=fp)
 
-        child_script_file = workspace.child_runner_path / runner_script_file.name
+        child_script_file = workspace.child_path / runner_script_file.name
         command = f"{shell_cmd} {child_script_file}"
 
         if (exit_code := run_child_container(image_spec, command, workspace)) == 0:
