@@ -30,6 +30,8 @@ class Workspace:
         self.child_path = Path("/_work_")
 
     def __enter__(self):
+        # todo: this should have been created by the initializer lambda
+        self.runner_path.mkdir(parents=True, exist_ok=True)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
