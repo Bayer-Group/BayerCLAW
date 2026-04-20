@@ -70,10 +70,10 @@ def get_mounts(metadata: dict, workspace: Workspace) -> Generator[Mount, None, N
                 # first locate the parent workspace on the host's scratch volume, e.g.
                 #   /_bclaw_scratch/tmp12345 -> /scratch/tmp12345
                 # host_workspace = parent_workspace.replace(os.environ["BC_SCRATCH_PATH"], volume_spec["Source"])
-                host_workspace = workspace.host_path
+                host_workspace = str(workspace.host_path)
 
                 # then mount the host path to the child container
-                yield Mount(workspace.child_path, host_workspace, type="bind", read_only=False)
+                yield Mount(str(workspace.child_path), host_workspace, type="bind", read_only=False)
 
             elif volume_spec["Destination"] == "/.scratch":
                 yield Mount(volume_spec["Destination"], volume_spec["Source"], type="bind", read_only=False)
