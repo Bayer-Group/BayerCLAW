@@ -12,7 +12,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 HOST_PARENT = Path("/mnt/s3files")
-RUNNER_PARENT = Path("/scratch")
+RUNNER_PARENT = Path("/_bclaw_scratch")
 CHILD_PATH = Path("/_work_")
 
 class Workspace:
