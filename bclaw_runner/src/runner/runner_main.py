@@ -23,6 +23,7 @@ from functools import partial, partialmethod
 import json
 import logging.config
 import os
+import time
 from typing import Dict, List
 
 from docopt import docopt
@@ -136,8 +137,9 @@ def command_runner(commands: List[str], image_spec: dict, repo: str, shell: str)
 
     with Workspace(repo) as workspace:
         # todo: remove this; dir should have been created by the initializer lambda
-        if not "PYTEST_CURRENT_TEST" in os.environ:
-            workspace.runner_path.mkdir(parents=True, exist_ok=True)
+        logger.info(f"creating workspace: {workspace.runner_path}")
+        workspace.runner_path.mkdir(parents=True, exist_ok=True)
+        time.sleep(600)
 
         runner_script_file = workspace.runner_path / "_commands.sh"
         with runner_script_file.open("w") as fp:

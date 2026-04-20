@@ -22,15 +22,19 @@ class Workspace:
     def __init__(self, path: str):
         # This is the location of the working directory on the S3Files filesystem
         self.raw_path = Path(path)
+        logger.info(f"raw_path: {self.raw_path}")
 
         # This is where the working directory can be found on the host
         self.host_path = HOST_PARENT / self.raw_path.relative_to(self.raw_path.anchor)
+        logger.info(f"host_path: {self.host_path}")
 
         # This is where the working directory can be found in bclaw_runner's Docker container
         self.runner_path = RUNNER_PARENT / self.raw_path.relative_to(self.raw_path.anchor)
+        logger.info(f"runner_path: {self.runner_path}")
 
         # This is where the working directory will be mounted in the child Docker container
         self.child_path = CHILD_PATH
+        logger.info(f"child_path: {self.child_path}")
 
     def __enter__(self):
         return self
