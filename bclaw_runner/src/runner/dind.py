@@ -163,7 +163,7 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
                                                  mem_limit=mem_limit,
                                                  mounts=mounts,
                                                  version="auto",
-                                                 working_dir=workspace.child_path)
+                                                 working_dir=str(workspace.child_path))
         with signal_trapper(container):
             try:
                 with closing(container.logs(stream=True)) as fp:
