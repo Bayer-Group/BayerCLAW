@@ -139,7 +139,6 @@ def command_runner(commands: List[str], image_spec: dict, repo: str, shell: str)
         # todo: remove this; dir should have been created by the initializer lambda
         logger.info(f"creating workspace: {workspace.runner_path}")
         workspace.runner_path.mkdir(parents=True, exist_ok=True)
-        time.sleep(600)
 
         runner_script_file = workspace.runner_path / "_commands.sh"
         with runner_script_file.open("w") as fp:
