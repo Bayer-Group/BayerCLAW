@@ -135,6 +135,10 @@ def command_runner(commands: List[str], image_spec: dict, repo: str, shell: str)
         raise RuntimeError(f"unrecognized shell: {shell}")
 
     with Workspace(repo) as workspace:
+        # todo: remove this; dir should have been created by the initializer lambda
+        if not "PYTEST_CURRENT_TEST" in os.environ:
+            workspace.runner_path.mkdir(parents=True, exist_ok=True)
+
         runner_script_file = workspace.runner_path / "_commands.sh"
         with runner_script_file.open("w") as fp:
             for cmd_line in commands:

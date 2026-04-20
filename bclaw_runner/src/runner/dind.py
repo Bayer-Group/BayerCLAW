@@ -138,7 +138,7 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
     # child_workspace = os.environ["BC_SCRATCH_PATH"]
 
     parent_metadata = get_container_metadata()
-    mounts = list(get_mounts(parent_metadata, Workspace))
+    mounts = list(get_mounts(parent_metadata, workspace))
     cpu_shares = parent_metadata["Limits"]["CPU"]
     mem_limit = f"{parent_metadata['Limits']['Memory']}m"
 

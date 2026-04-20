@@ -11,6 +11,9 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+HOST_PARENT = Path("/mnt/s3files")
+RUNNER_PARENT = Path("/scratch")
+CHILD_PATH = Path("/_work_")
 
 class Workspace:
     # A Workspace represents a directory on an S3Files filesystem where the job will do its work
@@ -21,17 +24,15 @@ class Workspace:
         self.raw_path = Path(path)
 
         # This is where the working directory can be found on the host
-        self.host_path = Path("/mnt/s3files") / self.raw_path.relative_to(self.raw_path.anchor)
+        self.host_path = HOST_PARENT / self.raw_path.relative_to(self.raw_path.anchor)
 
         # This is where the working directory can be found in bclaw_runner's Docker container
-        self.runner_path = Path("/scratch") / self.raw_path.relative_to(self.raw_path.anchor)
+        self.runner_path = RUNNER_PARENT / self.raw_path.relative_to(self.raw_path.anchor)
 
         # This is where the working directory will be mounted in the child Docker container
-        self.child_path = Path("/_work_")
+        self.child_path = CHILD_PATH
 
     def __enter__(self):
-        # todo: this should have been created by the initializer lambda
-        self.runner_path.mkdir(parents=True, exist_ok=True)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
