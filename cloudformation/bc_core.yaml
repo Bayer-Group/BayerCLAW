@@ -63,7 +63,7 @@ Parameters:
 
   SecurityGroups:
     Type: String
-#    Default: auto
+    Default: auto
 
   SourceVersion:
     Type: String
@@ -82,8 +82,8 @@ Conditions:
   MakeLauncherBucketName: !Or [ !Equals [!Ref LauncherBucketName, "Default"],
                                 !Equals [!Ref LauncherBucketName, "default"] ]
 
-#  MakeSecurityGroup: !Or [ !Equals [!Ref SecurityGroups, "Auto"],
-#                           !Equals [!Ref SecurityGroups, "auto"] ]
+  MakeSecurityGroup: !Or [ !Equals [!Ref SecurityGroups, "Auto"],
+                           !Equals [!Ref SecurityGroups, "auto"] ]
 
 #  MakeSubscriptionFilters: !Not [!Or [ !Equals [!Ref LoggingDestinationArn, "None"],
 #                                       !Equals [!Ref LoggingDestinationArn, "none"] ] ]
@@ -99,25 +99,25 @@ Conditions:
 
 Resources:
   # network
-#  SecurityGroup:
-#    Condition: MakeSecurityGroup
-#    Type: AWS::EC2::SecurityGroup
-#    Properties:
-#      GroupDescription: security group for BayerCLAW EC2 instances
-#      SecurityGroupEgress:
-#        -
-#          IpProtocol: -1
-#          CidrIp: 0.0.0.0/0
-#      VpcId: !Ref VpcId
+  SecurityGroup:
+    Condition: MakeSecurityGroup
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: security group for BayerCLAW EC2 instances
+      SecurityGroupEgress:
+        -
+          IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref VpcId
 
-#  SecurityGroupIngress:
-#    Condition: MakeSecurityGroup
-#    Type: AWS::EC2::SecurityGroupIngress
-#    Properties:
-#      GroupId: !Ref SecurityGroup
-#      IpProtocol: -1
-#      SourceSecurityGroupId: !Ref SecurityGroup
-#    DependsOn: SecurityGroup
+  SecurityGroupIngress:
+    Condition: MakeSecurityGroup
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref SecurityGroup
+    DependsOn: SecurityGroup
 
   # launcher bucket
   LauncherBucket:
@@ -907,9 +907,9 @@ Resources:
         RootVolumeSize: !Ref RootVolumeSize
 #        ScratchVolumeSize: !Ref ScratchVolumeSize
         S3FilesVolumeId: !Ref S3FilesVolumeId
-        SecurityGroupIds: !Ref SecurityGroups
-#        SecurityGroupIds:
-#          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
+#        SecurityGroupIds: !Ref SecurityGroups
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
         Subnets: !Join [",", !Ref Subnets]
         Uniqifier: !Ref Uniqifier
 
@@ -929,9 +929,9 @@ Resources:
         RootVolumeSize: !Ref RootVolumeSize
 #        ScratchVolumeSize: !Ref ScratchVolumeSize
         S3FilesVolumeId: !Ref S3FilesVolumeId
-        SecurityGroupIds: !Ref SecurityGroups
-#        SecurityGroupIds:
-#          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
+#        SecurityGroupIds: !Ref SecurityGroups
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
         Subnets: !Join [",", !Ref Subnets]
         Uniqifier: !Ref Uniqifier
 
@@ -948,9 +948,9 @@ Resources:
         RootVolumeSize: !Ref RootVolumeSize
 #        ScratchVolumeSize: !Ref ScratchVolumeSize
         S3FilesVolumeId: !Ref S3FilesVolumeId
-        SecurityGroupIds: !Ref SecurityGroups
-#        SecurityGroupIds:
-#          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
+#        SecurityGroupIds: !Ref SecurityGroups
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
         Subnets: !Join [",", !Ref Subnets]
         Uniqifier: !Ref Uniqifier
 
@@ -970,9 +970,9 @@ Resources:
         RootVolumeSize: !Ref RootVolumeSize
 #        ScratchVolumeSize: !Ref ScratchVolumeSize
         S3FilesVolumeId: !Ref S3FilesVolumeId
-        SecurityGroupIds: !Ref SecurityGroups
-#        SecurityGroupIds:
-#          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
+#        SecurityGroupIds: !Ref SecurityGroups
+        SecurityGroupIds:
+          !If [MakeSecurityGroup, !GetAtt SecurityGroup.GroupId, !Ref SecurityGroups]
         Subnets: !Join [",", !Ref Subnets]
         Uniqifier: !Ref Uniqifier
 
@@ -1006,3 +1006,7 @@ Outputs:
 #      - "${repo}:${tag}"
 #      - repo: !GetAtt RunnerRepo.RepositoryUri
 #        tag: !Ref SourceVersion
+
+  SecurityGroupId:
+    Condition: MakeSecurityGroup
+    Value: !Ref SecurityGroup
