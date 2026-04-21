@@ -1,0 +1,67 @@
+name: deploy core
+on:
+  push:
+    branches:
+      - s3files26
+    paths:
+      - lambda/compiler/**
+
+jobs:
+  doIt:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Get creds
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: "arn:aws:iam::934778205429:role/jax-github-role-2025"
+          aws-region: "us-east-2"
+
+      - name: Install core
+        id: install-core
+        env:
+          SUBNETS: "subnet-3ffe7854,subnet-b3b296ff,subnet-e1c63a9c"
+          VPC_ID: "vpc-00cb556b"
+          # as of 4/16/2026, these are the only Amazon Linux 2023 AMIs that have version 3.0.x of
+          # amazon-efs-utils installed. This is required for mounting s3files volumes.
+          AMI_ID: "ami-06ad53398e20e632e"
+          GPU_AMI_ID: "ami-0f45f826b73f042e0"
+          RUNNER_REPO_URI: "934778205429.dkr.ecr.us-east-2.amazonaws.com/s3files-runner"
+          S3FILES_VOLUME_ID: "fs-079c6cdc12adea3f1"
+          SECURITY_GROUP: "sg-0e8ec32645b0d9fc0"
+        run: |
+          export SOURCE_VERSION=$(git describe --tags)
+          export UNIQIFIER=$(date | md5sum | head -c 16)
+
+          sam build -b ./build -s . -t cloudformation/bc_core.yaml
+          --template-file build/template.yaml \
+          --stack-name bayerclaw2-core \
+          --resolve-s3 \
+          --capabilities "CAPABILITY_NAMED_IAM" "CAPABILITY_AUTO_EXPAND" \
+          --no-fail-on-empty-changeset \
+          --tags "bclaw:version=${SOURCE_VERSION}" \
+          --parameter-overrides \
+          AmiId=${AMI_ID} \
+          CompilerMacroName=S3F_Compiler \
+          GpuAmiId=${GPU_AMI_ID} \
+          InstallationName=bayerclaw2-s3f \
+          LauncherBucketName=default \
+          LogRetentionDays=30 \
+          MaxvCpus=256 \
+          MinvCpus=0 \
+          RootVolumeSize=50 \
+          RunnerRepoUri=${RUNNER_REPO_URI} \
+          S3FilesVolumeId=${S3FILES_VOLUME_ID} \
+          SecurityGroups=${SECURITY_GROUP} \
+          SourceVersion=${SOURCE_VERSION} \
+          Subnets=${SUBNETS} \
+          Uniqifier=${UNIQIFIER} \
+          VpcId=${VPC_ID}

@@ -24,7 +24,7 @@ Metadata:
           default: Storage
         Parameters:
           - RootVolumeSize
-          - ScratchVolumeSize
+          - S3FilesVolumeId
       -
         Label:
           default: Network
