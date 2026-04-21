@@ -98,10 +98,9 @@ Parameters:
     Description: Size (in GB) of the EBS root volume used by Batch jobs.
     Default: 100
 
-  ScratchVolumeSize:
-    Type: Number
-    Description: Size (in GB) of the EBS scratch volume used by Batch jobs.
-    Default: 1000
+  S3FilesVolumeId:
+    Type: String
+    Description: The ID of the s3files volume to mount on Batch job instances.
 
   SecurityGroupIds:
     Type: List<AWS::EC2::SecurityGroup::Id>
@@ -169,12 +168,6 @@ Resources:
               Encrypted: true
               VolumeSize: !Ref RootVolumeSize
               VolumeType: gp3
-          - DeviceName: /dev/sdh
-            Ebs:
-              DeleteOnTermination: true
-              Encrypted: true
-              VolumeSize: !Ref ScratchVolumeSize
-              VolumeType: gp3
         InstanceInitiatedShutdownBehavior: terminate
         TagSpecifications:
           - ResourceType: instance
@@ -202,19 +195,9 @@ Resources:
               }
 
               trap terminate ERR
-
-              # Format and mount the EBS volume
-              if file -sL /dev/sdh | grep -q ": data$"; then
-                # this device is unformatted
-                mkfs -t ext4 /dev/sdh
-              fi
-              mkdir -p /scratch
-              mount /dev/sdh /scratch
-
-              # yum -y upgrade amazon-efs-utils
               
               mkdir -p /mnt/s3files
-              mount -t s3files fs-079c6cdc12adea3f1:/ /mnt/s3files
+              mount -t s3files ${S3FilesVolumeId}:/ /mnt/s3files
 
               --==BOUNDARY==--
 
