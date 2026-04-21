@@ -114,7 +114,7 @@ def get_volume_info(step: Step) -> dict:
         {
             "Name": "scratch",
             "Host": {
-                "SourcePath": "/scratch",
+                "SourcePath": "/mnt/s3files",
             },
         },
         {
@@ -174,19 +174,19 @@ def get_timeout(step: Step) -> dict:
     return ret
 
 
-def handle_qc_check(spec: dict | list | None) -> list:
-    if spec is None:
-        return []
-    if isinstance(spec, dict):
-        ret = [spec]
-    else:
-        ret = spec
-
-    for item in ret:
-        if isinstance(item["stop_early_if"], str):
-            item.update({"stop_early_if": [item["stop_early_if"]]})
-
-    return ret
+# def handle_qc_check(spec: dict | list | None) -> list:
+#     if spec is None:
+#         return []
+#     if isinstance(spec, dict):
+#         ret = [spec]
+#     else:
+#         ret = spec
+#
+#     for item in ret:
+#         if isinstance(item["stop_early_if"], str):
+#             item.update({"stop_early_if": [item["stop_early_if"]]})
+#
+#     return ret
 
 
 def get_consumable_resource_properties(spec: dict) -> dict:
@@ -200,7 +200,7 @@ def get_consumable_resource_properties(spec: dict) -> dict:
 def job_definition_rc(step: Step,
                       task_role: str,
                       shell_opt: str,
-                      s3_tags: dict,
+                      # s3_tags: dict,
                       job_tags: dict) -> Generator[Resource, None, str]:
     logical_name = make_logical_name(f"{step.name}.job.defz")
 
@@ -212,31 +212,31 @@ def job_definition_rc(step: Step,
             "JobDefinitionName": {"Fn::Sub": f"${{AWS::StackName}}_{step.name}"},
             "Type": "container",
             "Parameters": {
-                "repo": "rrr",
-                "image": json.dumps(expand_image_uri(step.spec["image"]), sort_keys=True, separators=(",", ":")),
-                "inputs": "iii",
-                "references": "fff",
                 "command": json.dumps(step.spec["commands"], separators=(",", ":")),
-                "outputs": "ooo",
-                "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
+                "image": json.dumps(expand_image_uri(step.spec["image"]), sort_keys=True, separators=(",", ":")),
+                "repo": "rrr",
                 "shell": shell_opt,
-                "skip": "sss",
-                "s3tags": json.dumps(s3_tags, separators=(",", ":")),
+                # "inputs": "iii",
+                # "references": "fff",
+                # "outputs": "ooo",
+                # "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
+                # "skip": "sss",
+                # "s3tags": json.dumps(s3_tags, separators=(",", ":")),
             },
             "ContainerProperties": {
                 "Image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
                 "Command": [
                     "python", "/bclaw_runner/src/runner_cli.py",
                     "-c", "Ref::command",
-                    "-f", "Ref::references",
-                    "-i", "Ref::inputs",
-                    "-k", "Ref::skip",
+                    # "-f", "Ref::references",
+                    # "-i", "Ref::inputs",
+                    # "-k", "Ref::skip",
                     "-m", "Ref::image",
-                    "-o", "Ref::outputs",
-                    "-q", "Ref::qc",
+                    # "-o", "Ref::outputs",
+                    # "-q", "Ref::qc",
                     "-r", "Ref::repo",
                     "-s", "Ref::shell",
-                    "-t", "Ref::s3tags",
+                    # "-t", "Ref::s3tags",
                 ],
                 "JobRoleArn": task_role,
                 **get_environment(step),
@@ -262,25 +262,25 @@ def job_definition_rc(step: Step,
     return logical_name
 
 
-def get_skip_behavior(spec: dict) -> str:
-    if "skip_if_output_exists" in spec and spec["skip_if_output_exists"]:
-        ret = "output"
-    elif "skip_on_rerun" in spec and spec["skip_on_rerun"]:
-        ret = "rerun"
-    else:
-        ret = "none"
+# def get_skip_behavior(spec: dict) -> str:
+#     if "skip_if_output_exists" in spec and spec["skip_if_output_exists"]:
+#         ret = "output"
+#     elif "skip_on_rerun" in spec and spec["skip_on_rerun"]:
+#         ret = "rerun"
+#     else:
+#         ret = "none"
+#
+#     return ret
 
-    return ret
 
-
-def get_output_uris(output_specs: dict) -> dict:
-    ret = {}
-    for k, v in output_specs.items():
-        if "dest" in v:
-            ret[k] = f"{v['dest']}{v['name']}"
-        else:
-            ret[k] = v["name"]
-    return ret
+# def get_output_uris(output_specs: dict) -> dict:
+#     ret = {}
+#     for k, v in output_specs.items():
+#         if "dest" in v:
+#             ret[k] = f"{v['dest']}{v['name']}"
+#         else:
+#             ret[k] = v["name"]
+#     return ret
 
 
 def batch_step(step: Step,
@@ -290,7 +290,7 @@ def batch_step(step: Step,
                attempts: int = 3,
                interval: str = "3s",
                backoff_rate: float = 1.5) -> dict:
-    skip_behavior = get_skip_behavior(step.spec)
+    # skip_behavior = get_skip_behavior(step.spec)
 
     if scattered:
         job_name = "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)"
@@ -325,10 +325,6 @@ def batch_step(step: Step,
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
                 "repo.$": "$.repo.uri",
-                **step.input_field,
-                "references": json.dumps(step.spec["references"], separators=(",", ":")),
-                "outputs": json.dumps(step.spec["outputs"], separators=(",", ":")),
-                "skip": skip_behavior,
             },
             "ContainerOverrides": {
                 "Environment": [
@@ -358,10 +354,10 @@ def batch_step(step: Step,
                 "bclaw:jobfile.$": "$.job_file.key",
             },
         },
-        "ResultSelector": {
-            **get_output_uris(step.spec["outputs"])
-        },
-        "ResultPath": "$.prev_outputs",
+        # "ResultSelector": {
+        #     **get_output_uris(step.spec["outputs"])
+        # },
+        # "ResultPath": "$.prev_outputs",
         "OutputPath": "$",
     }
 
@@ -387,7 +383,7 @@ def handle_batch(step: Step,
     job_def_logical_name = yield from job_definition_rc(step,
                                                         task_role,
                                                         shell_opt,
-                                                        global_and_step_s3_tags,
+                                                        # global_and_step_s3_tags,
                                                         global_and_step_job_tags)
 
     ret = [State(step.name, batch_step(step,

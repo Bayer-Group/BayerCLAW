@@ -162,11 +162,11 @@ batch_step_schema = Schema(All(
         # None is used as a signal that inputs was not specified at all, and should be copied from previous outputs.
         # inputs = {} can be used to explicitly specify a step has no inputs at all, with no copy from previous output.
         ## remove  Optional("inputs", default=None): Any(None, {str: str}),
-        Optional("inputs", default=None): file_list(Any(None, {str: str})),
+        # Optional("inputs", default=None): file_list(Any(None, {str: str})),
         ## remove  Optional("references", default={}): {str: Match(r"^s3://", msg="reference values must be s3 paths")},
-        Optional("references", default={}): file_list({str: s3_path}),
+        # Optional("references", default={}): file_list({str: s3_path}),
         Required("commands", msg="commands list is required"): listified(str, min=1),
-        Optional("s3_tags", default={}): {str: Coerce(str)},
+        # Optional("s3_tags", default={}): {str: Coerce(str)},
         Optional("job_tags", default={}): {str: Coerce(str)},
         ## remove  Optional("outputs", default={}): {
         #     str: Or(
@@ -178,9 +178,9 @@ batch_step_schema = Schema(All(
         #         },
         #     ),
         # },
-        Optional("outputs", default={}): file_list(output_spec),
-        Exclusive("skip_if_output_exists", "skip_behavior", msg=skip_msg): bool,
-        Exclusive("skip_on_rerun", "skip_behavior", msg=skip_msg): bool,
+        # Optional("outputs", default={}): file_list(output_spec),
+        # Exclusive("skip_if_output_exists", "skip_behavior", msg=skip_msg): bool,
+        # Exclusive("skip_on_rerun", "skip_behavior", msg=skip_msg): bool,
         Optional("compute", default={}): {
             Optional("consumes", default={}): {str: All(int, Range(min=1))},
             Optional("cpus", default=1): All(int, Range(min=1)),
@@ -196,7 +196,7 @@ batch_step_schema = Schema(All(
             Optional("spot", default=True): bool,
         },
         Optional("filesystems", default=[]): listified(filesystem_block),
-        Optional("qc_check", default=[]): listified(qc_check_block),
+        # Optional("qc_check", default=[]): listified(qc_check_block),
         Optional("retry", default={}): {
             Optional("attempts", default=3): int,
             Optional("backoff_rate", default=1.5): All(Any(float, int),
