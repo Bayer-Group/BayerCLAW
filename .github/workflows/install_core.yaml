@@ -19,6 +19,17 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: setupPython
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: setupSam
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Get creds
         uses: aws-actions/configure-aws-credentials@v6
         with:
