@@ -1009,4 +1009,4 @@ Outputs:
 
   SecurityGroupId:
     Condition: MakeSecurityGroup
-    Value: !Ref SecurityGroups
+    Value: !Ref SecurityGroup
