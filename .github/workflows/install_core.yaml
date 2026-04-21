@@ -47,7 +47,6 @@ jobs:
           GPU_AMI_ID: "ami-0f45f826b73f042e0"
           RUNNER_REPO_URI: "934778205429.dkr.ecr.us-east-2.amazonaws.com/s3files-runner"
           S3FILES_VOLUME_ID: "fs-079c6cdc12adea3f1"
-          SECURITY_GROUP: "sg-0e8ec32645b0d9fc0"
         run: |
           export SOURCE_VERSION=$(git describe --tags)
           export UNIQIFIER=$(date | md5sum | head -c 16)
@@ -72,7 +71,7 @@ jobs:
           RootVolumeSize=50 \
           RunnerRepoUri=${RUNNER_REPO_URI} \
           S3FilesVolumeId=${S3FILES_VOLUME_ID} \
-          SecurityGroups=${SECURITY_GROUP} \
+          SecurityGroups=auto \
           SourceVersion=${SOURCE_VERSION} \
           Subnets=${SUBNETS} \
           Uniqifier=${UNIQIFIER} \
