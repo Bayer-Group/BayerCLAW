@@ -174,7 +174,8 @@ def get_timeout(step: Step) -> dict:
     return ret
 
 
-# def handle_qc_check(spec: dict | list | None) -> list:
+def handle_qc_check(spec: dict | list | None) -> list:
+    pass
 #     if spec is None:
 #         return []
 #     if isinstance(spec, dict):
