@@ -53,6 +53,7 @@ jobs:
           export UNIQIFIER=$(date | md5sum | head -c 16)
 
           sam build -b ./build -s . -t cloudformation/bc_core.yaml
+          sam deploy \
           --template-file build/template.yaml \
           --stack-name bayerclaw2-core \
           --resolve-s3 \
