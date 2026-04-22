@@ -76,7 +76,7 @@ def write_extended_job_data_object(raw_job_data: dict, dst_bucket: str, dst_pref
                   Tagging=SYSTEM_FILE_TAG)
 
 
-def handle_s3_launch(event: dict) -> dict:
+def handle_s3_launch0(event: dict) -> dict:
     src_bucket = event["input_obj"]["job_file"]["bucket"]
     src_key = event["input_obj"]["job_file"]["key"]
     src_version = event["input_obj"]["job_file"]["version"]
@@ -107,6 +107,32 @@ def handle_s3_launch(event: dict) -> dict:
             "uri": repo,
         },
         "prev_outputs": {},
+        "share_id": share_id,
+    }
+
+    return ret
+
+
+def handle_s3_launch(event: dict) -> dict:
+    src_bucket = event["input_obj"]["job_file"]["bucket"]
+    src_key = event["input_obj"]["job_file"]["key"]
+    src_version = event["input_obj"]["job_file"]["version"]
+
+    # if bucket versioning is suspended,version will be an empty string
+    job_data = read_s3_object(src_bucket, src_key, src_version)
+
+    subbed_repo = substitute_job_data(event["repo_template"], job_data)
+
+    share_id = re.sub(r"[\W_]+", "", event["workflow_name"])
+
+    ret = {
+        "index": event["input_obj"]["index"],
+        "job_file": {
+            "bucket": src_bucket,
+            "key": src_key,
+            "version": src_version,
+        },
+        "repo": subbed_repo,
         "share_id": share_id,
     }
 
