@@ -360,9 +360,10 @@ def batch_step(step: Step,
             },
         },
         # "ResultSelector": {
-        #     **get_output_uris(step.spec["outputs"])
+        #     "status.$": "$.Status",
         # },
-        # "ResultPath": "$.prev_outputs",
+        # "ResultPath": "$.result",
+        "ResultPath": None,
         "OutputPath": "$",
     }
 
