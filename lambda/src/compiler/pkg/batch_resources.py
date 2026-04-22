@@ -329,7 +329,7 @@ def batch_step(step: Step,
             "JobQueue": get_job_queue(step.spec["compute"]),
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
-                "repo.$": "$.repo.uri",
+                "repo.$": "$.repo",
             },
             "ContainerOverrides": {
                 "Environment": [
