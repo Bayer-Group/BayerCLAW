@@ -202,7 +202,8 @@ def job_definition_rc(step: Step,
                       task_role: str,
                       shell_opt: str,
                       # s3_tags: dict,
-                      job_tags: dict) -> Generator[Resource, None, str]:
+                      # job_tags: dict
+                      ) -> Generator[Resource, None, str]:
     logical_name = make_logical_name(f"{step.name}.job.defz")
 
     job_def = {
@@ -253,7 +254,8 @@ def job_definition_rc(step: Step,
                 "SkipDeregisterOnUpdate": True,
             },
             "PropagateTags": True,
-            "Tags": job_tags | {
+            # "Tags": job_tags | {
+            "Tags": {
                 "bclaw:workflow": {"Ref": "AWS::StackName"},
                 "bclaw:step": step.name,
                 "bclaw:version": os.environ["SOURCE_VERSION"],
@@ -380,14 +382,14 @@ def handle_batch(step: Step,
 
     task_role = step.spec.get("task_role") or options.get("task_role") or os.environ["ECS_TASK_ROLE_ARN"]
     shell_opt = step.spec["compute"]["shell"] or options.get("shell")
-    global_and_step_s3_tags = options["s3_tags"] | step.spec["s3_tags"]
-    global_and_step_job_tags = options["job_tags"] | step.spec["job_tags"]
+    # global_and_step_s3_tags = options["s3_tags"] | step.spec["s3_tags"]
+    # global_and_step_job_tags = options["job_tags"] | step.spec["job_tags"]
 
     job_def_logical_name = yield from job_definition_rc(step,
                                                         task_role,
-                                                        shell_opt,
+                                                        shell_opt)
                                                         # global_and_step_s3_tags,
-                                                        global_and_step_job_tags)
+                                                        # global_and_step_job_tags)
 
     ret = [State(step.name, batch_step(step,
                                        job_def_logical_name,
