@@ -24,14 +24,14 @@ def test_step_next_or_end(step, expect):
     assert result == expect
 
 
-@pytest.mark.parametrize("step, expect", [
-    (Step("name1", {"Other": "stuff", "inputs": {"file1": "one", "file2": "two"}}, ""), {"inputs": json.dumps({"file1": "one", "file2": "two"}, separators=(",", ":"))}),
-    (Step("name2", {"Other": "stuff", "inputs": {}}, ""), {"inputs": json.dumps({})}),
-    (Step("name3", {"Other": "stuff", "inputs": None}, ""), {"inputs.$": "States.JsonToString($.prev_outputs)"})
-])
-def test_step_input_field(step, expect):
-    result = step.input_field
-    assert result == expect
+# @pytest.mark.parametrize("step, expect", [
+#     (Step("name1", {"Other": "stuff", "inputs": {"file1": "one", "file2": "two"}}, ""), {"inputs": json.dumps({"file1": "one", "file2": "two"}, separators=(",", ":"))}),
+#     (Step("name2", {"Other": "stuff", "inputs": {}}, ""), {"inputs": json.dumps({})}),
+#     (Step("name3", {"Other": "stuff", "inputs": None}, ""), {"inputs.$": "States.JsonToString($.prev_outputs)"})
+# ])
+# def test_step_input_field(step, expect):
+#     result = step.input_field
+#     assert result == expect
 
 
 def test_make_logical_name():

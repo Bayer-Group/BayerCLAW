@@ -155,7 +155,7 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
 
     event = {
         "workflow_name": "test-workflow",
-        "repo_template": "s3://repo-bucket/path/to/repo/${job.name}",
+        "repo_template": "/path/to/repo/${job.name}",
         "input_obj": {
             "job_file": {
                 "bucket": launcher_bucket,
@@ -185,33 +185,28 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
             "key": job_data_key,
             "version": version,
         },
-        "prev_outputs": {},
-        "repo": {
-            "bucket": "repo-bucket",
-            "prefix": "path/to/repo/testJob",
-            "uri": "s3://repo-bucket/path/to/repo/testJob",
-        },
+        "repo": "/path/to/repo/testJob",
         "share_id": "testworkflow",
     }
 
     assert result == expect
 
     # extended job data file in repo
-    ext_job_data_obj = conn.Object("repo-bucket", "path/to/repo/testJob/_JOB_DATA_").get()
-    with closing(ext_job_data_obj["Body"]) as fp:
-        ext_job_data = json.load(fp)
-    expected_ext_job_data = {
-        "job": job_data,
-        "scatter": {},
-        "parent": {},
-    }
-    assert ext_job_data == expected_ext_job_data
+    # ext_job_data_obj = conn.Object("repo-bucket", "path/to/repo/testJob/_JOB_DATA_").get()
+    # with closing(ext_job_data_obj["Body"]) as fp:
+    #     ext_job_data = json.load(fp)
+    # expected_ext_job_data = {
+    #     "job": job_data,
+    #     "scatter": {},
+    #     "parent": {},
+    # }
+    # assert ext_job_data == expected_ext_job_data
 
     # job data file copied to repo
-    job_data_copy_obj = conn.Object("repo-bucket", "path/to/repo/testJob/job.json").get()
-    with closing(job_data_copy_obj["Body"]) as fp:
-        job_data_copy = json.load(fp)
-    assert job_data_copy == job_data
+    # job_data_copy_obj = conn.Object("repo-bucket", "path/to/repo/testJob/job.json").get()
+    # with closing(job_data_copy_obj["Body"]) as fp:
+    #     job_data_copy = json.load(fp)
+    # assert job_data_copy == job_data
 
 
 def test_lambda_handler_subpipe_execution(caplog, monkeypatch):

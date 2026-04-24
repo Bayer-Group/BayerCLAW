@@ -6,6 +6,7 @@ import docker
 from docker.types import DeviceRequest, DriverConfig, Mount
 import moto
 
+from ..src.runner.workspace import Workspace
 from ..src.runner.dind import (get_gpu_requests, get_container_metadata, get_mounts, get_environment_vars, get_auth,
                                pull_image, run_child_container)
 
@@ -56,7 +57,7 @@ def test_get_mounts(monkeypatch):
                 "Destination": "/var/run/docker.sock",
             },
             {
-                "Source": "/scratch",
+                "Source": "/mnt/s3files",
                 "Destination": "/_bclaw_scratch",
             },
             {
@@ -73,18 +74,17 @@ def test_get_mounts(monkeypatch):
             },
         ],
     }
-    parent_workspace = "/_bclaw_scratch/parent_workspace"
-    child_workspace = "/child_workspace"
+    workspace = Workspace("path/to/workspace")
 
     expect = [
-        Mount(child_workspace, "/scratch/parent_workspace", type="bind", read_only=False),
+        Mount("/_work_", "/mnt/s3files/path/to/workspace", type="bind", read_only=False),
         Mount("/.scratch", "/docker_scratch", type="bind", read_only=False),
         Mount("/efs", "volume12345", type="volume", read_only=False,
               driver_config=DriverConfig("amazon-ecs-volume-plugin")),
         Mount("/somewhere", "/miscellaneous/host/volume", type="bind", read_only=False)
     ]
 
-    result = list(get_mounts(metadata, parent_workspace, child_workspace))
+    result = list(get_mounts(metadata, workspace))
     assert result == expect
 
 
@@ -130,7 +130,7 @@ def test_pull_image(image_spec, expected_source, expected_auth, monkeypatch, moc
 @pytest.mark.parametrize("logging_crash", [False, True])
 def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logging_crash,
                              mock_container_factory, mock_docker_client_factory):
-    bc_scratch_path = "/_bclaw_scratch"
+    bc_scratch_path = "/_work_"
     monkeypatch.setenv("BC_SCRATCH_PATH", bc_scratch_path)
     monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
     monkeypatch.setenv("NVIDIA_VISIBLE_DEVICES", "all")
@@ -164,13 +164,14 @@ def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logg
         return mock_docker_client_factory(test_container)
     monkeypatch.setattr(docker.client, "from_env", mock_from_env)
 
-    job_data_file = f"{bc_scratch_path}/parent/workspace/job_data_12345.json"
+    # job_data_file = f"{bc_scratch_path}/parent/workspace/job_data_12345.json"
+    workspace = Workspace("path/to/workspace")
 
     image_spec = {
         "name": "local/image",
         "auth": "",
     }
-    result = run_child_container(image_spec, "ls -l", f"{bc_scratch_path}/parent/workspace", job_data_file)
+    result = run_child_container(image_spec, "ls -l", workspace)
 
     assert test_container.args[0].tags == ["local/image"]
     assert test_container.args[1] == "ls -l"
@@ -181,13 +182,12 @@ def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logg
         "entrypoint": [],
         "environment": {
             "AWS_DEFAULT_REGION": "us-east-1",
-            "BC_JOB_DATA_FILE": f"{bc_scratch_path}/job_data_12345.json",
             "BC_SCRATCH_PATH": bc_scratch_path,
             "BC_WORKSPACE": bc_scratch_path,
         },
         "init": True,
         "mem_limit": "2048m",
-        "mounts": [Mount(bc_scratch_path, "/host/volume/scratch/parent/workspace", type="bind", read_only=False)],
+        "mounts": [Mount(bc_scratch_path, "/mnt/s3files/path/to/workspace", type="bind", read_only=False)],
         "version": "auto",
         "working_dir": bc_scratch_path
     }

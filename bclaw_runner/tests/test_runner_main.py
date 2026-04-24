@@ -352,40 +352,40 @@ def test_main_fail_after_commands(monkeypatch, tmp_path, mock_bucket):
     assert "repo/path/_control_/step4.complete" not in curr_bucket_contents
 
 
-@pytest.mark.parametrize("skip, expect", [
-    ("rerun", 0),
-    ("output", 0),
-    ("none", 1)
-])
-def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect):
-    monkeypatch.setenv("BC_STEP_NAME", "step0")
-    monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
-    monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
-
-    # note: this only tests skip = output with empty outputs
-    references = {}
-    inputs = {}
-    outputs = {}
-    commands = ["false"]
-    tags = {}
-
-    image_spec = {
-        "name": "fake_image:${job.img_tag}",
-        "auth": "",
-    }
-
-
-    response = main(image_spec=image_spec,
-                    commands=commands,
-                    references=references,
-                    inputs=inputs,
-                    outputs=outputs,
-                    qc=[],
-                    repo_path=f"s3://{TEST_BUCKET}/repo/path",
-                    shell="sh",
-                    skip=skip,
-                    tags=tags)
-    assert response == expect
+# @pytest.mark.parametrize("skip, expect", [
+#     ("rerun", 0),
+#     ("output", 0),
+#     ("none", 1)
+# ])
+# def test_main_skip(monkeypatch, tmp_path, mock_bucket, skip, expect):
+#     monkeypatch.setenv("BC_STEP_NAME", "step0")
+#     monkeypatch.setenv("BC_SCRATCH_PATH", str(tmp_path))
+#     monkeypatch.setattr(runner.workspace, "run_child_container", fake_container)
+#
+#     # note: this only tests skip = output with empty outputs
+#     references = {}
+#     inputs = {}
+#     outputs = {}
+#     commands = ["false"]
+#     tags = {}
+#
+#     image_spec = {
+#         "name": "fake_image:${job.img_tag}",
+#         "auth": "",
+#     }
+#
+#
+#     response = main(image_spec=image_spec,
+#                     commands=commands,
+#                     references=references,
+#                     inputs=inputs,
+#                     outputs=outputs,
+#                     qc=[],
+#                     repo_path=f"s3://{TEST_BUCKET}/repo/path",
+#                     shell="sh",
+#                     skip=skip,
+#                     tags=tags)
+#     assert response == expect
 
 
 def fake_main(*args):

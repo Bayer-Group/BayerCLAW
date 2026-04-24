@@ -17,7 +17,7 @@ def test_workspace():
     with Workspace("/test/path") as ws:
         assert ws.raw_path == PosixPath("/test/path")
         assert ws.host_path == PosixPath("/mnt/s3files/test/path")
-        assert ws.runner_path == PosixPath("/scratch/test/path")
+        assert ws.runner_path == PosixPath("/_bclaw_scratch/test/path")
         assert ws.child_path == PosixPath("/_work_")
 
 

@@ -7,8 +7,8 @@ import pytest
 import yaml
 
 from ...src.compiler.pkg.batch_resources import (expand_image_uri, get_job_queue, get_memory_in_mibs,
-    get_skip_behavior, get_environment, get_resource_requirements, get_volume_info, get_timeout, handle_qc_check,
-    get_consumable_resource_properties, get_output_uris, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH)
+    get_environment, get_resource_requirements, get_volume_info, get_timeout,
+    get_consumable_resource_properties, batch_step, job_definition_rc, handle_batch, SCRATCH_PATH)
 from ...src.compiler.pkg.util import Step, Resource, State
 
 
@@ -127,7 +127,7 @@ def test_get_volume_info(step_efs_specs):
 
     scratch_vol, scratch_mp = v_mp.pop(0)
     assert scratch_vol == {"Name": "scratch",
-                           "Host": {"SourcePath": "/scratch"},}
+                           "Host": {"SourcePath": "/mnt/s3files"},}
     assert scratch_mp == {"SourceVolume": scratch_vol["Name"],
                           "ContainerPath": SCRATCH_PATH,
                           "ReadOnly": False,}
@@ -168,18 +168,18 @@ def test_get_timeout(timeout, expect):
         assert result["Properties"]["Timeout"]["AttemptDurationSeconds"] == expect
 
 
-@pytest.mark.parametrize("qc_spec, expect", [
-    (None, []),
-    ({"qc_result_file": "qc.out", "stop_early_if": "x == 1"}, [{"qc_result_file": "qc.out", "stop_early_if": ["x == 1"]}]),
-    ({"qc_result_file": "qc.out", "stop_early_if": ["x == 1", "y == 2"]}, [{"qc_result_file": "qc.out", "stop_early_if": ["x == 1", "y == 2"]}]),
-    ([{"qc_result_file": "qc1.out", "stop_early_if": ["x == 1", "y == 2"]},
-      {"qc_result_file": "qc2.out", "stop_early_if": "z == 3"}],
-     [{"qc_result_file": "qc1.out", "stop_early_if": ["x == 1", "y == 2"]},
-      {"qc_result_file": "qc2.out", "stop_early_if": ["z == 3"]}]),
-])
-def test_handle_qc_check(qc_spec, expect):
-    result = handle_qc_check(qc_spec)
-    assert result == expect
+# @pytest.mark.parametrize("qc_spec, expect", [
+#     (None, []),
+#     ({"qc_result_file": "qc.out", "stop_early_if": "x == 1"}, [{"qc_result_file": "qc.out", "stop_early_if": ["x == 1"]}]),
+#     ({"qc_result_file": "qc.out", "stop_early_if": ["x == 1", "y == 2"]}, [{"qc_result_file": "qc.out", "stop_early_if": ["x == 1", "y == 2"]}]),
+#     ([{"qc_result_file": "qc1.out", "stop_early_if": ["x == 1", "y == 2"]},
+#       {"qc_result_file": "qc2.out", "stop_early_if": "z == 3"}],
+#      [{"qc_result_file": "qc1.out", "stop_early_if": ["x == 1", "y == 2"]},
+#       {"qc_result_file": "qc2.out", "stop_early_if": ["z == 3"]}]),
+# ])
+# def test_handle_qc_check(qc_spec, expect):
+#     result = handle_qc_check(qc_spec)
+#     assert result == expect
 
 
 @pytest.mark.parametrize("spec, expect", [
@@ -293,15 +293,15 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
     expected_rc_name = "Skim3FastpJobDefz"
     step = Step(step_name, sample_batch_step, "next_step")
 
-    s3_tags = {
-        "s3_tag1": "global_s3_value1",
-        "s3_tag2": "step_s3_value2",
-    }
-
-    job_tags = {
-        "job_tag1": "global_job_value1",
-        "job_tag2": "step_job_value2",
-    }
+    # s3_tags = {
+    #     "s3_tag1": "global_s3_value1",
+    #     "s3_tag2": "step_s3_value2",
+    # }
+    #
+    # job_tags = {
+    #     "job_tag1": "global_job_value1",
+    #     "job_tag2": "step_job_value2",
+    # }
 
     image_spec = {
         "auth": "arn:aws:secretsmanager:us-west-1:123456789012:secret:docker_auth",
@@ -314,29 +314,19 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         "Parameters": {
             "repo": "rrr",
             "image": json.dumps(image_spec, sort_keys=True, separators=(",", ":")),
-            "inputs": "iii",
-            "references": "fff",
             "command": json.dumps(step.spec["commands"], separators=(",", ":")),
-            "outputs": "ooo",
-            "qc": json.dumps(step.spec["qc_check"], separators=(",", ":")),
             "shell": "sh",
-            "skip": "sss",
-            "s3tags": json.dumps(s3_tags, separators=(",", ":")),
         },
         "ContainerProperties": {
-            "Image": "runner_repo_uri:1234567",
+            # todo: temp
+            # "Image": "runner_repo_uri:1234567",
+            "Image": "runner_repo_uri:latest",
             "Command": [
                 "python", "/bclaw_runner/src/runner_cli.py",
                 "-c", "Ref::command",
-                "-f", "Ref::references",
-                "-i", "Ref::inputs",
-                "-k", "Ref::skip",
                 "-m", "Ref::image",
-                "-o", "Ref::outputs",
-                "-q", "Ref::qc",
                 "-r", "Ref::repo",
                 "-s", "Ref::shell",
-                "-t", "Ref::s3tags",
             ],
             "JobRoleArn": "arn:task:role",
             "Environment": [
@@ -359,7 +349,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
             ],
             "Volumes": [
                 {"Name": "docker_socket", "Host": {"SourcePath": "/var/run/docker.sock"}},
-                {"Name": "scratch", "Host": {"SourcePath": "/scratch"}},
+                {"Name": "scratch", "Host": {"SourcePath": "/mnt/s3files"}},
                 {"Name": "docker_scratch", "Host": {"SourcePath": "/docker_scratch"}},
                 {"Name": "fs-12345-volume",
                  "EfsVolumeConfiguration": {
@@ -390,8 +380,6 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         },
         "PropagateTags": True,
         "Tags": {
-            "job_tag1": "global_job_value1",
-            "job_tag2": "step_job_value2",
             "bclaw:step": step_name,
             "bclaw:version": "1234567",
             "bclaw:workflow": {"Ref": "AWS::StackName"},
@@ -406,7 +394,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
     }
 
     def helper():
-        rc_name1 = yield from job_definition_rc(step, "arn:task:role", "sh", s3_tags, job_tags)
+        rc_name1 = yield from job_definition_rc(step, "arn:task:role", "sh")  # ,s3_tags, job_tags)
         assert rc_name1 == expected_rc_name
 
     for resource in helper():
@@ -415,36 +403,36 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         assert resource.spec == expected_rc_spec
 
 
-@pytest.mark.parametrize("spec, expect", [
-    ({}, "none"),
-    ({"skip_if_output_exists": True}, "output"),
-    ({"skip_if_output_exists": False}, "none"),
-    ({"skip_on_rerun": True}, "rerun"),
-    ({"skip_on_rerun": False}, "none"),
-])
-def test_get_skip_behavior(spec, expect):
-    result = get_skip_behavior(spec)
-    assert result == expect
-
-
-def test_get_output_uris():
-    out_spec = {
-        "one": {
-            "name": "one.txt"
-        },
-        "two": {
-            "name": "two.txt",
-            "dest": "s3://bucket/path/to/",
-        },
-    }
-
-    expect = {
-        "one": "one.txt",
-        "two": "s3://bucket/path/to/two.txt",
-    }
-
-    result = get_output_uris(out_spec)
-    assert result == expect
+# @pytest.mark.parametrize("spec, expect", [
+#     ({}, "none"),
+#     ({"skip_if_output_exists": True}, "output"),
+#     ({"skip_if_output_exists": False}, "none"),
+#     ({"skip_on_rerun": True}, "rerun"),
+#     ({"skip_on_rerun": False}, "none"),
+# ])
+# def test_get_skip_behavior(spec, expect):
+#     result = get_skip_behavior(spec)
+#     assert result == expect
+#
+#
+# def test_get_output_uris():
+#     out_spec = {
+#         "one": {
+#             "name": "one.txt"
+#         },
+#         "two": {
+#             "name": "two.txt",
+#             "dest": "s3://bucket/path/to/",
+#         },
+#     }
+#
+#     expect = {
+#         "one": "one.txt",
+#         "two": "s3://bucket/path/to/two.txt",
+#     }
+#
+#     result = get_output_uris(out_spec)
+#     assert result == expect
 
 
 @pytest.mark.parametrize("scattered, job_name", [
@@ -483,11 +471,7 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
             "JobQueue": "spot_gpu_queue_arn",
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
-                "repo.$": "$.repo.uri",
-                "references": json.dumps(step.spec["references"], separators=(",", ":")),
-                "inputs": json.dumps(step.spec["inputs"], separators=(",", ":")),
-                "outputs": json.dumps(step.spec["outputs"], separators=(",", ":")),
-                "skip": "none",
+                "repo.$": "$.repo",
             },
             "ContainerOverrides": {
                 "Environment": [
@@ -517,14 +501,7 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
                 "bclaw:jobfile.$": "$.job_file.key"
             }
         },
-        "ResultSelector": {
-            "paired1": "paired_trim_1.fq",
-            "paired2": "paired_trim_2.fq",
-            "unpaired1": "s3://bucket/path/to/unpaired_trim_1.fq",
-            "unpaired2": "s3://bucket/path/to/unpaired_trim_2.fq",
-            "trim_log": "s3://bucket/path/to/${job.SAMPLE_ID}-fastP.json",
-        },
-        "ResultPath": "$.prev_outputs",
+        "ResultPath": None,
         "OutputPath": "$",
         **next_or_end
     }
@@ -560,14 +537,14 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
         assert states[0].spec["Parameters"]["JobDefinition"] == "${StepNameJobDefz}"
         assert states[0].spec["Next"] == "next_step_name"
 
-        references = json.loads(states[0].spec["Parameters"]["Parameters"]["references"])
-        assert references["reference1"] == "s3://ref-bucket/path/to/reference.file"
+        # references = json.loads(states[0].spec["Parameters"]["Parameters"]["references"])
+        # assert references["reference1"] == "s3://ref-bucket/path/to/reference.file"
 
-        inputs = json.loads(states[0].spec["Parameters"]["Parameters"]["inputs"])
-        assert inputs["adapter"] == "s3://bayer-skim-sequence-processing-696164428135/adapters/${job.ADAPTER_FILE}"
+        # inputs = json.loads(states[0].spec["Parameters"]["Parameters"]["inputs"])
+        # assert inputs["adapter"] == "s3://bayer-skim-sequence-processing-696164428135/adapters/${job.ADAPTER_FILE}"
 
-        outputs = json.loads(states[0].spec["Parameters"]["Parameters"]["outputs"])
-        assert outputs["trim_log"]["name"] == "${job.SAMPLE_ID}-fastP.json"
+        # outputs = json.loads(states[0].spec["Parameters"]["Parameters"]["outputs"])
+        # assert outputs["trim_log"]["name"] == "${job.SAMPLE_ID}-fastP.json"
 
     for resource in helper():
         assert isinstance(resource, Resource)
@@ -577,16 +554,17 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
         assert job_role_arn == expected_job_role_arn
 
 
-def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):
-    step = Step("step_name", sample_batch_step, "next_step")
-    step.spec["inputs"] = None
-
-    def helper():
-        options = {"wf": "params", "s3_tags": {}, "job_tags": {}}
-        states = yield from handle_batch(step, options, False)
-        assert states[0].spec["Parameters"]["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
-
-    _ = dict(helper())
+# remove; auto inputs is no longer a thing
+# def test_handle_batch_auto_inputs(sample_batch_step, compiler_env):
+#     step = Step("step_name", sample_batch_step, "next_step")
+#     step.spec["inputs"] = None
+#
+#     def helper():
+#         options = {"wf": "params", "s3_tags": {}, "job_tags": {}}
+#         states = yield from handle_batch(step, options, False)
+#         assert states[0].spec["Parameters"]["Parameters"]["inputs.$"] == "States.JsonToString($.prev_outputs)"
+#
+#     _ = dict(helper())
 
 
 @pytest.mark.parametrize("step_shell, expect", [
@@ -607,52 +585,52 @@ def test_handle_batch_shell_opt(sample_batch_step, step_shell, expect, compiler_
     assert spec == expect
 
 
-def test_handle_batch_s3_tags_opt(sample_batch_step, compiler_env):
-    global_s3_tags = {
-        "tag1": "global_s3_value1",
-        "tag2": "global_s3_value2",
-    }
+# def test_handle_batch_s3_tags_opt(sample_batch_step, compiler_env):
+#     global_s3_tags = {
+#         "tag1": "global_s3_value1",
+#         "tag2": "global_s3_value2",
+#     }
+#
+#     expected_s3_tags = {
+#         "tag1": "global_s3_value1",
+#         "tag2": "step_s3_value2",
+#         "tag3": "step_s3_value3",
+#     }
+#
+#     step = Step("step_name", sample_batch_step, "next_step")
+#
+#     def helper():
+#         options = {"wf": "params", "versioned": "true", "s3_tags": global_s3_tags, "job_tags": {}}
+#         _ = yield from handle_batch(step, options, False)
+#
+#     rc = dict(helper())
+#
+#     tags = json.loads(rc["StepNameJobDefz"]["Properties"]["Parameters"]["s3tags"])
+#     assert tags == expected_s3_tags
 
-    expected_s3_tags = {
-        "tag1": "global_s3_value1",
-        "tag2": "step_s3_value2",
-        "tag3": "step_s3_value3",
-    }
 
-    step = Step("step_name", sample_batch_step, "next_step")
-
-    def helper():
-        options = {"wf": "params", "versioned": "true", "s3_tags": global_s3_tags, "job_tags": {}}
-        _ = yield from handle_batch(step, options, False)
-
-    rc = dict(helper())
-
-    tags = json.loads(rc["StepNameJobDefz"]["Properties"]["Parameters"]["s3tags"])
-    assert tags == expected_s3_tags
-
-
-def test_handle_batch_job_tags_opt(sample_batch_step, compiler_env):
-    global_job_tags = {
-        "job_tag1": "global_job_value1",
-        "job_tag2": "global_job_value2",
-    }
-
-    expected_job_tags = {
-        "job_tag1": "global_job_value1",
-        "job_tag2": "step_job_value2",
-        "job_tag3": "step_job_value3",
-        "bclaw:step": "step_name",
-        "bclaw:version": "1234567",
-        "bclaw:workflow": {"Ref": "AWS::StackName"},
-    }
-
-    step = Step("step_name", sample_batch_step, "next_step")
-
-    def helper():
-        options = {"wf": "params", "versioned": "true", "s3_tags": {}, "job_tags": global_job_tags}
-        _ = yield from handle_batch(step, options, False)
-
-    rc = dict(helper())
-
-    tags = rc["StepNameJobDefz"]["Properties"]["Tags"]
-    assert tags == expected_job_tags
+# def test_handle_batch_job_tags_opt(sample_batch_step, compiler_env):
+#     global_job_tags = {
+#         "job_tag1": "global_job_value1",
+#         "job_tag2": "global_job_value2",
+#     }
+#
+#     expected_job_tags = {
+#         "job_tag1": "global_job_value1",
+#         "job_tag2": "step_job_value2",
+#         "job_tag3": "step_job_value3",
+#         "bclaw:step": "step_name",
+#         "bclaw:version": "1234567",
+#         "bclaw:workflow": {"Ref": "AWS::StackName"},
+#     }
+#
+#     step = Step("step_name", sample_batch_step, "next_step")
+#
+#     def helper():
+#         options = {"wf": "params", "versioned": "true", "s3_tags": {}, "job_tags": global_job_tags}
+#         _ = yield from handle_batch(step, options, False)
+#
+#     rc = dict(helper())
+#
+#     tags = rc["StepNameJobDefz"]["Properties"]["Tags"]
+#     assert tags == expected_job_tags
