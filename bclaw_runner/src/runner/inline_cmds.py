@@ -52,14 +52,17 @@ FN_MAP = {
 
 def parse_for_commands(line: str) -> None:
     if m := CMD_PARSER.match(line):
+        cmd, opt_str, text = m.groups()
+        logger.info(f"{cmd=}")
+        logger.info(f"{opt_str=}")
+        logger.info(f"{text=}")
         try:
-            cmd, opt_str, text = m.groups()
-            try:
-                opts = opt_parser(opt_str)
-            except TypeError:
-                opts = {}
+            opts = opt_parser(opt_str)
+        except TypeError:
+            opts = {}
 
+        try:
             fn = FN_MAP[cmd]
             fn(text, opts)
         except KeyError:
-            pass
+            logger.warning(f"unknown inline command {cmd}")
