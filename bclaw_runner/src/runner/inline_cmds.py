@@ -32,9 +32,9 @@ def abort(text: str, _) -> None:
     )
 
 
-def error(title: str, message: str) -> None:
-    logger.warning(f"raising user defined error with title {title} and message {message}")
-    raise UserDefinedError(title, message)
+def error(text: str, opts: dict) -> None:
+    logger.warning(f"raising user defined error")
+    raise UserDefinedError(opts.get("title", "ERROR"), text)
 
 
 def opt_parser(opts: str) -> Generator[tuple[str, str], None, None]:
