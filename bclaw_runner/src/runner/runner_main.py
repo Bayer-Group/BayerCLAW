@@ -222,7 +222,7 @@ def cli() -> int:
 
     with spot_termination_checker():
         commands = json.loads(args["-c"])
-        imports  = json.loads(args["-i"])
+        imports  = []  # json.loads(args["-i"])
         image    = json.loads(args["-m"])
         repo     = args["-r"]
         shell    = args["-s"]
