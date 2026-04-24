@@ -31,7 +31,7 @@ from .string_subs import substitute, substitute_image_tag
 from .preamble import log_preamble
 # from .qc_check import do_checks, abort_execution, QCFailure
 # from .repo import Repository, SkipExecution
-from .inline_cmds import UserDefinedError
+from .inline_cmds import StopRequested
 from .instance import get_imdsv2_token, tag_this_instance, spot_termination_checker
 # from .workspace import workspace, write_job_data_file, run_commands, UserCommandsFailed
 from .workspace import Workspace
@@ -177,12 +177,12 @@ def main(commands: List[str], imports: list[str], image_spec: dict, repo: str, s
         )
         exit_code = ucf.exit_code
 
-    except UserDefinedError as ude:
-        logger.error(str(ude))
+    except StopRequested as se:
+        logger.error(str(se))
         sfn.send_task_failure(
             taskToken=token,
-            error=ude.title,
-            cause=str(ude)
+            error=se.title,
+            cause=str(se)
         )
         exit_code = 198
 

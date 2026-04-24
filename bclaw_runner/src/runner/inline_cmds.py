@@ -8,7 +8,7 @@ import boto3
 logger = logging.getLogger(__name__)
 
 
-class UserDefinedError(Exception):
+class StopRequested(Exception):
     def __init__(self, title: str, message: str):
         super().__init__(message)
         self.title = title
@@ -33,8 +33,8 @@ def abort(text: str, _) -> None:
 
 
 def error(text: str, opts: dict) -> None:
-    logger.warning(f"raising user defined error")
-    raise UserDefinedError(opts.get("title", "ERROR"), text)
+    logger.warning(f"stop requested")
+    raise StopRequested(opts.get("title", "STOP_REQUESTED"), text)
 
 
 def opt_parser(opts: str) -> Generator[tuple[str, str], None, None]:
