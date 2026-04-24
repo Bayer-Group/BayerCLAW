@@ -12,6 +12,7 @@ from docker.models.images import Image
 from docker.types import DeviceRequest, DriverConfig, Mount
 import requests
 
+from .inline_cmds import parse_for_commands
 from .signal_trapper import signal_trapper
 from .workspace import Workspace
 
@@ -143,7 +144,7 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
     mem_limit = f"{parent_metadata['Limits']['Memory']}m"
 
     environment = get_environment_vars()
-    environment["BC_WORKSPACE"] = workspace.child_path
+    environment["BC_WORKSPACE"] = str(workspace.child_path)
     # environment["BC_JOB_DATA_FILE"] = os.path.join(child_workspace, os.path.basename(parent_job_data_file))
 
     device_requests = get_gpu_requests()
@@ -167,14 +168,16 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
         with signal_trapper(container):
             try:
                 with closing(container.logs(stream=True)) as fp:
-                    try:
-                        for line in fp:
-                            user_cmd_logger.user_cmd(line.decode("utf-8"))
+                    for line in fp:
+                        line_str = line.decode("utf-8")
+                        user_cmd_logger.user_cmd(line_str)
+                        parse_for_commands(line_str)
 
-                    except Exception:
-                        logger.exception("----- error during subprocess logging: ")
-                        container.reload()
-                        logger.info(f"----- subprocess status is {container.status}")
+            except Exception:
+                logger.exception("----- error during subprocess logging: ")
+                container.reload()
+                logger.info(f"----- subprocess status is {container.status}")
+                logger.warning("----- continuing without subprocess logging")
 
             finally:
                 logger.info("---------- end of user command block ----------")
@@ -182,4 +185,5 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
                 container.remove()
                 exit_code = response.get("StatusCode", 1)
                 logger.info(f"{exit_code=}")
+
     return exit_code

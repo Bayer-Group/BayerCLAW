@@ -6,15 +6,11 @@ Usage:
 
 Options:
     -c COMMANDS     command
-    -f JSON_STRING  reference files
-    -i JSON_STRING  input files
-    -k STRING       step skip condition: output, rerun, none [default: none]
+    -i JSON_STRING  S3 file imports
     -m JSON_STRING  Docker image spec
-    -o JSON_STRING  output files
-    -q JSON_STRING  QC check spec
-    -r S3_PATH      repository path
+    -r PATH         repository path
     -s SHELL        unix shell to run commands in (bash | sh | sh-pipefail) [default: sh]
-    -t JSON_STRING  global s3 tags
+    -z TOKEN        task token
     -h              show help
     --version       show version
 """
@@ -26,6 +22,7 @@ import os
 import time
 from typing import Dict, List
 
+import boto3
 from docopt import docopt
 
 # from .cache import get_reference_inputs
@@ -34,12 +31,14 @@ from .string_subs import substitute, substitute_image_tag
 from .preamble import log_preamble
 # from .qc_check import do_checks, abort_execution, QCFailure
 # from .repo import Repository, SkipExecution
+from .inline_cmds import UserDefinedError
 from .instance import get_imdsv2_token, tag_this_instance, spot_termination_checker
 # from .workspace import workspace, write_job_data_file, run_commands, UserCommandsFailed
 from .workspace import Workspace
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 
 class UserCommandsFailed(Exception):
@@ -136,10 +135,16 @@ def command_runner(commands: List[str], image_spec: dict, repo: str, shell: str)
         raise RuntimeError(f"unrecognized shell: {shell}")
 
     with Workspace(repo) as workspace:
-        # todo: remove this; dir should have been created by the initializer lambda
         logger.info(f"creating workspace: {workspace.runner_path}")
+        # Path.mkdir(parents=True, exist_ok=True) is generally considered to be safe from race conditions if
+        # concurrent jobs are running
+        # todo: move into Workspace
         workspace.runner_path.mkdir(parents=True, exist_ok=True)
 
+        # todo: download imports
+
+        # todo: use different names so concurrent jobs can run
+        # todo: clean up after run?
         runner_script_file = workspace.runner_path / "_commands.sh"
         with runner_script_file.open("w") as fp:
             for cmd_line in commands:
@@ -155,7 +160,9 @@ def command_runner(commands: List[str], image_spec: dict, repo: str, shell: str)
             raise UserCommandsFailed(f"command block failed with exit code {exit_code}", exit_code)
 
 
-def main(commands: List[str], image_spec: dict, repo: str, shell: str) -> int:
+def main(commands: List[str], imports: list[str], image_spec: dict, repo: str, shell: str, token: str) -> int:
+    sfn = boto3.client("stepfunctions")
+
     exit_code = 0
 
     try:
@@ -163,13 +170,36 @@ def main(commands: List[str], image_spec: dict, repo: str, shell: str) -> int:
 
     except UserCommandsFailed as ucf:
         logger.error(str(ucf))
+        sfn.send_task_failure(
+            taskToken=token,
+            error="User commands failed",
+            cause=str(ucf)
+        )
         exit_code = ucf.exit_code
+
+    except UserDefinedError as ude:
+        logger.error(str(ude))
+        sfn.send_task_failure(
+            taskToken=token,
+            error=ude.title,
+            cause=str(ude)
+        )
+        exit_code = 198
 
     except Exception as e:
         logger.exception("bclaw_runner error: ")
+        sfn.send_task_failure(
+            taskToken=token,
+            error=type(e).__name__,
+            cause=str(e),
+        )
         exit_code = 199
 
     else:
+        sfn.send_task_success(
+            taskToken=token,
+            output=json.dumps({"status": "SUCCEEDED"}),
+        )
         logger.info("bclaw_runner finished")
 
     return exit_code
@@ -192,15 +222,11 @@ def cli() -> int:
 
     with spot_termination_checker():
         commands = json.loads(args["-c"])
+        imports  = json.loads(args["-i"])
         image    = json.loads(args["-m"])
-        # inputs   = json.loads(args["-i"])
-        # outputs  = json.loads(args["-o"])
-        # qc       = json.loads(args["-q"])
-        # refs     = json.loads(args["-f"])
         repo     = args["-r"]
         shell    = args["-s"]
-        # skip     = args["-k"]
-        # tags     = json.loads(args["-t"])
+        token    = args["-z"]
 
-        ret = main(commands, image, repo, shell)
+        ret = main(commands, imports, image, repo, shell, token)
         return ret

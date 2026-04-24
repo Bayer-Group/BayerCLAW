@@ -174,8 +174,8 @@ def get_timeout(step: Step) -> dict:
     return ret
 
 
-def handle_qc_check(spec: dict | list | None) -> list:
-    pass
+# def handle_qc_check(spec: dict | list | None) -> list:
+#     pass
 #     if spec is None:
 #         return []
 #     if isinstance(spec, dict):
@@ -218,6 +218,7 @@ def job_definition_rc(step: Step,
                 "image": json.dumps(expand_image_uri(step.spec["image"]), sort_keys=True, separators=(",", ":")),
                 "repo": "rrr",
                 "shell": shell_opt,
+                "token": "zzz",
                 # "inputs": "iii",
                 # "references": "fff",
                 # "outputs": "ooo",
@@ -241,6 +242,7 @@ def job_definition_rc(step: Step,
                     "-r", "Ref::repo",
                     "-s", "Ref::shell",
                     # "-t", "Ref::s3tags",
+                    "-z", "Ref::token",
                 ],
                 "JobRoleArn": task_role,
                 **get_environment(step),
@@ -330,6 +332,7 @@ def batch_step(step: Step,
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
                 "repo.$": "$.repo",
+                "token.$": "$$.Task.Token",
             },
             "ContainerOverrides": {
                 "Environment": [
