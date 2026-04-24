@@ -64,6 +64,7 @@ def parse_for_commands(line: str) -> None:
 
         try:
             fn = FN_MAP[cmd]
-            fn(text, opts)
         except KeyError:
             logger.warning(f"unknown inline command {cmd}")
+
+        fn(text, opts)

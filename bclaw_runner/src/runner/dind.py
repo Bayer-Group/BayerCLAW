@@ -12,7 +12,7 @@ from docker.models.images import Image
 from docker.types import DeviceRequest, DriverConfig, Mount
 import requests
 
-from .inline_cmds import parse_for_commands
+from .inline_cmds import UserDefinedError, parse_for_commands
 from .signal_trapper import signal_trapper
 from .workspace import Workspace
 
@@ -172,6 +172,9 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
                         line_str = line.decode("utf-8")
                         user_cmd_logger.user_cmd(line_str)
                         parse_for_commands(line_str)
+
+            except UserDefinedError:
+                raise
 
             except Exception:
                 logger.exception("----- error during subprocess logging: ")
