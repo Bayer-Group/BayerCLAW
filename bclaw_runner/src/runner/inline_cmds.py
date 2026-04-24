@@ -15,7 +15,7 @@ class UserDefinedError(Exception):
 
 
 def abort(text: str, _) -> None:
-    logger.warning("aborting workflow execution")
+    logger.warning(f"aborting workflow execution with message {text}")
 
     region = os.environ["AWS_DEFAULT_REGION"]
     acct = os.environ["AWS_ACCOUNT_ID"]
@@ -33,6 +33,7 @@ def abort(text: str, _) -> None:
 
 
 def error(title: str, message: str) -> None:
+    logger.warning(f"raising user defined error with title {title} and message {message}")
     raise UserDefinedError(title, message)
 
 
@@ -57,7 +58,7 @@ def parse_for_commands(line: str) -> None:
         logger.info(f"{opt_str=}")
         logger.info(f"{text=}")
         try:
-            opts = opt_parser(opt_str)
+            opts = dict(opt_parser(opt_str))
         except TypeError:
             opts = {}
 
