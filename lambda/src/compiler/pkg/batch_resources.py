@@ -309,12 +309,12 @@ def get_retries(retry_spec: dict, on_error_specs: list) -> Generator[dict, None,
     for spec in on_error_specs:
         if spec["retries"] == 0:
             yield {
-                "ErrorEquals": spec["name"],
+                "ErrorEquals": spec["type"],
                 "MaxAttempts": spec["retries"],
             }
         else:
             yield {
-                "ErrorEquals": spec["name"],
+                "ErrorEquals": spec["type"],
                 "MaxAttempts": spec["retries"],
                 "IntervalSeconds": interval_seconds,
                 "BackoffRate": backoff_rate,
