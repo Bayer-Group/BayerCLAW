@@ -309,12 +309,12 @@ def get_retries(retry_spec: dict, on_error_specs: list) -> Generator[dict, None,
     for on_error_spec in on_error_specs:
         if (override := on_error_spec["retries"]) == 0:
             yield {
-                "ErrorEquals": on_error_spec["type"],
+                "ErrorEquals": [on_error_spec["type"]],
                 "MaxAttempts": override,
             }
         else:
             yield {
-                "ErrorEquals": on_error_spec["type"],
+                "ErrorEquals": [on_error_spec["type"]],
                 "MaxAttempts": override,
                 "IntervalSeconds": interval_seconds,
                 "BackoffRate": backoff_rate,
@@ -332,7 +332,7 @@ def get_error_catches(on_error_specs: list) -> Generator[dict, None, None]:
     for spec in on_error_specs:
         if spec["next"]:
             yield {
-                "ErrorEquals": spec["type"],
+                "ErrorEquals": [spec["type"]],
                 "Next": spec["next"],
                 "ResultPath": "$.error_info"
             }
