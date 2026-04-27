@@ -332,7 +332,7 @@ def get_error_catches(on_error_specs: list) -> Generator[dict, None, None]:
     for spec in on_error_specs:
         if spec["next"]:
             yield {
-                "ErrorEquals": spec["name"],
+                "ErrorEquals": spec["type"],
                 "Next": spec["next"],
                 "ResultPath": "$.error_info"
             }

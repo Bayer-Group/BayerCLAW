@@ -181,7 +181,7 @@ def main(commands: List[str], imports: list[str], image_spec: dict, repo: str, s
         logger.error(str(se))
         sfn.send_task_failure(
             taskToken=token,
-            error=se.title,
+            error=se.error,
             cause=str(se)
         )
         exit_code = 198

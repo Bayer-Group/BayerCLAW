@@ -9,9 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 class StopRequested(Exception):
-    def __init__(self, title: str, message: str):
+    def __init__(self, type: str, message: str):
         super().__init__(message)
-        self.title = title
+        self.error = type
 
 
 def abort(text: str, _) -> None:
@@ -50,9 +50,10 @@ def opt_parser(opts: str) -> Generator[tuple[str, str], None, None]:
 CMD_PARSER = re.compile(r"^!!\s([A-Z]+)(?:\s+(.+))*\s!!\s*(.*)$")
 
 FN_MAP = {
-    "abort": abort,
-    "error": error,
+    "ABORT": abort,
+    "ERROR": error,
 }
+
 
 def parse_for_commands(line: str) -> None:
     if m := CMD_PARSER.match(line):
