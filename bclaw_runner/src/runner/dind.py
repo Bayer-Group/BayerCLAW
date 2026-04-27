@@ -9,6 +9,7 @@ from typing import Generator
 
 import boto3
 import docker
+import docker.errors
 from docker.models.images import Image
 from docker.types import DeviceRequest, DriverConfig, Mount
 import requests
@@ -176,7 +177,10 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
                         parse_for_commands(line_str)
 
             except StopRequested:
-                container.kill(signal.SIGTERM)
+                try:
+                    container.kill(signal.SIGTERM)
+                except docker.errors.APIError:
+                    pass
                 raise
 
             except Exception:
