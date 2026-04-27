@@ -206,7 +206,7 @@ batch_step_schema = Schema(All(
         },
         Optional("on_error", default=[]): All([
             {
-                Required("name"): str,
+                Required("type"): str,
                 Optional("retries", default=0): int,
                 Optional("next", default=""): str,
             },
