@@ -304,18 +304,18 @@ def get_retries(retry_spec: dict, on_error_specs: list) -> Generator[dict, None,
 
     max_attempts = retry_spec["attempts"]
     backoff_rate = retry_spec["backoff_rate"]
-    interval_seconds = retry_spec["interval"]
+    interval_seconds = time_string_to_seconds(retry_spec["interval"])
 
-    for spec in on_error_specs:
-        if spec["retries"] == 0:
+    for on_error_spec in on_error_specs:
+        if (override := on_error_spec["retries"]) == 0:
             yield {
-                "ErrorEquals": spec["type"],
-                "MaxAttempts": spec["retries"],
+                "ErrorEquals": on_error_spec["type"],
+                "MaxAttempts": override,
             }
         else:
             yield {
-                "ErrorEquals": spec["type"],
-                "MaxAttempts": spec["retries"],
+                "ErrorEquals": on_error_spec["type"],
+                "MaxAttempts": override,
                 "IntervalSeconds": interval_seconds,
                 "BackoffRate": backoff_rate,
             }
