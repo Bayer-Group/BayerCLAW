@@ -171,6 +171,7 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
                 with closing(container.logs(stream=True)) as fp:
                     for line in fp:
                         line_str = line.decode("utf-8")
+                        # todo: don't log line when command is detected
                         user_cmd_logger.user_cmd(line_str)
                         parse_for_commands(line_str)
 

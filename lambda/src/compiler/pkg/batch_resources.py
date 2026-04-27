@@ -290,13 +290,58 @@ def job_definition_rc(step: Step,
 #     return ret
 
 
+def get_retries(retry_spec: dict, on_error_specs: list) -> Generator[dict, None, None]:
+    yield {
+        # this is intended to handle failures caused by Batch API throttling
+        #   ... "normal" job failures throw States.TaskFailed
+        "ErrorEquals": ["Batch.AWSBatchException"],
+        "IntervalSeconds": 30,
+        "MaxAttempts": 20,
+        "MaxDelaySeconds": 300,
+        "BackoffRate": 2.0,
+        "JitterStrategy": "FULL",
+    }
+
+    max_attempts = retry_spec["attempts"]
+    backoff_rate = retry_spec["backoff_rate"]
+    interval_seconds = retry_spec["interval"]
+
+    for spec in on_error_specs:
+        if spec["retries"] == 0:
+            yield {
+                "ErrorEquals": spec["name"],
+                "MaxAttempts": spec["retries"],
+            }
+        else:
+            yield {
+                "ErrorEquals": spec["name"],
+                "MaxAttempts": spec["retries"],
+                "IntervalSeconds": interval_seconds,
+                "BackoffRate": backoff_rate,
+            }
+
+    yield {
+        "ErrorEquals": ["States.ALL"],
+        "MaxAttempts": max_attempts,
+        "IntervalSeconds": interval_seconds,
+        "BackoffRate": backoff_rate,
+    }
+
+
+def get_error_catches(on_error_specs: list) -> Generator[dict, None, None]:
+    for spec in on_error_specs:
+        if spec["next"]:
+            yield {
+                "ErrorEquals": spec["name"],
+                "Next": spec["next"],
+                "ResultPath": "$.error_info"
+            }
+
+
 def batch_step(step: Step,
                job_definition_logical_name: str,
                scattered: bool,
-               next_step_override: str = None,
-               attempts: int = 3,
-               interval: str = "3s",
-               backoff_rate: float = 1.5) -> dict:
+               next_step_override: str = None) -> dict:
     # skip_behavior = get_skip_behavior(step.spec)
 
     if scattered:
@@ -304,27 +349,31 @@ def batch_step(step: Step,
     else:
         job_name = "States.Format('{}__{}', $$.Execution.Name, $$.State.Name)"
 
+    retries = list(get_retries(step.spec["retry"], step.spec["on_error"]))
+    catches = list(get_error_catches(step.spec["on_error"]))
+
     ret = {
         "Type": "Task",
         "Resource": "arn:aws:states:::batch:submitJob.sync",
-        "Retry": [
-            {
-                # this is intended to handle failures caused by Batch API throttling
-                #   ... "normal" job failures throw States.TaskFailed
-                "ErrorEquals": ["Batch.AWSBatchException"],
-                "IntervalSeconds": 30,
-                "MaxAttempts": 20,
-                "MaxDelaySeconds": 300,
-                "BackoffRate": 2.0,
-                "JitterStrategy": "FULL",
-            },
-            {
-                "ErrorEquals": ["States.ALL"],
-                "IntervalSeconds": time_string_to_seconds(interval),
-                "MaxAttempts": attempts,
-                "BackoffRate": backoff_rate
-            },
-        ],
+        "Retry": retries,
+        #     [
+        #     {
+        #         # this is intended to handle failures caused by Batch API throttling
+        #         #   ... "normal" job failures throw States.TaskFailed
+        #         "ErrorEquals": ["Batch.AWSBatchException"],
+        #         "IntervalSeconds": 30,
+        #         "MaxAttempts": 20,
+        #         "MaxDelaySeconds": 300,
+        #         "BackoffRate": 2.0,
+        #         "JitterStrategy": "FULL",
+        #     },
+        #     {
+        #         "ErrorEquals": ["States.ALL"],
+        #         "IntervalSeconds": time_string_to_seconds(interval),
+        #         "MaxAttempts": attempts,
+        #         "BackoffRate": backoff_rate
+        #     },
+        # ],
         "Parameters": {
             "JobName.$": job_name,
             "JobDefinition": f"${{{job_definition_logical_name}}}",
@@ -370,6 +419,9 @@ def batch_step(step: Step,
         "OutputPath": "$",
     }
 
+    if catches:
+        ret["Catch"] = catches
+
     if next_step_override is None:
         ret.update(**step.next_or_end)
     else:
@@ -397,7 +449,7 @@ def handle_batch(step: Step,
 
     ret = [State(step.name, batch_step(step,
                                        job_def_logical_name,
-                                       scattered=scattered,
-                                       **step.spec["retry"],
+                                       scattered=scattered  #,
+                                       # **step.spec["retry"],
                                        ))]
     return ret

@@ -34,7 +34,7 @@ def abort(text: str, _) -> None:
 
 def error(text: str, opts: dict) -> None:
     logger.warning(f"stop requested")
-    raise StopRequested(opts.get("title", "STOP_REQUESTED"), text)
+    raise StopRequested(opts.get("type", "ERROR"), text)
 
 
 def opt_parser(opts: str) -> Generator[tuple[str, str], None, None]:
@@ -43,8 +43,11 @@ def opt_parser(opts: str) -> Generator[tuple[str, str], None, None]:
         yield k, v
 
 
-# ::command opt1=val1 opt2=val2::string
-CMD_PARSER = re.compile("^::([a-z]+)(?:\s+(.+))*::(.*)$")
+# ::command (options))::(message)
+# CMD_PARSER = re.compile("^::([a-z]+)(?:\s+(.+))*::(.*)$")
+
+# !! COMMAND (options) !! (message)
+CMD_PARSER = re.compile(r"^!!\s([A-Z]+)(?:\s+(.+))*\s!!\s*(.*)$")
 
 FN_MAP = {
     "abort": abort,
@@ -53,10 +56,10 @@ FN_MAP = {
 
 def parse_for_commands(line: str) -> None:
     if m := CMD_PARSER.match(line):
-        cmd, opt_str, text = m.groups()
+        cmd, opt_str, message = m.groups()
         logger.info(f"{cmd=}")
         logger.info(f"{opt_str=}")
-        logger.info(f"{text=}")
+        logger.info(f"{message=}")
         try:
             opts = dict(opt_parser(opt_str))
         except TypeError:
@@ -64,7 +67,8 @@ def parse_for_commands(line: str) -> None:
 
         try:
             fn = FN_MAP[cmd]
+            fn(message, opts)
+
         except KeyError:
             logger.warning(f"unknown inline command {cmd}")
 
-        fn(text, opts)

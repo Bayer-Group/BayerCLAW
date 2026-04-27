@@ -204,6 +204,13 @@ batch_step_schema = Schema(All(
             Optional("interval", default="3s"): Match(r"^\d+\s?[smhdw]$",
                                                       msg="incorrect retry interval time string"),
         },
+        Optional("on_error", default=[]): All([
+            {
+                Required("name"): str,
+                Optional("retries", default=0): int,
+                Optional("next", default=""): str,
+            },
+        ], Length(min=1)),
         Optional("timeout", default=None): Any(None, Match(r"^\d+\s?[smhdw]$",
                                                            msg="incorrect timeout time string")),
         **next_or_end,
