@@ -180,7 +180,12 @@ def command_runner(commands: List[str],
             script_file.flush()
             script_file.seek(0)
 
-            child_script_file = workspace.child_path / script_file.name
+            logger.info(f"local script file: {script_file.name}")
+
+            child_script_file = workspace.child_path / os.path.basename(script_file.name)
+
+            logger.info(f"child script file: {child_script_file.name}")
+
             command = f"{shell_cmd} {child_script_file}"
 
             if (exit_code := run_child_container(image_spec, command, workspace)) == 0:
