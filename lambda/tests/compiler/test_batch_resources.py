@@ -33,6 +33,7 @@ def test_expand_image_uri(uri, expected):
     assert result["name"] == expected
     assert result["auth"] == "doesnt_change"
 
+
 @pytest.mark.parametrize("req, mibs", [(10, 10), (1, 4), (9.1, 10), ("1G", 1024), ("9.1M", 10), ("1M", 4)])
 def test_get_memory_in_mibs(req, mibs):
     result = get_memory_in_mibs(req)
@@ -200,7 +201,7 @@ def test_get_consumable_resource_properties(spec, expect):
 
 
 @pytest.fixture(scope="function")
-def sample_batch_step():
+def sample_batch_step0():
     ret = yaml.safe_load(textwrap.dedent("""
           commands: 
             - >
@@ -288,6 +289,58 @@ def sample_batch_step():
     return ret
 
 
+@pytest.fixture(scope="function")
+def sample_batch_step():
+    ret = yaml.safe_load(textwrap.dedent("""
+      image:
+        name: skim3-fastp
+        auth: arn:aws:secretsmanager:us-west-1:123456789012:secret:docker_auth
+      import:
+        - s3://sequence-processing-123456789012/adapters/${{ADAPTER_FILE}} -> adapters.fa
+        - ${{READ_PATH1}} -> reads1.fq.gz
+        - ${{READ_PATH2}} -> reads2.fq.gz
+      commands:
+        - >
+         ${FASTP0200}/fastp 
+         --in1 reads1.fq.gz
+         --in2 reads2.fq.gz
+         --outdir outt
+         --out1 paired1.fq
+         --out2 paired2.fq
+         --unpaired1 unpaired1.fq 
+         --unpaired2 unpaired2.fq
+         --adapter_fasta adapters.fa
+         --length_required 25
+         --json trim.log
+      compute:
+        cpus: 4
+        memory: 4 Gb
+        spot: true
+        type: memory
+        gpu: 2
+        shell: bash
+        consumes:
+          "resource1": 99
+          "resource2": 88
+      filesystems:
+        -
+          efs_id: fs-12345
+          host_path: /step_efs
+          root_dir: /path/to/my/data
+      retry:
+        attempts: 1
+        interval: 1s
+        backoff_rate: 1.0
+      on_error:
+        -
+          type: TEST_ERROR
+          retries: 5
+          next: errorStep
+      timeout: 1h    
+    """))
+    return ret
+
+
 def test_job_definition_rc(sample_batch_step, compiler_env):
     step_name = "skim3-fastp"
     expected_rc_name = "Skim3FastpJobDefz"
@@ -312,10 +365,12 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         "JobDefinitionName": {"Fn::Sub": "${AWS::StackName}_skim3-fastp"},
         "Type": "container",
         "Parameters": {
-            "repo": "rrr",
-            "image": json.dumps(image_spec, sort_keys=True, separators=(",", ":")),
             "command": json.dumps(step.spec["commands"], separators=(",", ":")),
+            "image": json.dumps(image_spec, sort_keys=True, separators=(",", ":")),
+            "import": "iii",
+            "repo": "rrr",
             "shell": "sh",
+            "token": "zzz",
         },
         "ContainerProperties": {
             # todo: temp
@@ -324,9 +379,11 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
             "Command": [
                 "python", "/bclaw_runner/src/runner_cli.py",
                 "-c", "Ref::command",
+                "-i", "Ref::import",
                 "-m", "Ref::image",
                 "-r", "Ref::repo",
                 "-s", "Ref::shell",
+                "-z", "Ref::token",
             ],
             "JobRoleArn": "arn:task:role",
             "Environment": [
@@ -434,6 +491,8 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
 #     result = get_output_uris(out_spec)
 #     assert result == expect
 
+# todo: test get_retries
+# todo: test get_error_catches
 
 @pytest.mark.parametrize("scattered, job_name", [
     (True, "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)"),
@@ -445,6 +504,14 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
 ])
 def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, job_name, compiler_env):
     step = Step("step_name", sample_batch_step, next_step_name)
+
+    imports = [
+        "s3://sequence-processing-123456789012/adapters/${{ADAPTER_FILE}} -> adapters.fa",
+        "${{READ_PATH1}} -> reads1.fq.gz",
+        "${{READ_PATH2}} -> reads2.fq.gz",
+    ]
+
+    expected_imports = json.dumps(imports,separators=(',',':'))
 
     expected_body = {
         "Type": "Task",
@@ -459,10 +526,23 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
                 "JitterStrategy": "FULL",
             },
             {
+                "ErrorEquals": ["TEST_ERROR"],
+                "IntervalSeconds": 1,
+                "MaxAttempts": 5,
+                "BackoffRate": 1.0,
+            },
+            {
                 "ErrorEquals": ["States.ALL"],
-                "IntervalSeconds": 3,
-                "MaxAttempts": 3,
-                "BackoffRate": 1.5
+                "IntervalSeconds": 1,
+                "MaxAttempts": 1,
+                "BackoffRate": 1.0
+            },
+        ],
+        "Catch": [
+            {
+                "ErrorEquals": ["TEST_ERROR"],
+                "Next": "errorStep",
+                "ResultPath": "$.error_info",
             },
         ],
         "Parameters": {
@@ -471,7 +551,9 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
             "JobQueue": "spot_gpu_queue_arn",
             "ShareIdentifier.$": "$.share_id",
             "Parameters": {
+                "import": expected_imports,
                 "repo.$": "$.repo",
+                "token.$": "$$.Task.Token",
             },
             "ContainerOverrides": {
                 "Environment": [
