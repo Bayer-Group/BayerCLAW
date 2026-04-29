@@ -15,19 +15,22 @@ Options:
     --version       show version
 """
 
+from contextlib import closing
 from functools import partial, partialmethod
 import json
 import logging.config
 import os
+import re
+import tempfile
 import time
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import boto3
 from docopt import docopt
 
 # from .cache import get_reference_inputs
 from .dind import run_child_container
-from .string_subs import substitute, substitute_image_tag
+# from .string_subs import substitute, substitute_image_tag
 from .preamble import log_preamble
 # from .qc_check import do_checks, abort_execution, QCFailure
 # from .repo import Repository, SkipExecution
@@ -40,11 +43,37 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-
 class UserCommandsFailed(Exception):
     def __init__(self, message: str, exit_code: int):
         super().__init__(message)
         self.exit_code = exit_code
+
+
+def read_jobfile() -> dict:
+    bucket = os.environ["BC_LAUNCH_BUCKET"]
+    key = os.environ["BC_LAUNCH_KEY"]
+    version = os.environ["BC_LAUNCH_VERSION"]
+
+    s3 = boto3.client("s3")
+    response = s3.get_object(Bucket=bucket, Key=key, VersionId=version)
+
+    with closing(response["Body"]) as fp:
+        ret = json.load(fp)
+    return ret
+
+
+SUB_FINDER = re.compile(r"\${{(.+?)}}")
+
+def substitute(target: Any, spec: dict) -> Any:
+    if isinstance(target, str):
+        ret = SUB_FINDER.sub(lambda m: spec.get(m.group(1), str(m.group(1))) , target)
+    elif isinstance(target, list):
+        ret = [substitute(v, spec) for v in target]
+    elif isinstance(target, dict):
+        ret = {k: substitute(v, spec) for k, v in target.items()}
+    else:
+        ret = target
+    return ret
 
 
 # def main0(commands: List[str],
@@ -124,7 +153,11 @@ class UserCommandsFailed(Exception):
 #
 
 
-def command_runner(commands: List[str], image_spec: dict, repo: str, shell: str) -> None:
+def command_runner(commands: List[str],
+                   imports: List[str],
+                   image_spec: dict,
+                   repo: str,
+                   shell: str) -> None:
     if shell == "sh":
         shell_cmd = "sh -veu"
     elif shell == "bash":
@@ -134,30 +167,27 @@ def command_runner(commands: List[str], image_spec: dict, repo: str, shell: str)
     else:
         raise RuntimeError(f"unrecognized shell: {shell}")
 
-    with Workspace(repo) as workspace:
-        logger.info(f"creating workspace: {workspace.runner_path}")
-        # Path.mkdir(parents=True, exist_ok=True) is generally considered to be safe from race conditions if
-        # concurrent jobs are running
-        # todo: move into Workspace
-        workspace.runner_path.mkdir(parents=True, exist_ok=True)
+    job_data = read_jobfile()
 
-        # todo: download imports
+    jobby_imports = substitute(imports, job_data)
+    jobby_commands = substitute(commands, job_data)
 
-        # todo: use different names so concurrent jobs can run
-        # todo: clean up after run?
-        runner_script_file = workspace.runner_path / "_commands.sh"
-        with runner_script_file.open("w") as fp:
-            for cmd_line in commands:
-                print(cmd_line, file=fp)
+    with Workspace(repo, jobby_imports) as workspace:
+        with tempfile.NamedTemporaryFile(prefix="cmd", dir=workspace.runner_path, mode="w+t") as script_file:
+            for cmd_line in jobby_commands:
+                print(cmd_line, file=script_file)
 
-        child_script_file = workspace.child_path / runner_script_file.name
-        command = f"{shell_cmd} {child_script_file}"
+            script_file.flush()
+            script_file.seek(0)
 
-        if (exit_code := run_child_container(image_spec, command, workspace)) == 0:
-            logger.info("command block succeeded")
-        else:
-            logger.error("command block failed")
-            raise UserCommandsFailed(f"command block failed with exit code {exit_code}", exit_code)
+            child_script_file = workspace.child_path / script_file.name
+            command = f"{shell_cmd} {child_script_file}"
+
+            if (exit_code := run_child_container(image_spec, command, workspace)) == 0:
+                logger.info("command block succeeded")
+            else:
+                logger.error("command block failed")
+                raise UserCommandsFailed(f"command block failed with exit code {exit_code}", exit_code)
 
 
 def main(commands: List[str], imports: list[str], image_spec: dict, repo: str, shell: str, token: str) -> int:
@@ -166,7 +196,7 @@ def main(commands: List[str], imports: list[str], image_spec: dict, repo: str, s
     exit_code = 0
 
     try:
-        command_runner(commands, image_spec, repo, shell)
+        command_runner(commands, imports, image_spec, repo, shell)
 
     except UserCommandsFailed as ucf:
         logger.error(str(ucf))
@@ -222,7 +252,7 @@ def cli() -> int:
 
     with spot_termination_checker():
         commands = json.loads(args["-c"])
-        imports  = []  # json.loads(args["-i"])
+        imports  = json.loads(args["-i"])
         image    = json.loads(args["-m"])
         repo     = args["-r"]
         shell    = args["-s"]

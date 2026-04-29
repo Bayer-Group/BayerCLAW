@@ -1,11 +1,16 @@
+from concurrent.futures import ThreadPoolExecutor
 # from contextlib import contextmanager
 # import json
 import logging
 # import os
 from pathlib import Path
+import re
 # import shutil
 # from tempfile import mkdtemp, NamedTemporaryFile
 # from typing import Generator
+
+import boto3
+import botocore.exceptions
 
 # from .dind import run_child_container
 
@@ -19,7 +24,7 @@ class Workspace:
     # A Workspace represents a directory on an S3Files filesystem where the job will do its work
     # and store its outputs
 
-    def __init__(self, path: str):
+    def __init__(self, path: str, import_specs: list):
         # This is the location of the working directory on the S3Files filesystem
         self.raw_path = Path(path)
         logger.info(f"raw_path: {self.raw_path}")
@@ -36,11 +41,53 @@ class Workspace:
         self.child_path = CHILD_PATH
         logger.info(f"child_path: {self.child_path}")
 
+        self.imports = import_specs
+
     def __enter__(self):
+        logger.info(f"creating workspace: {self.runner_path}")
+        # Path.mkdir(parents=True, exist_ok=True) is generally considered to be safe from race conditions if
+        # concurrent jobs are running
+        self.runner_path.mkdir(parents=True, exist_ok=True)
+        self.download_imports()
+
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
+
+    def _download_this(self, import_spec: str) -> str:
+        # todo: use s3 filename if local path is missing
+        s3_uri, local_path = re.split(f"\s+->\s+", import_spec, maxsplit=1)
+        bucket, key = s3_uri.split("/", 3)[2:]
+
+        dest = self.runner_path / local_path.lstrip("/")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+
+        session = boto3.Session()
+        s3 = session.resource("s3")
+        try:
+            s3_obj = s3.Object(bucket, key)
+            s3_size = s3_obj.content_length
+            logger.info(f"starting download: {s3_uri} ({s3_size} bytes) -> {local_path}")
+            s3_obj.download_file(str(dest))
+            # local_size = os.path.getsize(dest)
+            local_size = dest.stat().st_size
+            logger.info(f"finished download: {s3_uri} ({s3_size} bytes) -> {local_path} ({local_size} bytes)")
+            return str(dest)
+        except botocore.exceptions.ClientError as ce:
+            if "Not Found" in str(ce):
+                raise FileNotFoundError(s3_uri)
+            else:
+                raise
+
+    def download_imports(self) -> None:
+        with ThreadPoolExecutor(max_workers=256) as executor:
+            result = list(executor.map(lambda s: self._download_this(s), self.imports))
+
+        logger.info(f"{len(result)} files downloaded")
+
+        # ret = {k.rstrip("?"): os.path.basename(v) for k, v in input_spec.items()}
+        # return ret
 
 
 # class UserCommandsFailed(Exception):

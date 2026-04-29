@@ -162,6 +162,7 @@ batch_step_schema = Schema(All(
         # None is used as a signal that inputs was not specified at all, and should be copied from previous outputs.
         # inputs = {} can be used to explicitly specify a step has no inputs at all, with no copy from previous output.
         ## remove  Optional("inputs", default=None): Any(None, {str: str}),
+        Optional("import", default=[]): [str],
         # Optional("inputs", default=None): file_list(Any(None, {str: str})),
         ## remove  Optional("references", default={}): {str: Match(r"^s3://", msg="reference values must be s3 paths")},
         # Optional("references", default={}): file_list({str: s3_path}),
