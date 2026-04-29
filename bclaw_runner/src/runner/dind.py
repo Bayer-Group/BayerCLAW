@@ -172,22 +172,28 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
                 with closing(container.logs(stream=True)) as fp:
                     for line in fp:
                         line_str = line.decode("utf-8")
-                        # todo: don't log line when command is detected
-                        user_cmd_logger.user_cmd(line_str)
-                        parse_for_commands(line_str)
+                        if not parse_for_commands(line_str):
+                            try:
+                                user_cmd_logger.user_cmd(line_str)
+                            except Exception:
+                                logger.exception("----- error during subprocess logging: ")
+                                container.reload()
+                                logger.info(f"----- subprocess status is {container.status}")
+                                # logger.warning("----- continuing without subprocess logging")
 
             except StopRequested:
                 try:
                     container.kill(signal.SIGTERM)
                 except docker.errors.APIError:
+                    # container may have stopped before we could kill it
                     pass
                 raise
 
-            except Exception:
-                logger.exception("----- error during subprocess logging: ")
-                container.reload()
-                logger.info(f"----- subprocess status is {container.status}")
-                logger.warning("----- continuing without subprocess logging")
+            # except Exception:
+            #     logger.exception("----- error during subprocess logging: ")
+            #     container.reload()
+            #     logger.info(f"----- subprocess status is {container.status}")
+            #     logger.warning("----- continuing without subprocess logging")
 
             finally:
                 logger.info("---------- end of user command block ----------")
