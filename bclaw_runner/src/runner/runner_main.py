@@ -173,18 +173,18 @@ def command_runner(commands: List[str],
     jobby_commands = substitute(commands, job_data)
 
     with Workspace(repo, jobby_imports) as workspace:
-        with tempfile.NamedTemporaryFile(prefix="cmd", dir=workspace.runner_path, mode="w+t") as script_file:
+        with tempfile.NamedTemporaryFile(prefix="cmd_", suffix=".sh", dir=workspace.runner_path, mode="w+t") as script_file:
             for cmd_line in jobby_commands:
                 print(cmd_line, file=script_file)
 
             script_file.flush()
             script_file.seek(0)
 
-            logger.info(f"local script file: {script_file.name}")
+            # logger.info(f"local script file: {script_file.name}")
 
             child_script_file = workspace.child_path / os.path.basename(script_file.name)
 
-            logger.info(f"child script file: {child_script_file.name}")
+            # logger.info(f"child script file: {child_script_file.name}")
 
             command = f"{shell_cmd} {child_script_file}"
 
