@@ -62,11 +62,12 @@ def read_jobfile() -> dict:
     return ret
 
 
-SUB_FINDER = re.compile(r"\${{(.+?)}}")
+# SUB_FINDER = re.compile(r"\${{(.+?)}}")
+SUB_FINDER = re.compile(r"\${job\.(.+?)}")
 
 def substitute(target: Any, spec: dict) -> Any:
     if isinstance(target, str):
-        ret = SUB_FINDER.sub(lambda m: spec.get(m.group(1), str(m.group(1))) , target)
+        ret = SUB_FINDER.sub(lambda m: str(spec.get(m.group(1), m.group(0))) , target)
     elif isinstance(target, list):
         ret = [substitute(v, spec) for v in target]
     elif isinstance(target, dict):
