@@ -51,8 +51,9 @@ Parameters:
     Default: 100
 
   # todo: temp
-#  RunnerRepoUri:
-#    Type: String
+  RunnerRepoUri:
+    Type: String
+    Default: auto
 
 #  ScratchVolumeSize:
 #    Type: Number
@@ -96,6 +97,10 @@ Conditions:
 
   MakeGpuQueues: !Not [!Or [ !Equals [!Ref GpuAmiId, "None"],
                              !Equals [!Ref GpuAmiId, "none"] ] ]
+
+  MakeRunnerRepo: !Or [ !Equals [!Ref RunnerRepoUri, "Auto"],
+                        !Equals [!Ref RunnerRepoUri, "auto"] ]
+
 
 Resources:
   # network
@@ -348,8 +353,10 @@ Resources:
 #          LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
           ON_DEMAND_GPU_QUEUE_ARN: !GetAtt OnDemandGpuQueueStack.Outputs.BatchQueueArn
           ON_DEMAND_QUEUE_ARN: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
-          RUNNER_REPO_URI: !GetAtt RunnerRepo.RepositoryUri
-#          RUNNER_REPO_URI: !Ref RunnerRepoUri
+          RUNNER_REPO_URI: !If
+            - MakeRunnerRepo
+            - !GetAtt RunnerRepo.RepositoryUri
+            - !Ref RunnerRepoUri
           SCATTER_INIT_LAMBDA_ARN: !Ref ScatterInitLambda.Version
           SCATTER_LAMBDA_ARN: !Ref ScatterLambda.Version
           SPOT_GPU_QUEUE_ARN: !GetAtt SpotGpuQueueStack.Outputs.BatchQueueArn
@@ -988,6 +995,7 @@ Resources:
   # ecr repository
   RunnerRepo:
     Type: AWS::ECR::Repository
+    Condition: MakeRunnerRepo
     Properties:
       RepositoryName: !Sub "${AWS::StackName}/runner"
       ImageTagMutability: IMMUTABLE
@@ -1001,6 +1009,7 @@ Outputs:
     Value: !Ref LauncherBucket
 
   RunnerImageUri:
+    Condition: MakeRunnerRepo
     Value: !Sub
       - "${repo}:${tag}"
       - repo: !GetAtt RunnerRepo.RepositoryUri
