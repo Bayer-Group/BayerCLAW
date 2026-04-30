@@ -51,8 +51,8 @@ Parameters:
     Default: 100
 
   # todo: temp
-  RunnerRepoUri:
-    Type: String
+#  RunnerRepoUri:
+#    Type: String
 
 #  ScratchVolumeSize:
 #    Type: Number
@@ -348,8 +348,8 @@ Resources:
 #          LOGGING_DESTINATION_ARN: !Ref LoggingDestinationArn
           ON_DEMAND_GPU_QUEUE_ARN: !GetAtt OnDemandGpuQueueStack.Outputs.BatchQueueArn
           ON_DEMAND_QUEUE_ARN: !GetAtt OnDemandQueueStack.Outputs.BatchQueueArn
-#          RUNNER_REPO_URI: !GetAtt RunnerRepo.RepositoryUri
-          RUNNER_REPO_URI: !Ref RunnerRepoUri
+          RUNNER_REPO_URI: !GetAtt RunnerRepo.RepositoryUri
+#          RUNNER_REPO_URI: !Ref RunnerRepoUri
           SCATTER_INIT_LAMBDA_ARN: !Ref ScatterInitLambda.Version
           SCATTER_LAMBDA_ARN: !Ref ScatterLambda.Version
           SPOT_GPU_QUEUE_ARN: !GetAtt SpotGpuQueueStack.Outputs.BatchQueueArn
