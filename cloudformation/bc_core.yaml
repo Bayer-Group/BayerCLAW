@@ -986,13 +986,12 @@ Resources:
 #      LogGroupName: /aws/batch/job
 
   # ecr repository
-  # todo: restore this
-#  RunnerRepo:
-#    Type: AWS::ECR::Repository
-#    Properties:
-#      RepositoryName: !Sub "${AWS::StackName}/runner"
-#      ImageTagMutability: IMMUTABLE
-#      EmptyOnDelete: true
+  RunnerRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}/runner"
+      ImageTagMutability: IMMUTABLE
+      EmptyOnDelete: true
 
 Outputs:
   ECSTaskRoleArn:
@@ -1001,11 +1000,11 @@ Outputs:
   LauncherBucketName:
     Value: !Ref LauncherBucket
 
-#  RunnerImageUri:
-#    Value: !Sub
-#      - "${repo}:${tag}"
-#      - repo: !GetAtt RunnerRepo.RepositoryUri
-#        tag: !Ref SourceVersion
+  RunnerImageUri:
+    Value: !Sub
+      - "${repo}:${tag}"
+      - repo: !GetAtt RunnerRepo.RepositoryUri
+        tag: !Ref SourceVersion
 
   SecurityGroupId:
     Condition: MakeSecurityGroup
