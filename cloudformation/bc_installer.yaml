@@ -30,7 +30,7 @@ Metadata:
           - AmiId
           - GpuAmiId
           - RootVolumeSize
-          - ScratchVolumeSize
+#          - ScratchVolumeSize
           - MinvCpus
           - MaxvCpus
       -
@@ -39,7 +39,7 @@ Metadata:
         Parameters:
           - LauncherBucketName
           - LogRetentionDays
-          - LoggingDestination
+#          - LoggingDestination
 
 Parameters:
   AmiId:
@@ -57,12 +57,14 @@ Parameters:
   CompilerMacroName:
     Type: String
     Description: Compiler macro name, change this only if you are creating multiple BayerCLAW installations.
-    Default: "BC2_Compiler"
+    Default: "S3F_Compiler"
+#    Default: "BC2_Compiler"
 
   CoreBranch:
     Type: String
     Description: Git branch/tag/version name in the BayerCLAW repo.
-    Default: "main"
+    Default: "s3files26"
+#    Default: "main"
 
   CoreRepo:
     Type: String
@@ -82,7 +84,8 @@ Parameters:
     Description: >
       Name of this BayerCLAW installation, change this only if you are creating multiple BayerCLAW
       installations.
-    Default: "bayerclaw2"
+    Default: "bayerclaw2-s3f"
+#    Default: "bayerclaw2"
 
   LauncherBucketName:
     Type: String
@@ -98,12 +101,12 @@ Parameters:
     AllowedValues: [ 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653 ]
     Default: 30
 
-  LoggingDestination:
-    Type: String
-    Description: >
-      If you use CloudWatch Logs subscriptions to enable log data analysis/aggregation, you can enter the
-      destination ARN here to add SubscriptionFilters to the BayerCLAW logs. Otherwise, enter "none".
-    Default: "none"
+#  LoggingDestination:
+#    Type: String
+#    Description: >
+#      If you use CloudWatch Logs subscriptions to enable log data analysis/aggregation, you can enter the
+#      destination ARN here to add SubscriptionFilters to the BayerCLAW logs. Otherwise, enter "none".
+#    Default: "none"
 
   MaxvCpus:
     Type: Number
@@ -126,10 +129,14 @@ Parameters:
     Description: Size (in GB) of the EBS root volume used by Batch jobs.
     Default: 100
 
-  ScratchVolumeSize:
-    Type: Number
-    Description: Size (in GB) of the EBS scratch volume used by Batch jobs.
-    Default: 1000
+#  ScratchVolumeSize:
+#    Type: Number
+#    Description: Size (in GB) of the EBS scratch volume used by Batch jobs.
+#    Default: 1000
+
+  S3FilesVolumeId:
+    Type: String
+    Description: ID of the S3Files volume to use for the s3files Batch volume to use.
 
   SecurityGroups:
     Type: String
@@ -242,9 +249,9 @@ Resources:
           - Name: LOG_RETENTION_DAYS
             Type: PLAINTEXT
             Value: !Ref LogRetentionDays
-          - Name: LOGGING_DESTINATION
-            Type: PLAINTEXT
-            Value: !Ref LoggingDestination
+#          - Name: LOGGING_DESTINATION
+#            Type: PLAINTEXT
+#            Value: !Ref LoggingDestination
           - Name: MAX_VCPUS
             Type: PLAINTEXT
             Value: !Ref MaxvCpus
@@ -254,9 +261,12 @@ Resources:
           - Name: ROOT_VOLUME_SIZE
             Type: PLAINTEXT
             Value: !Ref RootVolumeSize
-          - Name: SCRATCH_VOLUME_SIZE
+#          - Name: SCRATCH_VOLUME_SIZE
+#            Type: PLAINTEXT
+#            Value: !Ref ScratchVolumeSize
+          - Name: S3FILES_VOLUME_ID
             Type: PLAINTEXT
-            Value: !Ref ScratchVolumeSize
+            Value: !Ref S3FilesVolumeId
           - Name: SECURITY_GROUPS
             Type: PLAINTEXT
             Value: !Ref SecurityGroups
