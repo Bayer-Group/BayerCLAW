@@ -206,6 +206,9 @@ def main(commands: List[str], imports: list[str], image_spec: dict, repo: str, s
 
     except UserCommandsFailed as ucf:
         logger.error(str(ucf))
+        # todo: in the case of a spot instance termination, step functions may terminate the task before this gets
+        #   processed, thus raising a botocore.errorfactory.TaskTimedOut. Basically harmless, but it writes an ugly
+        #   error message to the logs. Catch it to avoid user freak outs
         sfn.send_task_failure(
             taskToken=token,
             error="User commands failed",

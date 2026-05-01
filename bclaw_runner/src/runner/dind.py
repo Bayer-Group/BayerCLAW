@@ -79,7 +79,7 @@ def get_mounts(metadata: dict, workspace: Workspace) -> Generator[Mount, None, N
                 yield Mount(str(workspace.child_path), host_workspace, type="bind", read_only=False)
 
                 # 2. mount data dir
-                yield Mount("/data", "/mnt/s3files/data/", type="bind", read_only=True)
+                yield Mount("/_data_", "/mnt/s3files/data/", type="bind", read_only=True)
 
             elif volume_spec["Destination"] == "/.scratch":
                 yield Mount(volume_spec["Destination"], volume_spec["Source"], type="bind", read_only=False)
