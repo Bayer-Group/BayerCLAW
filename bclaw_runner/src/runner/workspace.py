@@ -57,7 +57,7 @@ class Workspace:
 
     def _download_this(self, import_spec: str) -> str:
         # todo: use s3 filename if local path is missing
-        s3_uri, local_path = re.split(f"\s+->\s+", import_spec, maxsplit=1)
+        s3_uri, local_path = re.split(r"\s+->\s+", import_spec, maxsplit=1)
         bucket, key = s3_uri.split("/", 3)[2:]
 
         dest = self.runner_path / local_path.lstrip("/")

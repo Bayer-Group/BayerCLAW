@@ -22,7 +22,8 @@ def expand_image_uri(image_spec: dict) -> Union[str, dict]:
     if re.match(r"^.*[.:].*/", subbed):
         ret0 = subbed
     else:
-        ret0 = {"Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed}"}
+        # ret0 = {"Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed}"}
+        ret0 = f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed}"
 
     ret = image_spec.copy()
     ret["name"] = ret0
@@ -215,7 +216,8 @@ def job_definition_rc(step: Step,
             "Type": "container",
             "Parameters": {
                 "command": json.dumps(step.spec["commands"], separators=(",", ":")),
-                "image": json.dumps(expand_image_uri(step.spec["image"]), sort_keys=True, separators=(",", ":")),
+                # "image": json.dumps(expand_image_uri(step.spec["image"]), sort_keys=True, separators=(",", ":")),
+                "image": {"Fn::Sub": json.dumps(expand_image_uri(step.spec["image"]), sort_keys=True, separators=(",", ":"))},
                 "import": "iii",
                 "repo": "rrr",
                 "shell": shell_opt,
