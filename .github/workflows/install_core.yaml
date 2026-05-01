@@ -72,7 +72,7 @@ jobs:
           RunnerRepoUri=${RUNNER_REPO_URI} \
           S3FilesVolumeId=${S3FILES_VOLUME_ID} \
           SecurityGroups=auto \
-          SourceVersion=${SOURCE_VERSION} \
+          SourceVersion=latest \
           Subnets=${SUBNETS} \
           Uniqifier=${UNIQIFIER} \
           VpcId=${VPC_ID}

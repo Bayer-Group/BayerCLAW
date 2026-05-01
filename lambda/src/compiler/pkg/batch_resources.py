@@ -229,8 +229,8 @@ def job_definition_rc(step: Step,
             },
             "ContainerProperties": {
                 # todo: temp
-                "Image": os.environ["RUNNER_REPO_URI"] + ":latest",
-                # "Image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
+                # "Image": os.environ["RUNNER_REPO_URI"] + ":latest",
+                "Image": os.environ["RUNNER_REPO_URI"] + ":" + os.environ["SOURCE_VERSION"],
                 "Command": [
                     "python", "/bclaw_runner/src/runner_cli.py",
                     "-c", "Ref::command",
