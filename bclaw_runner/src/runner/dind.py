@@ -60,7 +60,7 @@ def get_mounts(metadata: dict, workspace: Workspace) -> Generator[Mount, None, N
                 continue
 
             elif volume_spec["Destination"] == os.environ["BC_SCRATCH_PATH"]:
-                # make only the workspace dir available to the child container, not the whole scratch volume
+                # 1. make only the workspace dir available to the child container, not the whole scratch volume
 
                 # input:
                 #   os.environment[BC_SCRATCH_PATH] = /_bclaw_scratch
@@ -77,6 +77,9 @@ def get_mounts(metadata: dict, workspace: Workspace) -> Generator[Mount, None, N
 
                 # then mount the host path to the child container
                 yield Mount(str(workspace.child_path), host_workspace, type="bind", read_only=False)
+
+                # 2. mount data dir
+                yield Mount("/data", "/mnt/s3files/data/", type="bind", read_only=True)
 
             elif volume_spec["Destination"] == "/.scratch":
                 yield Mount(volume_spec["Destination"], volume_spec["Source"], type="bind", read_only=False)
