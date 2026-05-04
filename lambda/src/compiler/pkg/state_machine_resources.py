@@ -242,7 +242,8 @@ def state_machine_alias_rc(state_machine_version: Resource) -> Resource:
 
 def add_definition_substitutions(sfn_resource: Resource, other_resources: dict) -> None:
     # job definition logical names
-    defn_subs = {k: {"Ref": k} for k in other_resources.keys() if k != sfn_resource.name}
+    # defn_subs = {k: {"Ref": k} for k in other_resources.keys() if k != sfn_resource.name}
+    defn_subs = {k: v["Properties"]["JobDefinitionName"] for k,v in other_resources.items() }
 
     # used in lambda logging block
     defn_subs["WorkflowName"] = {"Ref": "AWS::StackName"}
