@@ -27,13 +27,13 @@ def make_initializer_step(repository: str) -> dict:
     ret = {
         initialize_step_name: {
             "Type": "Task",
-            "Resource": "arn:aws:::lambda:invoke",
+            "Resource": "arn:aws:states:::lambda:invoke",
             "Arguments": {
                 "FunctionName": os.environ["INITIALIZER_LAMBDA_ARN"],
                 "Payload": {
                     "workflow_name": "${WorkflowName}",
                     "repo_template": repository,
-                    "input_obj.$": "{% $states.input %}",
+                    "input_obj": "{% $states.input %}",
                     **lambda_logging_block(initialize_step_name),
                 },
             },

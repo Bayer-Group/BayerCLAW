@@ -69,7 +69,7 @@ def substitute_params(params: dict, target: Any):
 def lambda_logging_block(step_name: str) -> dict:
     ret = {
         "logging": {
-            "branch": "{% $.states.input.index %}",
+            "branch": "{% $states.input.index %}",
             "job_file_bucket": "{% $states.input.job_file.bucket %}",
             "job_file_key": "{% $states.input.job_file.key %}",
             "job_file_version": "{% $states.input.job_file.version %}",

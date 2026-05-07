@@ -375,23 +375,23 @@ def batch_step(step: Step,
                 "Environment": [
                     {
                         "Name": "BC_BRANCH_IDX",
-                        "Value": "{% $states.input.index %)",
+                        "Value": "{% $states.input.index %}",
                     },
                     {
                         "Name": "BC_EXECUTION_ID",
-                        "Value": "{% $states.context.Execution.Name %)",
+                        "Value": "{% $states.context.Execution.Name %}",
                     },
                     {
                         "Name": "BC_LAUNCH_BUCKET",
-                        "Value": "{% $states.input.job_file.bucket %)",
+                        "Value": "{% $states.input.job_file.bucket %}",
                     },
                     {
                         "Name": "BC_LAUNCH_KEY",
-                        "Value": "{% $states.input.job_file.key %)",
+                        "Value": "{% $states.input.job_file.key %}",
                     },
                     {
                         "Name": "BC_LAUNCH_VERSION",
-                        "Value": "{% $states.input.job_file.version %)",
+                        "Value": "{% $states.input.job_file.version %}",
                     },
                 ],
             },
