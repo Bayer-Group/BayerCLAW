@@ -396,7 +396,7 @@ def batch_step(step: Step,
                 ],
             },
             "Tags": {
-                "bclaw:jobfile": "{$states.input.job_file.key %}",
+                "bclaw:jobfile": "{% $states.input.job_file.key %}",
             },
         },
         "Retry": retries,
