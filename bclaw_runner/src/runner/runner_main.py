@@ -33,7 +33,7 @@ from docopt import docopt
 from .dind import run_child_container
 # from .string_subs import substitute, substitute_image_tag
 from .preamble import log_preamble
-from .exports import do_exports
+# from .exports import do_exports
 # from .qc_check import do_checks, abort_execution, QCFailure
 # from .repo import Repository, SkipExecution
 from .inline_cmds import StopRequested
@@ -196,7 +196,7 @@ def command_runner(commands: List[str],
 
             if (exit_code := run_child_container(image_spec, command, workspace)) == 0:
                 logger.info("command block succeeded")
-                do_exports(jobby_exports)
+                workspace.do_exports(jobby_exports)
             else:
                 logger.error("command block failed")
                 raise UserCommandsFailed(f"command block failed with exit code {exit_code}", exit_code)

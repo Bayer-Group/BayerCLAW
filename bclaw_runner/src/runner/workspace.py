@@ -2,12 +2,12 @@ from concurrent.futures import ThreadPoolExecutor
 # from contextlib import contextmanager
 # import json
 import logging
-# import os
+import os
 from pathlib import Path
 import re
 # import shutil
 # from tempfile import mkdtemp, NamedTemporaryFile
-# from typing import Generator
+from typing import Generator, Tuple
 
 import boto3
 import botocore.exceptions
@@ -48,14 +48,14 @@ class Workspace:
         # Path.mkdir(parents=True, exist_ok=True) is generally considered to be safe from race conditions if
         # concurrent jobs are running
         self.runner_path.mkdir(parents=True, exist_ok=True)
-        self.download_imports()
+        self.do_imports()
 
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    def _download_this(self, import_spec: str) -> str:
+    def _import_this(self, import_spec: str) -> str:
         # todo: use s3 filename if local path is missing
         s3_uri, local_path = re.split(r"\s+->\s+", import_spec, maxsplit=1)
         bucket, key = s3_uri.split("/", 3)[2:]
@@ -80,14 +80,54 @@ class Workspace:
             else:
                 raise
 
-    def download_imports(self) -> None:
+    def do_imports(self) -> None:
         with ThreadPoolExecutor(max_workers=256) as executor:
-            result = list(executor.map(lambda s: self._download_this(s), self.imports))
+            result = list(executor.map(lambda s: self._import_this(s), self.imports))
 
         logger.info(f"{len(result)} files downloaded")
 
-        # ret = {k.rstrip("?"): os.path.basename(v) for k, v in input_spec.items()}
-        # return ret
+    def _exporterator(self, output_specs: list[str]) -> Generator[Tuple[str, str], None, None]:
+        for spec in output_specs:
+            src, dest = spec.split(" -> ")
+            src_path = Path(src)
+
+            if src_path.is_absolute():
+                expanded = Path("/").glob(str(src_path.relative_to(src_path.anchor)))
+            else:
+                expanded = list(self.runner_path.glob(src))
+
+            if not expanded:
+                logger.warning(f"no file matching '{src}' found in workspace")
+            for filename in expanded:
+                yield str(filename), dest
+
+    @staticmethod
+    def _export_that(src: str, dst: str) -> str:
+        local_size = os.path.getsize(src)
+
+        if dst.endswith("/"):
+            dst += os.path.basename(src)
+        bucket, key = dst.split("/", 3)[2:]
+
+        logger.info(f"uploading {src} to s3://{bucket}/{key}")
+        logger.info(f"starting upload: {src} ({local_size} bytes) -> {dst}")
+
+        session = boto3.Session()
+        s3 = session.resource("s3")
+        s3_obj = s3.Object(bucket, key)
+        s3_obj.upload(src, ExtraArgs={"ServerSideEncryption": "AES256"})
+        s3_size = s3_obj.content_length
+
+        logger.info(f"finished upload: {src} ({local_size} bytes) -> {dst} ({s3_size} bytes)")
+
+        return dst
+
+    def do_exports(self, output_specs: list[str]) -> None:
+        exporter = lambda src_dst: self._export_that(*src_dst)
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            result = list(executor.map(exporter, self._exporterator(output_specs)))
+        logger.info(f"{len(result)} files uploaded")
 
 
 # class UserCommandsFailed(Exception):
