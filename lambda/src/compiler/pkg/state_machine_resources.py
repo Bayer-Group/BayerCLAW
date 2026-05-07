@@ -38,7 +38,7 @@ def make_initializer_step(repository: str) -> dict:
                 },
             },
             **lambda_retry(),
-            "Output": "(% $states.result.Payload %)",
+            "Output": "(% $states.result.Payload %}",
             "_stet": True,
         },
     }
