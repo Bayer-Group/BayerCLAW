@@ -115,7 +115,7 @@ class Workspace:
         session = boto3.Session()
         s3 = session.resource("s3")
         s3_obj = s3.Object(bucket, key)
-        s3_obj.upload(src, ExtraArgs={"ServerSideEncryption": "AES256"})
+        s3_obj.upload_file(src, ExtraArgs={"ServerSideEncryption": "AES256"})
         s3_size = s3_obj.content_length
 
         logger.info(f"finished upload: {src} ({local_size} bytes) -> {dst} ({s3_size} bytes)")
