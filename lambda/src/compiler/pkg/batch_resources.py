@@ -216,6 +216,7 @@ def job_definition_rc(step: Step,
             "Type": "container",
             "Parameters": {
                 "command": json.dumps(step.spec["commands"], separators=(",", ":")),
+                "export": "xxx",
                 # "image": json.dumps(expand_image_uri(step.spec["image"]), sort_keys=True, separators=(",", ":")),
                 "image": {"Fn::Sub": json.dumps(expand_image_uri(step.spec["image"]), sort_keys=True, separators=(",", ":"))},
                 "import": "iii",
@@ -245,6 +246,7 @@ def job_definition_rc(step: Step,
                     "-r", "Ref::repo",
                     "-s", "Ref::shell",
                     # "-t", "Ref::s3tags",
+                    "-x", "Ref::export",
                     "-z", "Ref::token",
                 ],
                 "JobRoleArn": task_role,
@@ -342,6 +344,77 @@ def get_error_catches(on_error_specs: list) -> Generator[dict, None, None]:
 
 
 def batch_step(step: Step,
+               job_definition_logical_name: str,
+               scattered: bool,
+               next_step_override: str = None) -> dict:
+    if scattered:
+        # job_name = "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)"
+        job_name = "(% $join([$states.context.Execution.Name, $states.context.State.Name, $states.input.index], '__') %)"
+    else:
+        # job_name = "States.Format('{}__{}', $$.Execution.Name, $$.State.Name)"
+        job_name = "(% $join([$states.context.Execution.Name, $states.context.State.Name], '__') %)"
+
+    retries = list(get_retries(step.spec["retry"], step.spec["on_error"]))
+    catches = list(get_error_catches(step.spec["on_error"]))
+
+    ret = {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::batch:submitJob.sync",
+        "Arguments": {
+            "JobName": job_name,
+            "JobDefinition": f"${{{job_definition_logical_name}}}",
+            "JobQueue": get_job_queue(step.spec["compute"]),
+            "ShareIdentifier": "{% $states.input.share_id %}",
+            "Parameters": {
+                "import": json.dumps(step.spec["import"], separators=(",", ":")),
+                "export": json.dumps(step.spec["export"], separators=(",", ":")),
+                "repo": "{% $states.input.repo %}",
+                "token": "{% $states.context.Task.Token %}",
+            },
+            "ContainerOverrides": {
+                "Environment": [
+                    {
+                        "Name": "BC_BRANCH_IDX",
+                        "Value": "{% $states.input.index %)",
+                    },
+                    {
+                        "Name": "BC_EXECUTION_ID",
+                        "Value": "{% $states.context.Execution.Name %)",
+                    },
+                    {
+                        "Name": "BC_LAUNCH_BUCKET",
+                        "Value": "{% $states.input.job_file.bucket %)",
+                    },
+                    {
+                        "Name": "BC_LAUNCH_KEY",
+                        "Value": "{% $states.input.job_file.key %)",
+                    },
+                    {
+                        "Name": "BC_LAUNCH_VERSION",
+                        "Value": "{% $states.input.job_file.version %)",
+                    },
+                ],
+            },
+            "Tags": {
+                "bclaw:jobfile": "{$states.input.job_file.key %}",
+            },
+        },
+        "Retry": retries,
+        "Output": "{% $states.input %}",
+    }
+
+    if catches:
+        ret["Catch"] = catches
+
+    if next_step_override is None:
+        ret.update(**step.next_or_end)
+    else:
+        ret.update({"Next": next_step_override})
+
+    return ret
+
+
+def batch_step0(step: Step,
                job_definition_logical_name: str,
                scattered: bool,
                next_step_override: str = None) -> dict:

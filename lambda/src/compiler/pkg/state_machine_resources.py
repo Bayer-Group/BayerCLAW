@@ -27,6 +27,31 @@ def make_initializer_step(repository: str) -> dict:
     ret = {
         initialize_step_name: {
             "Type": "Task",
+            "Resource": "arn:aws:::lambda:invoke",
+            "Arguments": {
+                "FunctionName": os.environ["INITIALIZER_LAMBDA_ARN"],
+                "Payload": {
+                    "workflow_name": "${WorkflowName}",
+                    "repo_template": repository,
+                    "input_obj.$": "{% $states.input %}",
+                    **lambda_logging_block(initialize_step_name),
+                },
+            },
+            **lambda_retry(),
+            "Output": "(% $states.result.Payload %)",
+            "_stet": True,
+        },
+    }
+
+    return ret
+
+
+def make_initializer_step0(repository: str) -> dict:
+    initialize_step_name = "Initialize"
+
+    ret = {
+        initialize_step_name: {
+            "Type": "Task",
             "Resource": os.environ["INITIALIZER_LAMBDA_ARN"],
             "Parameters": {
                 "workflow_name": "${WorkflowName}",
@@ -114,7 +139,7 @@ def make_branch(raw_steps: list,
                 depth: int = 0) -> Generator[Resource, None, dict]:
     logger = logging.getLogger(__name__)
 
-    if repository is not None:
+    if (this_is_root := repository is not None):
         initializer_step = make_initializer_step(repository)
         raw_steps.insert(0, initializer_step)
 
@@ -129,6 +154,9 @@ def make_branch(raw_steps: list,
         "StartAt": steps[0].name,
         "States": states,
     }
+
+    if this_is_root:
+        ret["QueryLanguage"] = "JSONata"
 
     return ret
 

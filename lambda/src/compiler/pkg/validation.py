@@ -163,12 +163,13 @@ batch_step_schema = Schema(All(
         # inputs = {} can be used to explicitly specify a step has no inputs at all, with no copy from previous output.
         ## remove  Optional("inputs", default=None): Any(None, {str: str}),
         Optional("import", default=[]): [str],
+        Optional("export", default=[]): [str],
         # Optional("inputs", default=None): file_list(Any(None, {str: str})),
         ## remove  Optional("references", default={}): {str: Match(r"^s3://", msg="reference values must be s3 paths")},
         # Optional("references", default={}): file_list({str: s3_path}),
         Required("commands", msg="commands list is required"): listified(str, min=1),
         # Optional("s3_tags", default={}): {str: Coerce(str)},
-        Optional("job_tags", default={}): {str: Coerce(str)},
+        # Optional("job_tags", default={}): {str: Coerce(str)},
         ## remove  Optional("outputs", default={}): {
         #     str: Or(
         #         And(str, shorthand_output_spec),
@@ -310,7 +311,7 @@ workflow_schema = Schema(
             Optional("s3_tags", default={}): {str: Coerce(str)},
             Optional("job_tags", default={}): {str: Coerce(str)},
             # deprecated...
-            Optional("versioned", default="false"): All(Lower, Coerce(str), Any("true", "false"))
+            # Optional("versioned", default="false"): All(Lower, Coerce(str), Any("true", "false"))
         },
         Required("Steps", "Steps list not found"): listified(wf_step, min=1),
     }

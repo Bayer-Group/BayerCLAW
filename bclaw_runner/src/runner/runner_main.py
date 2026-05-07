@@ -10,6 +10,7 @@ Options:
     -m JSON_STRING  Docker image spec
     -r PATH         repository path
     -s SHELL        unix shell to run commands in (bash | sh | sh-pipefail) [default: sh]
+    -x JSON_STRING  S3 file exports
     -z TOKEN        task token
     -h              show help
     --version       show version
@@ -32,6 +33,7 @@ from docopt import docopt
 from .dind import run_child_container
 # from .string_subs import substitute, substitute_image_tag
 from .preamble import log_preamble
+from .exports import do_exports
 # from .qc_check import do_checks, abort_execution, QCFailure
 # from .repo import Repository, SkipExecution
 from .inline_cmds import StopRequested
@@ -65,6 +67,7 @@ def read_jobfile() -> dict:
 # SUB_FINDER = re.compile(r"\${{(.+?)}}")
 SUB_FINDER = re.compile(r"\${job\.(.+?)}")
 
+# todo: use jmespath to get nested fields
 def substitute(target: Any, spec: dict) -> Any:
     if isinstance(target, str):
         ret = SUB_FINDER.sub(lambda m: str(spec.get(m.group(1), m.group(0))) , target)
@@ -156,6 +159,7 @@ def substitute(target: Any, spec: dict) -> Any:
 
 def command_runner(commands: List[str],
                    imports: List[str],
+                   exports: List[str],
                    image_spec: dict,
                    repo: str,
                    shell: str) -> None:
@@ -172,6 +176,7 @@ def command_runner(commands: List[str],
 
     jobby_imports = substitute(imports, job_data)
     jobby_commands = substitute(commands, job_data)
+    jobby_exports = substitute(exports, job_data)
 
     with Workspace(repo, jobby_imports) as workspace:
         with tempfile.NamedTemporaryFile(prefix="cmd_", suffix=".sh", dir=workspace.runner_path, mode="w+t") as script_file:
@@ -191,18 +196,19 @@ def command_runner(commands: List[str],
 
             if (exit_code := run_child_container(image_spec, command, workspace)) == 0:
                 logger.info("command block succeeded")
+                do_exports(jobby_exports)
             else:
                 logger.error("command block failed")
                 raise UserCommandsFailed(f"command block failed with exit code {exit_code}", exit_code)
 
 
-def main(commands: List[str], imports: list[str], image_spec: dict, repo: str, shell: str, token: str) -> int:
+def main(commands: List[str], imports: list[str], exports: list[str], image_spec: dict, repo: str, shell: str, token: str) -> int:
     sfn = boto3.client("stepfunctions")
 
     exit_code = 0
 
     try:
-        command_runner(commands, imports, image_spec, repo, shell)
+        command_runner(commands, imports, exports, image_spec, repo, shell)
 
     except UserCommandsFailed as ucf:
         logger.error(str(ucf))
@@ -265,7 +271,8 @@ def cli() -> int:
         image    = json.loads(args["-m"])
         repo     = args["-r"]
         shell    = args["-s"]
+        exports  = json.loads(args["-x"])
         token    = args["-z"]
 
-        ret = main(commands, imports, image, repo, shell, token)
+        ret = main(commands, imports, exports, image, repo, shell, token)
         return ret
