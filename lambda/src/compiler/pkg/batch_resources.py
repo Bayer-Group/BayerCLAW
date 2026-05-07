@@ -349,10 +349,10 @@ def batch_step(step: Step,
                next_step_override: str = None) -> dict:
     if scattered:
         # job_name = "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)"
-        job_name = "(% $join([$states.context.Execution.Name, $states.context.State.Name, $states.input.index], '__') %)"
+        job_name = "{% $join([$states.context.Execution.Name, $states.context.State.Name, $states.input.index], '__') %}"
     else:
         # job_name = "States.Format('{}__{}', $$.Execution.Name, $$.State.Name)"
-        job_name = "(% $join([$states.context.Execution.Name, $states.context.State.Name], '__') %)"
+        job_name = "{% $join([$states.context.Execution.Name, $states.context.State.Name], '__') %}"
 
     retries = list(get_retries(step.spec["retry"], step.spec["on_error"]))
     catches = list(get_error_catches(step.spec["on_error"]))
