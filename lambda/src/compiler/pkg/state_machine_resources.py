@@ -39,7 +39,7 @@ def make_initializer_step(repository: str) -> dict:
             },
             **lambda_retry(),
             "Assign": {
-                "share_id": "{% $states.result.Payload. %}",
+                "share_id": "{% $states.result.Payload.share_id %}",
                 "repo": "{% $states.result.Payload.repo %}",
                 "index": "{% $states.result.Payload.index %}",
                 "job_file": "{% $states.result.Payload.job_file %}",
