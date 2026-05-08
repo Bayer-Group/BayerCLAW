@@ -109,7 +109,7 @@ class Workspace:
             dst += os.path.basename(src)
         bucket, key = dst.split("/", 3)[2:]
 
-        logger.info(f"uploading {src} to s3://{bucket}/{key}")
+        # logger.info(f"uploading {src} to s3://{bucket}/{key}")
         logger.info(f"starting upload: {src} ({local_size} bytes) -> {dst}")
 
         session = boto3.Session()

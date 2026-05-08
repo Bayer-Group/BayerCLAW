@@ -123,6 +123,7 @@ def handle_s3_launch(event: dict) -> dict:
 
     subbed_repo = substitute_job_data(event["repo_template"], job_data)
 
+    # remove non-alphanumeric characters from the workflow name to create a share identifier for fair sharing
     share_id = re.sub(r"[\W_]+", "", event["workflow_name"])
 
     ret = {
@@ -132,6 +133,7 @@ def handle_s3_launch(event: dict) -> dict:
             "key": src_key,
             "version": src_version,
         },
+        "job_data": job_data,
         "repo": subbed_repo,
         "share_id": share_id,
     }

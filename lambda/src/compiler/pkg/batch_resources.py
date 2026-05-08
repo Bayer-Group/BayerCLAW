@@ -222,7 +222,6 @@ def job_definition_rc(step: Step,
                 "import": "iii",
                 "repo": "rrr",
                 "shell": shell_opt,
-                "token": "zzz",
                 # "inputs": "iii",
                 # "references": "fff",
                 # "outputs": "ooo",
@@ -247,7 +246,6 @@ def job_definition_rc(step: Step,
                     "-s", "Ref::shell",
                     # "-t", "Ref::s3tags",
                     "-x", "Ref::export",
-                    "-z", "Ref::token",
                 ],
                 "JobRoleArn": task_role,
                 **get_environment(step),
@@ -349,7 +347,7 @@ def batch_step(step: Step,
                next_step_override: str = None) -> dict:
     if scattered:
         # job_name = "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)"
-        job_name = "{% $join([$states.context.Execution.Name, $states.context.State.Name, $states.input.index], '__') %}"
+        job_name = "{% $join([$states.context.Execution.Name, $states.context.State.Name, $index], '__') %}"
     else:
         # job_name = "States.Format('{}__{}', $$.Execution.Name, $$.State.Name)"
         job_name = "{% $join([$states.context.Execution.Name, $states.context.State.Name], '__') %}"
@@ -364,18 +362,17 @@ def batch_step(step: Step,
             "JobName": job_name,
             "JobDefinition": f"${{{job_definition_logical_name}}}",
             "JobQueue": get_job_queue(step.spec["compute"]),
-            "ShareIdentifier": "{% $states.input.share_id %}",
+            "ShareIdentifier": "{% $share_id %}",
             "Parameters": {
                 "import": json.dumps(step.spec["import"], separators=(",", ":")),
                 "export": json.dumps(step.spec["export"], separators=(",", ":")),
-                "repo": "{% $states.input.repo %}",
-                "token": "{% $states.context.Task.Token %}",
+                "repo": "{% $repo %}",
             },
             "ContainerOverrides": {
                 "Environment": [
                     {
                         "Name": "BC_BRANCH_IDX",
-                        "Value": "{% $states.input.index %}",
+                        "Value": "{% $index %}",
                     },
                     {
                         "Name": "BC_EXECUTION_ID",
@@ -383,20 +380,24 @@ def batch_step(step: Step,
                     },
                     {
                         "Name": "BC_LAUNCH_BUCKET",
-                        "Value": "{% $states.input.job_file.bucket %}",
+                        "Value": "{% $job_file.bucket %}",
                     },
                     {
                         "Name": "BC_LAUNCH_KEY",
-                        "Value": "{% $states.input.job_file.key %}",
+                        "Value": "{% $job_file.key %}",
                     },
                     {
                         "Name": "BC_LAUNCH_VERSION",
-                        "Value": "{% $states.input.job_file.version %}",
+                        "Value": "{% $job_file.version %}",
                     },
+                    {
+                        "Name": "BC_TASK_TOKEN",
+                        "Value": "{% $states.context.Task.Token %}",
+                    }
                 ],
             },
             "Tags": {
-                "bclaw:jobfile": "{% $states.input.job_file.key %}",
+                "bclaw:jobfile": "{% $job_file.key %}",
             },
         },
         "Retry": retries,

@@ -11,7 +11,6 @@ Options:
     -r PATH         repository path
     -s SHELL        unix shell to run commands in (bash | sh | sh-pipefail) [default: sh]
     -x JSON_STRING  S3 file exports
-    -z TOKEN        task token
     -h              show help
     --version       show version
 """
@@ -31,7 +30,7 @@ from docopt import docopt
 
 # from .cache import get_reference_inputs
 from .dind import run_child_container
-# from .string_subs import substitute, substitute_image_tag
+from .string_subs import substitute
 from .preamble import log_preamble
 # from .exports import do_exports
 # from .qc_check import do_checks, abort_execution, QCFailure
@@ -43,6 +42,8 @@ from .workspace import Workspace
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+TASK_TOKEN = os.environ["BC_TASK_TOKEN"]
 
 
 class UserCommandsFailed(Exception):
@@ -65,19 +66,18 @@ def read_jobfile() -> dict:
 
 
 # SUB_FINDER = re.compile(r"\${{(.+?)}}")
-SUB_FINDER = re.compile(r"\${job\.(.+?)}")
-
-# todo: use jmespath to get nested fields
-def substitute(target: Any, spec: dict) -> Any:
-    if isinstance(target, str):
-        ret = SUB_FINDER.sub(lambda m: str(spec.get(m.group(1), m.group(0))) , target)
-    elif isinstance(target, list):
-        ret = [substitute(v, spec) for v in target]
-    elif isinstance(target, dict):
-        ret = {k: substitute(v, spec) for k, v in target.items()}
-    else:
-        ret = target
-    return ret
+# SUB_FINDER = re.compile(r"\${job\.(.+?)}")
+#
+# def substitute(target: Any, spec: dict) -> Any:
+#     if isinstance(target, str):
+#         ret = SUB_FINDER.sub(lambda m: str(spec.get(m.group(1), m.group(0))) , target)
+#     elif isinstance(target, list):
+#         ret = [substitute(v, spec) for v in target]
+#     elif isinstance(target, dict):
+#         ret = {k: substitute(v, spec) for k, v in target.items()}
+#     else:
+#         ret = target
+#     return ret
 
 
 # def main0(commands: List[str],
@@ -172,7 +172,9 @@ def command_runner(commands: List[str],
     else:
         raise RuntimeError(f"unrecognized shell: {shell}")
 
-    job_data = read_jobfile()
+    # wrap the job data file contents in this dict so that substitute() will
+    # handle things like "${job.foo}" properly
+    job_data = {"job": read_jobfile()}
 
     jobby_imports = substitute(imports, job_data)
     jobby_commands = substitute(commands, job_data)
@@ -202,7 +204,7 @@ def command_runner(commands: List[str],
                 raise UserCommandsFailed(f"command block failed with exit code {exit_code}", exit_code)
 
 
-def main(commands: List[str], imports: list[str], exports: list[str], image_spec: dict, repo: str, shell: str, token: str) -> int:
+def main(commands: List[str], imports: list[str], exports: list[str], image_spec: dict, repo: str, shell: str) -> int:
     sfn = boto3.client("stepfunctions")
 
     exit_code = 0
@@ -212,37 +214,52 @@ def main(commands: List[str], imports: list[str], exports: list[str], image_spec
 
     except UserCommandsFailed as ucf:
         logger.error(str(ucf))
-        # todo: in the case of a spot instance termination, step functions may terminate the task before this gets
-        #   processed, thus raising a botocore.errorfactory.TaskTimedOut. Basically harmless, but it writes an ugly
-        #   error message to the logs. Catch it to avoid user freak outs
-        sfn.send_task_failure(
-            taskToken=token,
-            error="User commands failed",
-            cause=str(ucf)
-        )
         exit_code = ucf.exit_code
+        # In certain cases (e.g. execution stopped from tne console, spot instance termination, probably others),
+        # step functions may terminate the task before this gets processed, thus raising a  TaskTimedOut exception.
+        # This is basically harmless, but it writes an ugly error message to the logs so we suppress it.
+        try:
+            sfn.send_task_failure(
+                taskToken=TASK_TOKEN,
+                error="User commands failed",
+                cause=str(ucf)
+            )
+        except sfn.exceptions.TaskTimedOut:
+            pass
 
     except StopRequested as se:
         logger.error(str(se))
-        sfn.send_task_failure(
-            taskToken=token,
-            error=se.error,
-            cause=str(se)
-        )
         exit_code = 198
+        try:
+            sfn.send_task_failure(
+                taskToken=TASK_TOKEN,
+                error=se.error,
+                cause=str(se)
+            )
+        except sfn.exceptions.TaskTimedOut:
+            pass
 
     except Exception as e:
         logger.exception("bclaw_runner error: ")
-        sfn.send_task_failure(
-            taskToken=token,
-            error=type(e).__name__,
-            cause=str(e),
-        )
         exit_code = 199
+        try:
+            sfn.send_task_failure(
+                taskToken=TASK_TOKEN,
+                error=type(e).__name__,
+                cause=str(e),
+            )
+        except sfn.exceptions.TaskTimedOut:
+            pass
 
     else:
+        # The Step Functions - Batch service integration does not formally support the ".waitForTaskToken" pattern.
+        # All this means is that the Batch SubmitJob API does not define a specific field to pass in a task token.
+        # However, a Step Functions task token can be passed to a batch job as an environment variable, so we take
+        # advantage of that. This approach enables the runner to emit user-defined error types for branch-on-error
+        # to work with, and to pass information from the Batch job to the state machine (although the latter is not
+        # used yet).
         sfn.send_task_success(
-            taskToken=token,
+            taskToken=TASK_TOKEN,
             output=json.dumps({"status": "SUCCEEDED"}),
         )
         logger.info("bclaw_runner finished")
@@ -272,7 +289,6 @@ def cli() -> int:
         repo     = args["-r"]
         shell    = args["-s"]
         exports  = json.loads(args["-x"])
-        token    = args["-z"]
 
-        ret = main(commands, imports, exports, image, repo, shell, token)
+        ret = main(commands, imports, exports, image, repo, shell)
         return ret
