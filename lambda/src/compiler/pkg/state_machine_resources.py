@@ -43,6 +43,7 @@ def make_initializer_step(repository: str) -> dict:
                 "repo": "{% $states.result.Payload.repo %}",
                 "index": "{% $states.result.Payload.index %}",
                 "job_file": "{% $states.result.Payload.job_file %}",
+                "job": "{% $states.result.Payload.job_data %}",
             },
             "Output": "{% $states.result.Payload %}",
             "_stet": True,
