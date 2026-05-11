@@ -29,11 +29,12 @@ def handle_native_step(step: Step,
         ret.pop("_stet")
 
     except KeyError:
-        if step_type not in {"Wait", "Succeed", "Fail"}:
-            ret.update({"ResultPath": None})
+        # if step_type not in {"Wait", "Succeed", "Fail"}:
+        #     ret.update({"ResultPath": None})
 
         if step_type != "Fail":
-            ret.update({"OutputPath": "$"})
+            ret.update({"Output": "{% $states.input %}"})
+            # ret.update({"OutputPath": "$"})
 
     ret.pop("Next", None)
     ret.pop("End", None)

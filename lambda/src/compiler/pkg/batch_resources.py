@@ -336,8 +336,8 @@ def get_error_catches(on_error_specs: list) -> Generator[dict, None, None]:
         if spec["next"]:
             yield {
                 "ErrorEquals": [spec["type"]],
+                "Output": "{% $merge([$states.input, {'error-info': $states.errorOutput}]) %}",
                 "Next": spec["next"],
-                "ResultPath": "$.error_info"
             }
 
 
