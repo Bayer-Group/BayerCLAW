@@ -20,12 +20,12 @@ def expand_image_uri(image_spec: dict) -> Union[str, dict]:
     #   a : port separator, or the value "localhost" before the first /.
     # ...but it's unlikely that localhost will be used in a batch job
     if re.match(r"^.*[.:].*/", subbed):
-        ret0 = subbed
+        name = subbed
     else:
-        ret0 = {"Fn::Sub": f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed}"}
+        name = f"${{AWS::AccountId}}.dkr.ecr.${{AWS::Region}}.amazonaws.com/{subbed}"
 
     ret = image_spec.copy()
-    ret["name"] = ret0
+    ret["name"] = name
     return ret
 
 
@@ -213,7 +213,8 @@ def job_definition_rc(step: Step,
             "Type": "container",
             "Parameters": {
                 "repo": "rrr",
-                "image": json.dumps(expand_image_uri(step.spec["image"]), sort_keys=True, separators=(",", ":")),
+                "image": {"Fn::Sub": json.dumps(expand_image_uri(step.spec["image"]), sort_keys=True, separators=(",", ":"))},
+                # "image": json.dumps(expand_image_uri(step.spec["image"]), sort_keys=True, separators=(",", ":")),
                 "inputs": "iii",
                 "references": "fff",
                 "command": json.dumps(step.spec["commands"], separators=(",", ":")),

@@ -15,13 +15,13 @@ from ...src.compiler.pkg.util import Step, Resource, State
 # Docker image tag format:
 #   https://docs.docker.com/engine/reference/commandline/tag/#description
 @pytest.mark.parametrize("uri, expected", [
-    ("image", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image"}),
-    ("image:ver", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:ver"}),
-    ("image:with.dots", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:with.dots"}),
-    ("registry/image", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image"}),
-    ("image:${tag}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:${!tag}"}),
-    ("registry/image:tag", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image:tag"}),
-    ("level1/level2/${env}/image:${tag}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/level1/level2/${!env}/image:${!tag}"}),
+    ("image", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image"),
+    ("image:ver", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:ver"),
+    ("image:with.dots", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:with.dots"),
+    ("registry/image", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image"),
+    ("image:${tag}", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:${!tag}"),
+    ("registry/image:tag", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image:tag"),
+    ("level1/level2/${env}/image:${tag}", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/level1/level2/${!env}/image:${!tag}"),
     ("docker.io/library/ubuntu", "docker.io/library/ubuntu"),
     ("quay.io/biocontainers/edta:1.9.6--1", "quay.io/biocontainers/edta:1.9.6--1"),
     ("something.weird.com/really/deep/path/image:version", "something.weird.com/really/deep/path/image:version"),
@@ -305,7 +305,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
 
     image_spec = {
         "auth": "arn:aws:secretsmanager:us-west-1:123456789012:secret:docker_auth",
-        "name": {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp"},
+        "name": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp",
     }
 
     properties_spec = {
@@ -313,7 +313,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         "Type": "container",
         "Parameters": {
             "repo": "rrr",
-            "image": json.dumps(image_spec, sort_keys=True, separators=(",", ":")),
+            "image": {"Fn::Sub": json.dumps(image_spec, sort_keys=True, separators=(",", ":"))},
             "inputs": "iii",
             "references": "fff",
             "command": json.dumps(step.spec["commands"], separators=(",", ":")),
