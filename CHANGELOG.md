@@ -1,5 +1,8 @@
 # Changelog for BayerCLAW
 
+## [v1.2.8.1] 2026-05-11 Bug fix
+- Fixed a bug in handling shorthand Docker image names.
+
 ## [v1.2.8] 2026-04-15 Upgrade and bug fix
 - Remove the hacky custom resource used to update Batch job definitions without deregistering
 old definitions.
