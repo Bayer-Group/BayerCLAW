@@ -5,7 +5,7 @@ import logging
 import os
 import re
 import signal
-from typing import Generator
+from typing import Generator, Iterator
 
 import boto3
 import docker
@@ -79,7 +79,7 @@ def get_mounts(metadata: dict, workspace: Workspace) -> Generator[Mount, None, N
                 yield Mount(str(workspace.child_path), host_workspace, type="bind", read_only=False)
 
                 # 2. mount data dir
-                yield Mount("/_data_", "/mnt/s3files/data/", type="bind", read_only=True)
+                yield Mount("/_data_", "/mnt/s3files/data", type="bind", read_only=True)
 
             elif volume_spec["Destination"] == "/.scratch":
                 yield Mount(volume_spec["Destination"], volume_spec["Source"], type="bind", read_only=False)
@@ -140,6 +140,24 @@ def pull_image(docker_client: docker.DockerClient, image_spec: dict) -> Image:
     return ret
 
 
+def handle_container_logs(log_stream: Iterator) -> None:
+    while True:
+        try:
+            line = next(log_stream).decode("utf-8")
+            if not parse_for_commands(line):
+                user_cmd_logger.user_cmd(line)
+
+        except StopIteration:
+            break
+
+        except StopRequested:
+            raise
+
+        except Exception as e:
+            logger.exception("----- error processing docker logs: ")
+            logger.info("----- continuing with subprocess logging")
+
+
 def run_child_container(image_spec: dict, command: str, workspace: Workspace) -> int:
     # child_workspace = os.environ["BC_SCRATCH_PATH"]
 
@@ -173,16 +191,16 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
         with signal_trapper(container):
             try:
                 with closing(container.logs(stream=True)) as fp:
-                    for line in fp:
-                        line_str = line.decode("utf-8")
-                        if not parse_for_commands(line_str):
-                            try:
-                                user_cmd_logger.user_cmd(line_str)
-                            except Exception:
-                                logger.exception("----- error during subprocess logging: ")
-                                container.reload()
-                                logger.info(f"----- subprocess status is {container.status}")
-                                # logger.warning("----- continuing without subprocess logging")
+                    handle_container_logs(fp)
+                    # for line in fp:
+                    #     try:
+                    #         line_str = line.decode("utf-8")
+                    #         if not parse_for_commands(line_str):
+                    #             user_cmd_logger.user_cmd(line_str)
+                    #     except Exception as e:
+                    #         logger.exception("----- error during subprocess logging: ")
+                    #         container.reload()
+                    #         logger.info(f"----- subprocess status is {container.status}")
 
             except StopRequested:
                 try:
@@ -192,11 +210,11 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
                     pass
                 raise
 
-            # except Exception:
-            #     logger.exception("----- error during subprocess logging: ")
-            #     container.reload()
-            #     logger.info(f"----- subprocess status is {container.status}")
-            #     logger.warning("----- continuing without subprocess logging")
+            except Exception:
+                logger.exception("----- error initiating subprocess logging: ")
+                logger.warning("----- continuing without subprocess logging")
+                container.reload()
+                logger.info(f"----- subprocess status is {container.status}")
 
             finally:
                 logger.info("---------- end of user command block ----------")

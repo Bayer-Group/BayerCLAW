@@ -43,8 +43,6 @@ from .workspace import Workspace
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-TASK_TOKEN = os.environ["BC_TASK_TOKEN"]
-
 
 class UserCommandsFailed(Exception):
     def __init__(self, message: str, exit_code: int):
@@ -205,6 +203,7 @@ def command_runner(commands: List[str],
 
 
 def main(commands: List[str], imports: list[str], exports: list[str], image_spec: dict, repo: str, shell: str) -> int:
+    task_token = os.environ["BC_TASK_TOKEN"]
     sfn = boto3.client("stepfunctions")
 
     exit_code = 0
@@ -220,7 +219,7 @@ def main(commands: List[str], imports: list[str], exports: list[str], image_spec
         # This is basically harmless, but it writes an ugly error message to the logs so we suppress it.
         try:
             sfn.send_task_failure(
-                taskToken=TASK_TOKEN,
+                taskToken=task_token,
                 error="User commands failed",
                 cause=str(ucf)
             )
@@ -232,7 +231,7 @@ def main(commands: List[str], imports: list[str], exports: list[str], image_spec
         exit_code = 198
         try:
             sfn.send_task_failure(
-                taskToken=TASK_TOKEN,
+                taskToken=task_token,
                 error=se.error,
                 cause=str(se)
             )
@@ -244,7 +243,7 @@ def main(commands: List[str], imports: list[str], exports: list[str], image_spec
         exit_code = 199
         try:
             sfn.send_task_failure(
-                taskToken=TASK_TOKEN,
+                taskToken=task_token,
                 error=type(e).__name__,
                 cause=str(e),
             )
@@ -259,7 +258,7 @@ def main(commands: List[str], imports: list[str], exports: list[str], image_spec
         # to work with, and to pass information from the Batch job to the state machine (although the latter is not
         # used yet).
         sfn.send_task_success(
-            taskToken=TASK_TOKEN,
+            taskToken=task_token,
             output=json.dumps({"status": "SUCCEEDED"}),
         )
         logger.info("bclaw_runner finished")

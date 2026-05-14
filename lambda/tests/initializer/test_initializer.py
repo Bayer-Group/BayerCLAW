@@ -180,6 +180,10 @@ def test_lambda_handler(monkeypatch, caplog, launcher_bucket):
     # return value to send to step functions
     expect = {
         "index": "main",
+        "job_data": {
+            "name": "testJob",
+            "other_stuff": ["yada", "yada"],
+        },
         "job_file": {
             "bucket": launcher_bucket,
             "key": job_data_key,

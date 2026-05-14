@@ -15,16 +15,25 @@ def test_make_initializer_step(compiler_env):
     expect = {
         "Initialize": {
             "Type": "Task",
-            "Resource": "initializer_lambda_arn",
-            "Parameters": {
-                "workflow_name": "${WorkflowName}",
-                "repo_template": repository,
-                "input_obj.$": "$",
-                **lambda_logging_block("Initialize"),
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Arguments": {
+                "FunctionName": "initializer_lambda_arn",
+                "Payload": {
+                    "input_obj": "{% $states.input %}",
+                    "workflow_name": "${WorkflowName}",
+                    "repo_template": repository,
+                    **lambda_logging_block("Initialize"),
+                },
             },
             **lambda_retry(),
-            "ResultPath": "$",
-            "OutputPath": "$",
+            "Assign": {
+                "index": "{% $states.result.Payload.index %}",
+                "job": "{% $states.result.Payload.job_data %}",
+                "job_file": "{% $states.result.Payload.job_file %}",
+                "repo": "{% $states.result.Payload.repo %}",
+                "share_id": "{% $states.result.Payload.share_id %}",
+            },
+            "Output": "{% $states.result.Payload %}",
             "_stet": True,
         },
     }

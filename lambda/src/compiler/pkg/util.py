@@ -24,13 +24,14 @@ class Step(NamedTuple):
         else:
             return {"Next": self.next}
 
-    # @property
-    # def input_field(self) -> dict:
-    #     if self.spec["inputs"] is None:
-    #         ret = {"inputs.$": "States.JsonToString($.prev_outputs)"}
-    #     else:
-    #         ret = {"inputs": json.dumps(self.spec["inputs"], separators=(",", ":"))}
-    #     return ret
+    @property
+    def input_field(self) -> dict:
+        if self.spec["inputs"] is None:
+            ret = {"inputs.$": "States.JsonToString($.prev_outputs)"}
+            # raise RuntimeError("hey")
+        else:
+            ret = {"inputs": json.dumps(self.spec["inputs"], separators=(",", ":"))}
+        return ret
 
 
 class Resource(NamedTuple):

@@ -36,11 +36,11 @@ def test_scatter_step(compiler_env):
             "outputs": json.dumps(spec["outputs"]),
             "step_name": "test_step",
             "logging": {
-                "branch.$": "$.index",
-                "job_file_bucket.$": "$.job_file.bucket",
-                "job_file_key.$": "$.job_file.key",
-                "job_file_version.$": "$.job_file.version",
-                "sfn_execution_id.$": "$$.Execution.Name",
+                "branch": "{% $states.input.index %}",
+                "job_file_bucket": "{% $states.input.job_file.bucket %}",
+                "job_file_key": "{% $states.input.job_file.key %}",
+                "job_file_version": "{% $states.input.job_file.version %}",
+                "sfn_execution_id": "{% $states.context.Execution.Name %}",
                 "step_name": "test_step",
                 "workflow_name": "${WorkflowName}",
             },
@@ -130,11 +130,11 @@ def test_scatter_init_step(compiler_env):
                 "repo.$": "$.repo",
                 "scatter.$": "$.scatter",
                 "logging": {
-                    "branch.$": "$.index",
-                    "job_file_bucket.$": "$.job_file.bucket",
-                    "job_file_key.$": "$.job_file.key",
-                    "job_file_version.$": "$.job_file.version",
-                    "sfn_execution_id.$": "$$.Execution.Name",
+                    "branch": "{% $states.input.index %}",
+                    "job_file_bucket": "{% $states.input.job_file.bucket %}",
+                    "job_file_key": "{% $states.input.job_file.key %}",
+                    "job_file_version": "{% $states.input.job_file.version %}",
+                    "sfn_execution_id": "{% $states.context.Execution.Name %}",
                     "step_name": "parent_step_name.initialize",
                     "workflow_name": "${WorkflowName}",
                 },
@@ -168,11 +168,11 @@ def test_gather_step(next_step_name, next_or_end, compiler_env):
             "outputs": json.dumps(spec["outputs"]),
             "step_name": "test_step",
             "logging": {
-                "branch.$": "$.index",
-                "job_file_bucket.$": "$.job_file.bucket",
-                "job_file_key.$": "$.job_file.key",
-                "job_file_version.$": "$.job_file.version",
-                "sfn_execution_id.$": "$$.Execution.Name",
+                "branch": "{% $states.input.index %}",
+                "job_file_bucket": "{% $states.input.job_file.bucket %}",
+                "job_file_key": "{% $states.input.job_file.key %}",
+                "job_file_version": "{% $states.input.job_file.version %}",
+                "sfn_execution_id": "{% $states.context.Execution.Name %}",
                 "step_name": "test_step",
                 "workflow_name": "${WorkflowName}",
             },
@@ -200,26 +200,12 @@ def sample_scatter_step():
             image:
               name: test_image
               auth: ""
-            references:
-                ref1: "s3://ref-bucket/path/to/reference.file"
-            inputs:
-                input3: 1_infile3.txt
             commands:
               - ls -l ${scatter.stuff} > ${output3}
-            outputs:
-                output3:
-                    name: 2_outfile3.txt
-                    s3_tags:
-                        s3_tag3: file_s3_value3
-                        s3_tag4: file_s3_value4
-            s3_tags:
-              s3_tag2: step_s3_value2
-              s3_tag3: step_s3_value3
             compute:
                 cpus: 1
                 memory: 4
                 spot: true
-            skip_if_output_exists: true
       outputs:
         output1: outfile1.txt
         output2: outfile2.txt

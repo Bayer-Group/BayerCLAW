@@ -74,10 +74,11 @@ def test_get_mounts(monkeypatch):
             },
         ],
     }
-    workspace = Workspace("path/to/workspace")
+    workspace = Workspace("path/to/workspace", [])
 
     expect = [
         Mount("/_work_", "/mnt/s3files/path/to/workspace", type="bind", read_only=False),
+        Mount("/_data_", "/mnt/s3files/data", type="bind", read_only=True),
         Mount("/.scratch", "/docker_scratch", type="bind", read_only=False),
         Mount("/efs", "volume12345", type="volume", read_only=False,
               driver_config=DriverConfig("amazon-ecs-volume-plugin")),
@@ -165,7 +166,7 @@ def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logg
     monkeypatch.setattr(docker.client, "from_env", mock_from_env)
 
     # job_data_file = f"{bc_scratch_path}/parent/workspace/job_data_12345.json"
-    workspace = Workspace("path/to/workspace")
+    workspace = Workspace("path/to/workspace", [])
 
     image_spec = {
         "name": "local/image",
@@ -187,7 +188,10 @@ def test_run_child_container(caplog, monkeypatch, requests_mock, exit_code, logg
         },
         "init": True,
         "mem_limit": "2048m",
-        "mounts": [Mount(bc_scratch_path, "/mnt/s3files/path/to/workspace", type="bind", read_only=False)],
+        "mounts": [
+            Mount(bc_scratch_path, "/mnt/s3files/path/to/workspace", type="bind", read_only=False),
+            Mount("/_data_", "/mnt/s3files/data", type="bind", read_only=True),
+        ],
         "version": "auto",
         "working_dir": bc_scratch_path
     }

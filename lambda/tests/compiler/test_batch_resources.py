@@ -15,13 +15,13 @@ from ...src.compiler.pkg.util import Step, Resource, State
 # Docker image tag format:
 #   https://docs.docker.com/engine/reference/commandline/tag/#description
 @pytest.mark.parametrize("uri, expected", [
-    ("image", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image"}),
-    ("image:ver", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:ver"}),
-    ("image:with.dots", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:with.dots"}),
-    ("registry/image", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image"}),
-    ("image:${tag}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:${!tag}"}),
-    ("registry/image:tag", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image:tag"}),
-    ("level1/level2/${env}/image:${tag}", {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/level1/level2/${!env}/image:${!tag}"}),
+    ("image", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image"),
+    ("image:ver", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:ver"),
+    ("image:with.dots", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:with.dots"),
+    ("registry/image", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image"),
+    ("image:${tag}", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/image:${!tag}"),
+    ("registry/image:tag", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/registry/image:tag"),
+    ("level1/level2/${env}/image:${tag}", "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/level1/level2/${!env}/image:${!tag}"),
     ("docker.io/library/ubuntu", "docker.io/library/ubuntu"),
     ("quay.io/biocontainers/edta:1.9.6--1", "quay.io/biocontainers/edta:1.9.6--1"),
     ("something.weird.com/really/deep/path/image:version", "something.weird.com/really/deep/path/image:version"),
@@ -312,6 +312,9 @@ def sample_batch_step():
          --adapter_fasta adapters.fa
          --length_required 25
          --json trim.log
+      export:
+        - outfile1.txt -> s3://bucket/path/to/exports/
+        - outfile2.txt -> s3://bucket/path/to/exports/renamed.txt
       compute:
         cpus: 4
         memory: 4 Gb
@@ -358,7 +361,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
 
     image_spec = {
         "auth": "arn:aws:secretsmanager:us-west-1:123456789012:secret:docker_auth",
-        "name": {"Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp"},
+        "name": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/skim3-fastp",
     }
 
     properties_spec = {
@@ -366,16 +369,15 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
         "Type": "container",
         "Parameters": {
             "command": json.dumps(step.spec["commands"], separators=(",", ":")),
-            "image": json.dumps(image_spec, sort_keys=True, separators=(",", ":")),
+            "export": "xxx",
+            "image": {"Fn::Sub": json.dumps(image_spec, sort_keys=True, separators=(",", ":"))},
             "import": "iii",
             "repo": "rrr",
             "shell": "sh",
-            "token": "zzz",
         },
         "ContainerProperties": {
-            # todo: temp
-            # "Image": "runner_repo_uri:1234567",
-            "Image": "runner_repo_uri:latest",
+            "Image": "runner_repo_uri:1234567",
+            # "Image": "runner_repo_uri:latest",
             "Command": [
                 "python", "/bclaw_runner/src/runner_cli.py",
                 "-c", "Ref::command",
@@ -383,7 +385,7 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
                 "-m", "Ref::image",
                 "-r", "Ref::repo",
                 "-s", "Ref::shell",
-                "-z", "Ref::token",
+                "-x", "Ref::export",
             ],
             "JobRoleArn": "arn:task:role",
             "Environment": [
@@ -495,8 +497,10 @@ def test_job_definition_rc(sample_batch_step, compiler_env):
 # todo: test get_error_catches
 
 @pytest.mark.parametrize("scattered, job_name", [
-    (True, "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)"),
-    (False, "States.Format('{}__{}', $$.Execution.Name, $$.State.Name)")
+    # (True, "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)"),
+    (True, "{% $join([$states.context.Execution.Name, $states.context.State.Name, $index], '__') %}"),
+    # (False, "States.Format('{}__{}', $$.Execution.Name, $$.State.Name)")
+    (False, "{% $join([$states.context.Execution.Name, $states.context.State.Name], '__') %}"),
 ])
 @pytest.mark.parametrize("next_step_name, next_or_end", [
     ("next_step", {"Next": "next_step"}),
@@ -511,7 +515,13 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
         "${{READ_PATH2}} -> reads2.fq.gz",
     ]
 
+    exports = [
+        "outfile1.txt -> s3://bucket/path/to/exports/",
+        "outfile2.txt -> s3://bucket/path/to/exports/renamed.txt",
+    ]
+
     expected_imports = json.dumps(imports,separators=(',',':'))
+    expected_exports = json.dumps(exports,separators=(',',':'))
 
     expected_body = {
         "Type": "Task",
@@ -541,50 +551,53 @@ def test_batch_step(next_step_name, next_or_end, sample_batch_step, scattered, j
         "Catch": [
             {
                 "ErrorEquals": ["TEST_ERROR"],
+                "Output": "{% $merge([$states.input, {'error-info': $states.errorOutput}]) %}",
                 "Next": "errorStep",
-                "ResultPath": "$.error_info",
             },
         ],
-        "Parameters": {
-            "JobName.$": job_name,
+        "Arguments": {
+            "JobName": job_name,
             "JobDefinition": "${TestJobDef}",
             "JobQueue": "spot_gpu_queue_arn",
-            "ShareIdentifier.$": "$.share_id",
+            "ShareIdentifier": "{% $share_id %}",
             "Parameters": {
                 "import": expected_imports,
-                "repo.$": "$.repo",
-                "token.$": "$$.Task.Token",
+                "export": expected_exports,
+                "repo": "{% $repo %}",
             },
             "ContainerOverrides": {
                 "Environment": [
                     {
                         "Name": "BC_BRANCH_IDX",
-                        "Value.$": "$.index",
+                        "Value": "{% $index %}",
                     },
                     {
                         "Name": "BC_EXECUTION_ID",
-                        "Value.$": "$$.Execution.Name",
+                        "Value": "{% $states.context.Execution.Name %}",
                     },
                     {
                         "Name": "BC_LAUNCH_BUCKET",
-                        "Value.$": "$.job_file.bucket"
+                        "Value": "{% $job_file.bucket %}"
                     },
                     {
                         "Name": "BC_LAUNCH_KEY",
-                        "Value.$": "$.job_file.key",
+                        "Value": "{% $job_file.key %}",
                     },
                     {
                         "Name": "BC_LAUNCH_VERSION",
-                        "Value.$": "$.job_file.version",
+                        "Value": "{% $job_file.version %}",
                     },
+                    {
+                        "Name": "BC_TASK_TOKEN",
+                        "Value": "{% $states.context.Task.Token %}"
+                    }
                 ],
             },
             "Tags": {
-                "bclaw:jobfile.$": "$.job_file.key"
+                "bclaw:jobfile": "{% $job_file.key %}"
             }
         },
-        "ResultPath": None,
-        "OutputPath": "$",
+        "Output": "{% $states.input %}",
         **next_or_end
     }
 
@@ -616,7 +629,7 @@ def test_handle_batch(options, step_task_role_request, sample_batch_step, compil
         assert isinstance(states[0], State)
         assert states[0].name == "step_name"
         assert states[0].spec["Resource"] == "arn:aws:states:::batch:submitJob.sync"
-        assert states[0].spec["Parameters"]["JobDefinition"] == "${StepNameJobDefz}"
+        assert states[0].spec["Arguments"]["JobDefinition"] == "${StepNameJobDefz}"
         assert states[0].spec["Next"] == "next_step_name"
 
         # references = json.loads(states[0].spec["Parameters"]["Parameters"]["references"])

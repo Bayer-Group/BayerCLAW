@@ -10,12 +10,9 @@ from ...src.compiler.pkg.util import Step, State
 pass_test = {
     "Type": "Pass",
     "Comment": "test case for Pass state",
-    "InputPath": "$.input_path",
-    "Parameters": {"x": 1},
-    "Result": {"y": 1},
-    "ResultPath": "override_this",
-    "OutputPath": "override_this",
-    "Next": "override_this",
+    "Assign": {"y": 2},
+    "Output": "override_output",
+    "Next": "override_next",
     "End": False,
 }
 
@@ -23,11 +20,10 @@ task_test = {
     "Type": "Task",
     "Comment": "test case for Task state",
     "Resource": "arn:etc:etc",
-    "InputPath": "$.input_path",
-    "Parameters": {"x": 1},
-    "ResultPath": "override_this",
-    "OutputPath": "override_this",
-    "Next": "override_this",
+    "Arguments": {"x": 1},
+    "Assign": {"y": 2},
+    "Output": "override_output",
+    "Next": "override_next",
     "End": False,
 }
 
@@ -38,17 +34,15 @@ wait_test = {
     "SecondsPath": "$.seconds",
     "Timestamp": "2020-04-23T12:41:00Z",
     "TimestampPath": "$.timestamp",
-    "InputPath": "$.input_path",
-    "OutputPath": "override_this",
-    "Next": "override_this",
+    "Output": "override_output",
+    "Next": "override_next",
     "End": False,
 }
 
 succeed_test = {
     "Type": "Succeed",
     "Comment": "test case for Succeed state",
-    "InputPath": "$.input_path",
-    "OutputPath": "override_this",
+    "Output": "override_output"
 }
 
 fail_test = {
@@ -79,15 +73,17 @@ def test_handle_native_step(test_input, next_or_end):
         assert isinstance(result, State)
         assert result.name == "step_name"
 
-        try:
-            result_path = result.spec.pop("ResultPath")
-            assert result_path is None
-        except KeyError:
-            pass
+        # try:
+        #     result_path = result.spec.pop("ResultPath")
+        #     assert result_path is None
+        # except KeyError:
+        #     pass
 
         try:
-            output_path = result.spec.pop("OutputPath")
-            assert output_path == "$"
+            output = result.spec.pop("Output")
+            assert output == "{% $states.input %}"
+            # output_path = result.spec.pop("OutputPath")
+            # assert output_path == "$"
         except KeyError:
             pass
 
@@ -114,8 +110,7 @@ def test_handle_native_step(test_input, next_or_end):
 def test_handle_native_step_stet():
     test_input = {
         "Type": "AnyType",
-        "ResultPath": "keep_this_result_path",
-        "OutputPath": "keep_this_output_path",
+        "Output": "keep_this_output_value",
         "_stet": True,
         "Other": "stuff",
     }
@@ -126,8 +121,7 @@ def test_handle_native_step_stet():
         result, *more = yield from handle_native_step(test_step, options, 0)
         expect = {
             "Type": "AnyType",
-            "ResultPath": "keep_this_result_path",
-            "OutputPath": "keep_this_output_path",
+            "Output": "keep_this_output_value",
             "Other": "stuff",
             "Next": "next_step",
         }
@@ -153,41 +147,23 @@ def test_handle_parallel_native_step(compiler_env):
                 image:
                     name: bclaw-blank
                     auth: ""
-                references:
-                  m: s3://n
-                inputs:
-                  x: y
                 commands:
                   - etc
-                outputs:
-                  a: b
-                s3_tags: {}
-                job_tags: {}
                 compute:
                   cpus: 1
                   memory: 4
                   spot: true
-                skip_if_output_exists: true
             -
               do_that:
                 image:
                     name: bclaw-wut
                     auth: ""
-                references:
-                  m: s3://n
-                inputs:
-                  p: q
                 commands:
                   - stuff
-                outputs:
-                  z: t
-                s3_tags: {}
-                job_tags: {}
                 compute:
                   cpus: 1
                   memory: 4
                   spot: true
-                skip_if_output_exists: true
         -
           steps:
             -
@@ -195,22 +171,13 @@ def test_handle_parallel_native_step(compiler_env):
                 image:
                     name: who-dat
                     auth: ""
-                references:
-                  m: s3://n
-                inputs:
-                  u: v
                 commands:
                   - woohoo
-                outputs:
-                  k: l
-                s3_tags: {}
-                job_tags: {}
                 compute:
                   cpus: 1
                   memory: 4
                   spot: true
-                skip_if_output_exists: true
-      Next: override_this
+      Next: override_next
     """)
     spec = yaml.safe_load(step_yaml)
     options = {"wf": "options",
@@ -225,8 +192,9 @@ def test_handle_parallel_native_step(compiler_env):
         assert isinstance(result, State)
         assert result.name == "step_name"
         assert result.spec["Type"] == "Parallel"
-        assert result.spec["ResultPath"] is None
-        assert result.spec["OutputPath"] == "$"
+        # assert result.spec["ResultPath"] is None
+        # assert result.spec["OutputPath"] == "$"
+        assert result.spec["Output"] == "{% $states.input %}"
         assert result.spec["Next"] == "next_step"
         assert len(result.spec["Branches"]) == 2
         assert set(result.spec["Branches"][0]["States"].keys()) == {"do_this", "do_that"}
