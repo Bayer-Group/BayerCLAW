@@ -419,8 +419,6 @@ def batch_step0(step: Step,
                job_definition_logical_name: str,
                scattered: bool,
                next_step_override: str = None) -> dict:
-    # skip_behavior = get_skip_behavior(step.spec)
-
     if scattered:
         job_name = "States.Format('{}__{}__{}', $$.Execution.Name, $$.State.Name, $.index)"
     else:
