@@ -276,10 +276,10 @@ def cli() -> int:
 
     # create custom log level for user commands
     # https://stackoverflow.com/a/55276759
-    logging.USER_CMD = logging.INFO + 5  # between INFO and WARNING
-    logging.addLevelName(logging.USER_CMD, "USER_CMD")
-    logging.Logger.user_cmd = partialmethod(logging.Logger.log, logging.USER_CMD)
-    logging.user_cmd = partial(logging.log, logging.USER_CMD)
+    # logging.USER_CMD = logging.INFO + 5  # between INFO and WARNING
+    # logging.addLevelName(logging.USER_CMD, "USER_CMD")
+    # logging.Logger.user_cmd = partialmethod(logging.Logger.log, logging.USER_CMD)
+    # logging.user_cmd = partial(logging.log, logging.USER_CMD)
 
     with spot_termination_checker():
         commands = json.loads(args["-c"])

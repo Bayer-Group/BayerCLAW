@@ -16,6 +16,7 @@ import requests
 
 from .inline_cmds import StopRequested, parse_for_commands
 from .signal_trapper import signal_trapper
+from .user_cmd_logger import UserCmdLogger
 from .workspace import Workspace
 
 logger = logging.getLogger(__name__)
@@ -140,12 +141,14 @@ def pull_image(docker_client: docker.DockerClient, image_spec: dict) -> Image:
     return ret
 
 
-def handle_container_logs(log_stream: Iterator) -> None:
+def handle_container_logs(log_stream: Iterator[bytes]) -> None:
+    uclogger = UserCmdLogger()
+
     while True:
         try:
             line = next(log_stream).decode("utf-8")
             if not parse_for_commands(line):
-                user_cmd_logger.user_cmd(line)
+                uclogger.user_cmd(line)
 
         except StopIteration:
             break
@@ -190,8 +193,8 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
                                                  working_dir=str(workspace.child_path))
         with signal_trapper(container):
             try:
-                with closing(container.logs(stream=True)) as fp:
-                    handle_container_logs(fp)
+                with closing(container.logs(stream=True)) as log_stream:
+                    handle_container_logs(log_stream)
                     # for line in fp:
                     #     try:
                     #         line_str = line.decode("utf-8")
