@@ -162,8 +162,6 @@ def handle_container_logs(log_stream: Iterator[bytes]) -> None:
 
 
 def run_child_container(image_spec: dict, command: str, workspace: Workspace) -> int:
-    # child_workspace = os.environ["BC_SCRATCH_PATH"]
-
     parent_metadata = get_container_metadata()
     mounts = list(get_mounts(parent_metadata, workspace))
     cpu_shares = parent_metadata["Limits"]["CPU"]
@@ -171,7 +169,6 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
 
     environment = get_environment_vars()
     environment["BC_WORKSPACE"] = str(workspace.child_path)
-    # environment["BC_JOB_DATA_FILE"] = os.path.join(child_workspace, os.path.basename(parent_job_data_file))
 
     device_requests = get_gpu_requests()
 
@@ -195,15 +192,6 @@ def run_child_container(image_spec: dict, command: str, workspace: Workspace) ->
             try:
                 with closing(container.logs(stream=True)) as log_stream:
                     handle_container_logs(log_stream)
-                    # for line in fp:
-                    #     try:
-                    #         line_str = line.decode("utf-8")
-                    #         if not parse_for_commands(line_str):
-                    #             user_cmd_logger.user_cmd(line_str)
-                    #     except Exception as e:
-                    #         logger.exception("----- error during subprocess logging: ")
-                    #         container.reload()
-                    #         logger.info(f"----- subprocess status is {container.status}")
 
             except StopRequested:
                 try:

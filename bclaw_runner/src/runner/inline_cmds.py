@@ -43,9 +43,6 @@ def opt_parser(opts: str) -> Generator[tuple[str, str], None, None]:
         yield k, v
 
 
-# ::command (options))::(message)
-# CMD_PARSER = re.compile("^::([a-z]+)(?:\s+(.+))*::(.*)$")
-
 # !! COMMAND (options) !! (message)
 CMD_PARSER = re.compile(r"^!!\s([A-Z]+)(?:\s+(.+))*\s!!\s*(.*)$")
 
@@ -58,9 +55,9 @@ FN_MAP = {
 def parse_for_commands(line: str) -> bool:
     if m := CMD_PARSER.match(line):
         cmd, opt_str, message = m.groups()
-        logger.info(f"{cmd=}")
-        logger.info(f"{opt_str=}")
-        logger.info(f"{message=}")
+        logger.debug(f"{cmd=}")
+        logger.debug(f"{opt_str=}")
+        logger.debug(f"{message=}")
         try:
             opts = dict(opt_parser(opt_str))
         except TypeError:

@@ -16,28 +16,20 @@ Options:
 """
 
 from contextlib import closing
-from functools import partial, partialmethod
 import json
 import logging.config
 import os
-import re
 import tempfile
-import time
-from typing import Any, Dict, List
+from typing import List
 
 import boto3
 from docopt import docopt
 
-# from .cache import get_reference_inputs
 from .dind import run_child_container
 from .string_subs import substitute
 from .preamble import log_preamble
-# from .exports import do_exports
-# from .qc_check import do_checks, abort_execution, QCFailure
-# from .repo import Repository, SkipExecution
 from .inline_cmds import StopRequested
 from .instance import get_imdsv2_token, tag_this_instance, spot_termination_checker
-# from .workspace import workspace, write_job_data_file, run_commands, UserCommandsFailed
 from .workspace import Workspace
 
 logging.basicConfig(level=logging.INFO)
@@ -61,98 +53,6 @@ def read_jobfile() -> dict:
     with closing(response["Body"]) as fp:
         ret = json.load(fp)
     return ret
-
-
-# SUB_FINDER = re.compile(r"\${{(.+?)}}")
-# SUB_FINDER = re.compile(r"\${job\.(.+?)}")
-#
-# def substitute(target: Any, spec: dict) -> Any:
-#     if isinstance(target, str):
-#         ret = SUB_FINDER.sub(lambda m: str(spec.get(m.group(1), m.group(0))) , target)
-#     elif isinstance(target, list):
-#         ret = [substitute(v, spec) for v in target]
-#     elif isinstance(target, dict):
-#         ret = {k: substitute(v, spec) for k, v in target.items()}
-#     else:
-#         ret = target
-#     return ret
-
-
-# def main0(commands: List[str],
-#          image_spec: dict,
-#          inputs: Dict[str, str],
-#          outputs: Dict[str, str | Dict],
-#          qc: List[dict],
-#          references: Dict[str, str],
-#          repo_path: str,
-#          shell: str,
-#          skip: str,
-#          tags: Dict[str, str]) -> int:
-#     exit_code = 0
-#     try:
-#         repo = Repository(repo_path)
-#
-#         if skip == "rerun":
-#             repo.check_for_previous_run()
-#         elif skip == "output":
-#             repo.check_files_exist(list(outputs.values()))
-#
-#         repo.clear_run_status()
-#
-#         job_data_obj = repo.read_job_data()
-#
-#         jobby_commands   = substitute(commands,   job_data_obj)
-#         jobby_inputs     = substitute(inputs,     job_data_obj)
-#         jobby_outputs    = substitute(outputs,    job_data_obj)  # this will recurse down to s3_tags
-#         jobby_references = substitute(references, job_data_obj)
-#         jobby_tags       = substitute(tags,       job_data_obj)
-#
-#         jobby_image_spec = substitute_image_tag(image_spec, job_data_obj)
-#
-#         with workspace() as wrk:
-#             # download references, link to workspace
-#             local_references = get_reference_inputs(jobby_references)
-#
-#             # download inputs -> returns local filenames
-#             local_inputs = repo.download_inputs(jobby_inputs)
-#             local_outputs = {k.rstrip("!"): v["name"] for k, v in jobby_outputs.items()}
-#
-#             subbed_commands = substitute(jobby_commands,
-#                                          local_inputs |
-#                                          local_outputs |
-#                                          local_references)
-#
-#             local_job_data = write_job_data_file(job_data_obj, wrk)
-#
-#             try:
-#                 run_commands(jobby_image_spec, subbed_commands, wrk, local_job_data, shell)
-#                 do_checks(qc)
-#
-#             finally:
-#                 repo.upload_outputs(jobby_outputs, jobby_tags)
-#
-#     except UserCommandsFailed as uce:
-#         logger.error(str(uce))
-#         exit_code = uce.exit_code
-#
-#     except QCFailure as qcf:
-#         logger.error(str(qcf))
-#         abort_execution(qcf.failures)
-#
-#     except SkipExecution as se:
-#         logger.info(str(se))
-#         pass
-#
-#     except Exception as e:
-#         logger.exception("bclaw_runner error: ")
-#         exit_code = 199
-#
-#     else:
-#         repo.put_run_status()
-#         logger.info("runner finished")
-#
-#     return exit_code
-#
 
 
 def command_runner(commands: List[str],
@@ -186,11 +86,7 @@ def command_runner(commands: List[str],
             script_file.flush()
             script_file.seek(0)
 
-            # logger.info(f"local script file: {script_file.name}")
-
             child_script_file = workspace.child_path / os.path.basename(script_file.name)
-
-            # logger.info(f"child script file: {child_script_file.name}")
 
             command = f"{shell_cmd} {child_script_file}"
 

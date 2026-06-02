@@ -13,12 +13,17 @@ from ..src.runner.workspace import Workspace
 logging.basicConfig(level=logging.INFO)
 
 
-def test_workspace():
-    with Workspace("/test/path") as ws:
+def test_workspace(tmp_path, monkeypatch):
+    # monkeypatch.setenv("RUNNER_PARENT", str(tmp_path))
+    monkeypatch.setattr("bclaw_runner.src.runner.workspace.RUNNER_PARENT", tmp_path)
+    with Workspace("/test/path", []) as ws:
         assert ws.raw_path == PosixPath("/test/path")
         assert ws.host_path == PosixPath("/mnt/s3files/test/path")
-        assert ws.runner_path == PosixPath("/_bclaw_scratch/test/path")
+        # assert ws.runner_path == PosixPath("/_bclaw_scratch/test/path")
+        assert ws.runner_path == tmp_path / "test/path"
         assert ws.child_path == PosixPath("/_work_")
+
+        assert ws.runner_path.exists()
 
 
 # def test_workspace(monkeypatch, tmp_path):

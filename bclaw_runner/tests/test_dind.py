@@ -1,5 +1,7 @@
 import json
+import logging
 import pytest
+from unittest.mock import Mock, patch, call
 
 import boto3
 import docker
@@ -7,8 +9,10 @@ from docker.types import DeviceRequest, DriverConfig, Mount
 import moto
 
 from ..src.runner.workspace import Workspace
-from ..src.runner.dind import (get_gpu_requests, get_container_metadata, get_mounts, get_environment_vars, get_auth,
-                               pull_image, run_child_container)
+from ..src.runner.dind import (
+    get_gpu_requests, get_container_metadata, get_mounts, get_environment_vars, get_auth,
+    pull_image, run_child_container, handle_container_logs, StopRequested
+)
 
 
 TEST_SECRET_NAME = "test_secret"
@@ -125,6 +129,51 @@ def test_pull_image(image_spec, expected_source, expected_auth, monkeypatch, moc
         assert image_spec["name"] in result.tags
         assert result.source == expected_source
         assert result.auth == expected_auth
+
+
+def test_handle_container_logs_iterates_and_calls_parse_for_commands():
+    lines = [b"line1", b"line2", b"line3"]
+    mock_parse = Mock(return_value=True)
+    with patch("bclaw_runner.src.runner.dind.parse_for_commands", mock_parse):
+        handle_container_logs(iter(lines))
+    assert mock_parse.call_args_list == [call("line1"), call("line2"), call("line3")]
+
+
+def test_handle_container_logs_logs_when_parse_returns_false():
+    lines = [b"line1", b"line2"]
+    # mock_parse = Mock(return_value=[False, True])
+    mock_parse = Mock(side_effect=[False, True])
+    mock_user_cmd = Mock()
+    with patch("bclaw_runner.src.runner.dind.parse_for_commands", mock_parse), \
+         patch("bclaw_runner.src.runner.dind.UserCmdLogger.user_cmd", mock_user_cmd):
+        handle_container_logs(iter(lines))
+    mock_parse.assert_any_call("line1")
+    mock_parse.assert_any_call("line2")
+    mock_user_cmd.assert_called_once_with("line1")
+
+
+def test_handle_container_logs_reraises_stoprequested():
+    lines = [b"line1"]
+    # class StopRequested(Exception): pass
+    def raise_stop(line): raise StopRequested("test type", "test message")
+    with patch("bclaw_runner.src.runner.dind.parse_for_commands", side_effect=raise_stop):
+        with pytest.raises(StopRequested):
+            handle_container_logs(iter(lines))
+
+
+def test_handle_container_logs_logs_and_continues_on_other_exception(caplog):
+    lines = [b"line1", b"line2"]
+    def side_effect(line):
+        if line == "line1":
+            raise ValueError("fail")
+        return True
+    mock_parse = Mock(side_effect=side_effect)
+    caplog.set_level(logging.DEBUG)
+    with patch("bclaw_runner.src.runner.dind.parse_for_commands", mock_parse):
+        handle_container_logs(iter(lines))
+    assert "error processing docker logs" in caplog.text
+    assert "continuing with subprocess logging" in caplog.text
+    assert mock_parse.call_args_list == [call("line1"), call("line2")]
 
 
 @pytest.mark.parametrize("exit_code", [0, 88])
