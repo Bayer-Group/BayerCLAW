@@ -119,6 +119,7 @@ def main(commands: List[str],
 
 
 def cli() -> int:
+    logger.info(os.environ.get("NVIDIA_VISIBLE_DEVICES", "no gpus found"))
     log_preamble()
     logger.info("---------- bclaw_runner starting ----------")
     get_imdsv2_token()
@@ -133,6 +134,8 @@ def cli() -> int:
 
     with spot_termination_checker():
         args = docopt(__doc__, version=os.environ["BC_VERSION"])
+
+        logger.info(os.environ.get("NVIDIA_VISIBLE_DEVICES", "no gpus found"))
 
         commands = json.loads(args["-c"])
         image    = json.loads(args["-m"])
