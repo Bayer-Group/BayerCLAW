@@ -49,6 +49,8 @@ def main(commands: List[str],
          shell: str,
          skip: str,
          tags: Dict[str, str]) -> int:
+    logger.info(os.environ.get("NVIDIA_VISIBLE_DEVICES", "no gpus found"))
+
     exit_code = 0
     try:
         repo = Repository(repo_path)
