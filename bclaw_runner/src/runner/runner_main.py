@@ -114,6 +114,7 @@ def main(commands: List[str],
         repo.put_run_status()
         logger.info("runner finished")
 
+    logger.info(os.environ.get("NVIDIA_VISIBLE_DEVICES", "no gpus found"))
     return exit_code
 
 
