@@ -49,7 +49,6 @@ def main(commands: List[str],
          shell: str,
          skip: str,
          tags: Dict[str, str]) -> int:
-    logger.info(os.environ.get("NVIDIA_VISIBLE_DEVICES", "no gpus found"))
 
     exit_code = 0
     try:
@@ -114,12 +113,10 @@ def main(commands: List[str],
         repo.put_run_status()
         logger.info("runner finished")
 
-    logger.info(os.environ.get("NVIDIA_VISIBLE_DEVICES", "no gpus found"))
     return exit_code
 
 
 def cli() -> int:
-    logger.info(os.environ.get("NVIDIA_VISIBLE_DEVICES", "no gpus found"))
     log_preamble()
     logger.info("---------- bclaw_runner starting ----------")
     get_imdsv2_token()

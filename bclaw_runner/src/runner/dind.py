@@ -27,12 +27,14 @@ user_cmd_logger.propagate = False
 
 
 def get_gpu_requests() -> list:
-    if devices := os.environ.get("NVIDIA_VISIBLE_DEVICES"):
-        logger.info(f"visible gpus: {devices}")
-        if devices == "all":
-            ret = [DeviceRequest(count=-1, capabilities=[["compute", "utility"]])]
-        else:
-            ret = [DeviceRequest(device_ids=devices.split(","), capabilities=[["compute", "utility"]])]
+    if "NVIDIA_VISIBLE_DEVICES" in os.environ:
+        ret = [DeviceRequest(count=-1, capabilities=[["compute", "utility"]])]
+    # if devices := os.environ.get("NVIDIA_VISIBLE_DEVICES"):
+    #     logger.info(f"visible gpus: {devices}")
+    #     if devices == "all":
+    #         ret = [DeviceRequest(count=-1, capabilities=[["compute", "utility"]])]
+    #     else:
+    #         ret = [DeviceRequest(device_ids=devices.split(","), capabilities=[["compute", "utility"]])]
     else:
         ret = []
 
