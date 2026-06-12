@@ -132,8 +132,6 @@ def cli() -> int:
     with spot_termination_checker():
         args = docopt(__doc__, version=os.environ["BC_VERSION"])
 
-        logger.info(os.environ.get("NVIDIA_VISIBLE_DEVICES", "no gpus found"))
-
         commands = json.loads(args["-c"])
         image    = json.loads(args["-m"])
         inputs   = json.loads(args["-i"])
