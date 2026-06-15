@@ -27,8 +27,9 @@ def mock_secrets():
 @pytest.mark.parametrize("nvidia_visible_devices, expect", [
     (None, []),
     ("all", [DeviceRequest(count=-1, capabilities=[["compute", "utility"]])]),
-    ("gpu-12345", [DeviceRequest(device_ids=["gpu-12345"], capabilities=[["compute", "utility"]])]),
-    ("gpu-12345,gpu-54321", [DeviceRequest(device_ids=["gpu-12345", "gpu-54321"], capabilities=[["compute", "utility"]])])
+    ("gpu-12345", [DeviceRequest(count=-1, capabilities=[["compute", "utility"]])]),
+    ("gpu-12345,gpu-54321", [DeviceRequest(count=-1, capabilities=[["compute", "utility"]])]),
+    ("void", [DeviceRequest(count=-1, capabilities=[["compute", "utility"]])])
 ])
 def test_get_gpu_requests(nvidia_visible_devices, expect, monkeypatch):
     if nvidia_visible_devices is not None:
