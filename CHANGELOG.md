@@ -1,5 +1,8 @@
 # Changelog for BayerCLAW
 
+## [v1.2.8.2] 2026-06-15 Bug fix
+- Fixed a bug caused by changes in how the Nvidia runtime interacts with containers.
+
 ## [v1.2.8.1] 2026-05-11 Bug fix
 - Fixed a bug in handling shorthand Docker image names.
 
